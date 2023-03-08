@@ -10,15 +10,17 @@ import CardinalKitScheduler
 import SwiftUI
 
 
-@main
-struct UITestsApp: App {
-    @UIApplicationDelegateAdaptor(TestAppDelegate.self) var appDelegate
+struct ContentView: View {
+    @EnvironmentObject var scheduler: TestAppScheduler
     
     
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-                .cardinalKit(appDelegate)
-        }
+    var body: some View {
+        Text("Scheduler")
+    }
+}
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
     }
 }
