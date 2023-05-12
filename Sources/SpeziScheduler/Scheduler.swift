@@ -6,9 +6,9 @@
 // SPDX-License-Identifier: MIT
 //
 
-import Spezi
 import Combine
 import Foundation
+import Spezi
 
 
 /// The ``Scheduler/Scheduler`` module allows the scheduling and observation of ``Task``s adhering to a specific ``Schedule``.
