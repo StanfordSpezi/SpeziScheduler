@@ -1,7 +1,7 @@
 // swift-tools-version:5.7
 
 //
-// This source file is part of the CardinalKit open source project
+// This source file is part of the Spezi open source project
 // 
 // SPDX-FileCopyrightText: 2022 Stanford University and the project authors (see CONTRIBUTORS.md)
 // 
@@ -12,27 +12,27 @@ import PackageDescription
 
 
 let package = Package(
-    name: "CardinalKitScheduler",
+    name: "SpeziScheduler",
     platforms: [
         .iOS(.v16)
     ],
     products: [
-        .library(name: "CardinalKitScheduler", targets: ["CardinalKitScheduler"])
+        .library(name: "SpeziScheduler", targets: ["SpeziScheduler"])
     ],
     dependencies: [
-        .package(url: "https://github.com/StanfordBDHG/CardinalKit", .upToNextMinor(from: "0.4.1"))
+        .package(url: "https://github.com/StanfordSpezi/Spezi", .upToNextMinor(from: "0.4.1"))
     ],
     targets: [
         .target(
-            name: "CardinalKitScheduler",
+            name: "SpeziScheduler",
             dependencies: [
-                .product(name: "CardinalKit", package: "CardinalKit")
+                .product(name: "Spezi", package: "Spezi")
             ]
         ),
         .testTarget(
-            name: "CardinalKitSchedulerTests",
+            name: "SpeziSchedulerTests",
             dependencies: [
-                .target(name: "CardinalKitScheduler")
+                .target(name: "SpeziScheduler")
             ]
         )
     ]
