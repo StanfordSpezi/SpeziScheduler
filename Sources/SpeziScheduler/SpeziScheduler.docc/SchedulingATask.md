@@ -24,12 +24,14 @@ let surveyTask = Task(
     description: "Take a survey",
     schedule: Schedule(
         start: .now,
-        dateComponents: .init(day: 1), // daily
+        repetition: .matching(.init(day: 1)), // daily
         end: .numberOfEvents(7)
     ),
     context: "This is a test context"
 )
 ```
+
+The ``Schedule`` type also allows the customization of the repeition using the ``Schedule/Repetition-swift.enum`` type including the randomization between two date components, and the definition of the end of the schedule using the ``Schedule/End-swift.enum`` type.
 
 Now, we will use the scheduler to schedule our task. Note that the scheduler requires a `Standard` to be defined.
 

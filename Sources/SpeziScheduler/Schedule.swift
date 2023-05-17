@@ -11,14 +11,14 @@ import Foundation
 
 /// A ``Schedule`` describe how a ``Task`` should schedule ``Event``.
 /// Use the ``Schedule``.s ``Schedule/init(start:dateComponents:end:calendar:)`` initializer to define
-/// the start date, the repetition schedule, and the end time of the ``Schedule``
+/// the start date, the repetition schedule (``Schedule/Repetition-swift.enum``), and the end time (``Schedule/End-swift.enum``) of the ``Schedule``
 public struct Schedule: Codable, Sendable {
-    /// The  ``Schedule/Repetition`` defines the repeating pattern of the ``Schedule``
+    /// The  ``Schedule/Repetition-swift.enum`` defines the repeating pattern of the ``Schedule``
     public enum Repetition: Codable, Sendable {
-        /// The ``Schedule`` defines a ``Schedule/Repetition`` that occurs on any time matching the `DateComponents`.
+        /// The ``Schedule`` defines a ``Schedule/Repetition-swift.enum`` that occurs on any time matching the `DateComponents`.
         case matching(_ dateComponents: DateComponents)
-        /// The ``Schedule`` defines a ``Schedule/Repetition`` that occurs at a random time between two consecutive `DateComponents`
-        case randomInvervalBetween(start: DateComponents, end: DateComponents)
+        /// The ``Schedule`` defines a ``Schedule/Repetition-swift.enum`` that occurs at a random time between two consecutive `DateComponents`
+        case randomBetween(start: DateComponents, end: DateComponents)
     }
     
     
@@ -78,18 +78,24 @@ public struct Schedule: Codable, Sendable {
     
     /// The start of the ``Schedule``
     public let start: Date
-    /// The  ``Schedule/Repetition`` defines the repeating pattern of the ``Schedule``
+    /// The  ``Schedule/Repetition-swift.enum`` defines the repeating pattern of the ``Schedule``
     public let repetition: Repetition
     /// The end of the ``Schedule`` using a ``Schedule/End-swift.enum``.
     public let end: End
     /// The `Calendar` used to schedule the ``Schedule`` including the time zone and locale.
     public let calendar: Calendar
     
+    private var randomDisplacements: [Date: TimeInterval] = [:] {
+        didSet {
+            
+        }
+    }
+    
     
     /// Creates a new ``Schedule``
     /// - Parameters:
     ///   - start: The start of the ``Schedule``
-    ///   - repetition: The  ``Schedule/Repetition`` defines the repeating pattern of the ``Schedule``
+    ///   - repetition: The  ``Schedule/Repetition-swift.enum`` defines the repeating pattern of the ``Schedule``
     ///   - calendar: The end of the ``Schedule`` using a ``Schedule/End-swift.enum``.
     ///   - end: The `Calendar` used to schedule the ``Schedule`` including the time zone and locale.
     public init(
@@ -125,7 +131,7 @@ public struct Schedule: Codable, Sendable {
     /// - Parameters:
     ///   - start: The start of the requested series of `Date`s. The start date of the ``Schedule`` is used if the start date is before the ``Schedule``'s start date.
     ///   - end: The end of the requested series of `Date`s. The end (number of events or date) of the ``Schedule`` is used if the start date is after the ``Schedule``'s end.
-    public func dates(from searchStart: Date? = nil, to end: End? = nil) -> [Date] {
+    func dates(from searchStart: Date? = nil, to end: End? = nil, eventContext: EventContext) -> [Date] {
         let end = End.minimum(end ?? self.end, self.end)
         
         var dates: [Date] = []
@@ -136,8 +142,8 @@ public struct Schedule: Codable, Sendable {
         switch repetition {
         case let .matching(matchingStartDateComponents):
             startDateComponents = matchingStartDateComponents
-        case let .randomInvervalBetween(randomInvervalStartDateComponents, _):
-            startDateComponents = randomInvervalStartDateComponents
+        case let .randomBetween(randomBetweenStartDateComponents, _):
+            startDateComponents = randomBetweenStartDateComponents
         }
         
         
@@ -165,17 +171,22 @@ public struct Schedule: Codable, Sendable {
             switch repetition {
             case .matching:
                 dates.append(result)
-            case let .randomInvervalBetween(_, randomInvervalEndDateComponents):
-                let resultEndDate = calendar
-                    .nextDate(
-                        after: result,
-                        matching: randomInvervalEndDateComponents,
-                        matchingPolicy: .nextTime
-                    )
-                    ?? result
-                
-                let timeInterval = resultEndDate.timeIntervalSince(result)
-                let randomDisplacement = Double.random(in: 0...timeInterval)
+            case let .randomBetween(_, randomBetweenEndDateComponents):
+                let randomDisplacement: TimeInterval
+                if let storedRandomDisplacement = randomDisplacements[result] {
+                    randomDisplacement = storedRandomDisplacement
+                } else {
+                    let resultEndDate = calendar
+                        .nextDate(
+                            after: result,
+                            matching: randomBetweenEndDateComponents,
+                            matchingPolicy: .nextTime
+                        )
+                        ?? result
+                    
+                    let timeInterval = resultEndDate.timeIntervalSince(result)
+                    randomDisplacement = Double.random(in: 0...timeInterval)
+                }
                 
                 dates.append(result.addingTimeInterval(randomDisplacement))
             }

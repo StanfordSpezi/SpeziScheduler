@@ -77,7 +77,7 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     ///   - start: The start of the requested series of `Event`s. The start date of the ``Task/schedule`` is used if the start date is before the ``Task/schedule``'s start date.
     ///   - end: The end of the requested series of `Event`s. The end (number of events or date) of the ``Task/schedule`` is used if the start date is after the ``Task/schedule``'s end.
     public func events(from start: Date? = nil, to end: Schedule.End? = nil) -> [Event] {
-        let dates = schedule.dates(from: start, to: end)
+        let dates = schedule.dates(from: start, to: end, eventContext: self)
         
         return dates
             .map { date in
