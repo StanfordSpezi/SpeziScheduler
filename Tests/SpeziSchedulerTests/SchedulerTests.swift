@@ -103,8 +103,6 @@ final class SchedulerTests: XCTestCase {
         )
         scheduler.schedule(task: testTask2)
         
-        // try await _Concurrency.Task.sleep(for: .seconds(0.1))
-        
         let expectationCompleteEvents = XCTestExpectation(description: "Complete all events")
         expectationCompleteEvents.expectedFulfillmentCount = 12
         expectationCompleteEvents.assertForOverFulfill = true
@@ -122,15 +120,10 @@ final class SchedulerTests: XCTestCase {
             expectationObservedObject.fulfill()
         }
         
-        print(scheduler.tasks)
         let events: Set<Event> = Set(scheduler.tasks.flatMap { $0.events() })
         _Concurrency.Task {
-            print(events)
-            print(events.count)
             for event in events {
-                print("event.id \(event.id) - event.complete: \(event.complete)")
                 await event.complete(true)
-                print("event.id \(event.id) - event.complete: \(event.complete)")
                 expectationCompleteEvents.fulfill()
             }
         }
