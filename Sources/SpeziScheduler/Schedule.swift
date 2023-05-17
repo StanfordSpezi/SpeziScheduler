@@ -136,8 +136,8 @@ public struct Schedule: Codable, Sendable {
         switch repetition {
         case let .matching(matchingStartDateComponents):
             startDateComponents = matchingStartDateComponents
-        case let .randomInvervalBetween(randomInvervalBetweensStartDateComponents, _):
-            startDateComponents = randomInvervalBetweensStartDateComponents
+        case let .randomInvervalBetween(randomInvervalStartDateComponents, _):
+            startDateComponents = randomInvervalStartDateComponents
         }
         
         
