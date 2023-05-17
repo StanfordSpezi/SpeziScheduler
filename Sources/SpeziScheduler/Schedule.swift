@@ -13,9 +13,18 @@ import Foundation
 /// Use the ``Schedule``.s ``Schedule/init(start:dateComponents:end:calendar:)`` initializer to define
 /// the start date, the repetition schedule, and the end time of the ``Schedule``
 public struct Schedule: Codable, Sendable {
-    /// The ``ScheduleEnd`` defines the end of a ``Schedule`` by either using a finite number of events (``ScheduleEnd/numberOfEvents(_:)``),
-    /// an end date (``ScheduleEnd/endDate(_:)``) or a combination of both (``ScheduleEnd/numberOfEventsOrEndDate(_:_:)``).
-    public enum ScheduleEnd: Codable, Sendable {
+    /// The  ``Schedule/Repetition`` defines the repeating pattern of the ``Schedule``
+    public enum Repetition: Codable, Sendable {
+        /// The ``Schedule`` defines a ``Schedule/Repetition`` that occurs on any time matching the `DateComponents`.
+        case matching(_ dateComponents: DateComponents)
+        /// The ``Schedule`` defines a ``Schedule/Repetition`` that occurs at a random time between two consecutive `DateComponents`
+        case randomInvervalBetween(start: DateComponents, end: DateComponents)
+    }
+    
+    
+    /// The ``Schedule/End-swift.enum`` defines the end of a ``Schedule`` by either using a finite number of events (``Schedule/End-swift.enum/numberOfEvents(_:)``),
+    /// an end date (``Schedule/End-swift.enum/endDate(_:)``) or a combination of both (``Schedule/End-swift.enum/numberOfEventsOrEndDate(_:_:)``).
+    public enum End: Codable, Sendable {
         /// The end of the ``Schedule`` is defined by a finite number of events.
         case numberOfEvents(Int)
         /// The end of the ``Schedule`` is defined by an end date.
@@ -43,7 +52,7 @@ public struct Schedule: Codable, Sendable {
         }
         
         
-        static func minimum(_ lhs: Self, _ rhs: Self) -> ScheduleEnd {
+        static func minimum(_ lhs: Self, _ rhs: Self) -> End {
             switch (lhs.numberOfEvents, lhs.endDate, rhs.numberOfEvents, rhs.endDate) {
             case let (.some(numberOfEvents), .none, .none, .some(date)),
                  let (.none, .some(date), .some(numberOfEvents), .none):
@@ -61,7 +70,7 @@ public struct Schedule: Codable, Sendable {
             case let (.some(lhsNumberOfEvents), .some(lhsDate), .some(rhsNumberOfEvents), .some(rhsDate)):
                 return .numberOfEventsOrEndDate(min(lhsNumberOfEvents, rhsNumberOfEvents), min(lhsDate, rhsDate))
             case (.none, .none, _, _), (_, _, .none, .none):
-                fatalError("An ScheduleEnd must always either have an endDate or an numberOfEvents")
+                fatalError("An end must always either have an endDate or an numberOfEvents")
             }
         }
     }
@@ -69,10 +78,10 @@ public struct Schedule: Codable, Sendable {
     
     /// The start of the ``Schedule``
     public let start: Date
-    /// The `DateComponents` describing the repetition of the ``Schedule``
-    public let dateComponents: DateComponents
-    /// The end of the ``Schedule`` using a ``ScheduleEnd``.
-    public let end: ScheduleEnd
+    /// The  ``Schedule/Repetition`` defines the repeating pattern of the ``Schedule``
+    public let repetition: Repetition
+    /// The end of the ``Schedule`` using a ``Schedule/End-swift.enum``.
+    public let end: End
     /// The `Calendar` used to schedule the ``Schedule`` including the time zone and locale.
     public let calendar: Calendar
     
@@ -80,12 +89,17 @@ public struct Schedule: Codable, Sendable {
     /// Creates a new ``Schedule``
     /// - Parameters:
     ///   - start: The start of the ``Schedule``
-    ///   - dateComponents: The `DateComponents` describing the repetition of the ``Schedule``
-    ///   - calendar: The end of the ``Schedule`` using a ``ScheduleEnd``.
+    ///   - repetition: The  ``Schedule/Repetition`` defines the repeating pattern of the ``Schedule``
+    ///   - calendar: The end of the ``Schedule`` using a ``Schedule/End-swift.enum``.
     ///   - end: The `Calendar` used to schedule the ``Schedule`` including the time zone and locale.
-    public init(start: Date, dateComponents: DateComponents, end: ScheduleEnd, calendar: Calendar = .current) {
+    public init(
+        start: Date,
+        repetition: Repetition,
+        end: End,
+        calendar: Calendar = .current
+    ) {
         self.start = start
-        self.dateComponents = dateComponents
+        self.repetition = repetition
         self.end = end
         self.calendar = calendar
     }
@@ -93,7 +107,7 @@ public struct Schedule: Codable, Sendable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.start = try container.decode(Date.self, forKey: .start)
-        self.dateComponents = try container.decode(DateComponents.self, forKey: .dateComponents)
+        self.repetition = try container.decode(Repetition.self, forKey: .repetition)
         
         // We allow a remote instance of default configuration to use "current" as a valid string value for a calendar and
         // set it to the `.current` calendar value.
@@ -103,7 +117,7 @@ public struct Schedule: Codable, Sendable {
             self.calendar = try container.decode(Calendar.self, forKey: .calendar)
         }
         
-        self.end = try container.decode(Schedule.ScheduleEnd.self, forKey: .end)
+        self.end = try container.decode(Schedule.End.self, forKey: .end)
     }
     
     
@@ -111,13 +125,23 @@ public struct Schedule: Codable, Sendable {
     /// - Parameters:
     ///   - start: The start of the requested series of `Date`s. The start date of the ``Schedule`` is used if the start date is before the ``Schedule``'s start date.
     ///   - end: The end of the requested series of `Date`s. The end (number of events or date) of the ``Schedule`` is used if the start date is after the ``Schedule``'s end.
-    public func dates(from searchStart: Date? = nil, to end: ScheduleEnd? = nil) -> [Date] {
-        let end = ScheduleEnd.minimum(end ?? self.end, self.end)
+    public func dates(from searchStart: Date? = nil, to end: End? = nil) -> [Date] {
+        let end = End.minimum(end ?? self.end, self.end)
         
         var dates: [Date] = []
         var numberOfEvents = 0
         
-        calendar.enumerateDates(startingAfter: self.start, matching: dateComponents, matchingPolicy: .nextTime) { result, _, stop in
+        
+        let startDateComponents: DateComponents
+        switch repetition {
+        case let .matching(matchingStartDateComponents):
+            startDateComponents = matchingStartDateComponents
+        case let .randomInvervalBetween(randomInvervalBetweensStartDateComponents, _):
+            startDateComponents = randomInvervalBetweensStartDateComponents
+        }
+        
+        
+        calendar.enumerateDates(startingAfter: self.start, matching: startDateComponents, matchingPolicy: .nextTime) { result, _, stop in
             guard let result else {
                 stop = true
                 return

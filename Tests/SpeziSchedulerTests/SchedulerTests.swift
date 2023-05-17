@@ -48,7 +48,7 @@ final class SchedulerTests: XCTestCase {
             description: "This is a test task",
             schedule: Schedule(
                 start: .now,
-                dateComponents: .init(nanosecond: 500_000_000), // every 0.5 seconds
+                repetition: .matching(.init(nanosecond: 500_000_000)), // every 0.5 seconds
                 end: .numberOfEvents(numberOfEvents)
             ),
             context: "This is a test context"
@@ -82,7 +82,7 @@ final class SchedulerTests: XCTestCase {
             description: "This is a test task",
             schedule: Schedule(
                 start: .now.addingTimeInterval(42_000),
-                dateComponents: .init(nanosecond: 500_000_000), // every 0.5 seconds
+                repetition: .matching(.init(nanosecond: 500_000_000)), // every 0.5 seconds
                 end: .numberOfEvents(numberOfEvents)
             ),
             context: "This is a test context"
@@ -95,7 +95,7 @@ final class SchedulerTests: XCTestCase {
             description: "This is a second test task",
             schedule: Schedule(
                 start: .now.addingTimeInterval(42_000),
-                dateComponents: .init(nanosecond: 500_000_000), // every 0.5 seconds
+                repetition: .matching(.init(nanosecond: 500_000_000)), // every 0.5 seconds
                 end: .numberOfEvents(numberOfEvents)
             ),
             context: "This is a second test context"
@@ -141,7 +141,7 @@ final class SchedulerTests: XCTestCase {
                 description: "This is a test task",
                 schedule: Schedule(
                     start: .now,
-                    dateComponents: .init(nanosecond: 500_000_000), // every 0.5 seconds
+                    repetition: .matching(.init(nanosecond: 500_000_000)), // every 0.5 seconds
                     end: .numberOfEvents(2)
                 ),
                 context: "This is a test context"
@@ -151,7 +151,7 @@ final class SchedulerTests: XCTestCase {
                 description: "This is a second test task",
                 schedule: Schedule(
                     start: .now.addingTimeInterval(10),
-                    dateComponents: .init(nanosecond: 500_000_000), // every 0.5 seconds
+                    repetition: .matching(.init(nanosecond: 500_000_000)), // every 0.5 seconds
                     end: .numberOfEvents(2)
                 ),
                 context: "This is a second test context"
@@ -199,8 +199,12 @@ final class SchedulerTests: XCTestCase {
             "id": "DEDDE3FF-0A75-4A8C-9F0D-75AD417F1104",
             "schedule" : {
                 "calendar": "current",
-                "dateComponents": {
-                    "nanosecond": 500000000
+                "repetition" : {
+                    "matching" : {
+                        "_0" : {
+                            "nanosecond" : 500000000
+                        }
+                    }
                 },
                 "end" : {
                     "numberOfEvents": {
