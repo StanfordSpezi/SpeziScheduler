@@ -11,11 +11,67 @@ import SwiftUI
 
 
 struct ContentView: View {
-    @EnvironmentObject var scheduler: TestAppScheduler
+    @EnvironmentObject private var scheduler: TestAppScheduler
+    
+    
+    private var tasks: Int {
+        scheduler.tasks.count
+    }
+    
+    private var events: Int {
+        scheduler.tasks
+            .flatMap { $0.events() }
+            .count
+    }
+    
+    private var fulfilledEvents: Int {
+        scheduler.tasks
+            .flatMap { $0.events() }
+            .filter { $0.complete }
+            .count
+    }
     
     
     var body: some View {
         Text("Scheduler")
+            .font(.headline)
+        Text("\(tasks) Tasks")
+        Text("\(events) Events")
+        Text("Fulfilled \(fulfilledEvents) Events")
+        Button("Add Task") {
+            scheduler.schedule(
+                task: Task(
+                    title: "New Task",
+                    description: "New Task",
+                    schedule: Schedule(
+                        start: .now,
+                        dateComponents: .init(nanosecond: 500_000_000), // every 0.5 seconds
+                        end: .numberOfEvents(2)
+                    ),
+                    context: "New Task!"
+                )
+            )
+        }
+        Button("Fulfill Event") {
+            guard let uncompletedEvent = scheduler.tasks
+                .flatMap({ $0.events() })
+                .first(where: { !$0.complete }) else {
+                return
+            }
+            _Concurrency.Task {
+                await uncompletedEvent.complete(true)
+            }
+        }
+        Button("Unfulfull Event") {
+            guard let completedEvent = scheduler.tasks
+                .flatMap({ $0.events() })
+                .first(where: { $0.complete }) else {
+                return
+            }
+            _Concurrency.Task {
+                await completedEvent.complete(false)
+            }
+        }
     }
 }
 

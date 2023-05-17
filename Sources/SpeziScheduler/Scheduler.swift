@@ -50,7 +50,7 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
             .sink {
                 _Concurrency.Task {
                     do {
-                        try await self.localStorage.store(self.tasks)
+                        try self.localStorage.store(self.tasks)
                     } catch {
                         print(error)
                     }
@@ -59,14 +59,12 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
             .store(in: &cancellables)
         
         
-        _Concurrency.Task {
-            guard let storedTasks = try? await localStorage.read([Task<Context>].self) else {
-                schedule(tasks: initialTasks)
-                return
-            }
-            
-            schedule(tasks: storedTasks)
+        guard let storedTasks = try? localStorage.read([Task<Context>].self) else {
+            schedule(tasks: initialTasks)
+            return
         }
+        
+        schedule(tasks: storedTasks)
     }
     
     
