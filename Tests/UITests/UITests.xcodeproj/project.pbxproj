@@ -14,8 +14,9 @@
 		2F9F4D8729B80AB100ABE259 /* TestAppStandard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F9F4D8629B80AB100ABE259 /* TestAppStandard.swift */; };
 		2F9F4D8A29B80B2400ABE259 /* Spezi in Frameworks */ = {isa = PBXBuildFile; productRef = 2F9F4D8929B80B2400ABE259 /* Spezi */; };
 		2F9F4D8C29B80BD100ABE259 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F9F4D8B29B80BD100ABE259 /* ContentView.swift */; };
-		2F9F4D8E29B80C5600ABE259 /* SpeziScheduler in Frameworks */ = {isa = PBXBuildFile; productRef = 2F9F4D8D29B80C5600ABE259 /* SpeziScheduler */; };
 		2FA7382C290ADFAA007ACEB9 /* TestApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FA7382B290ADFAA007ACEB9 /* TestApp.swift */; };
+		2FE0B6E72A14C65900818AE9 /* SpeziScheduler in Frameworks */ = {isa = PBXBuildFile; productRef = 2FE0B6E62A14C65900818AE9 /* SpeziScheduler */; };
+		2FE0B6EA2A14D82600818AE9 /* XCTestExtensions in Frameworks */ = {isa = PBXBuildFile; productRef = 2FE0B6E92A14D82600818AE9 /* XCTestExtensions */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,7 +30,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		2F68C3C6292E9F8F00B3E12C /* Spezi */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Spezi; path = ../..; sourceTree = "<group>"; };
 		2F6D139228F5F384007C25D6 /* TestApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TestApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2F6D139928F5F386007C25D6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2F6D13AC28F5F386007C25D6 /* TestAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TestAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -39,6 +39,7 @@
 		2F9F4D8B29B80BD100ABE259 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		2FA7382B290ADFAA007ACEB9 /* TestApp.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TestApp.swift; sourceTree = "<group>"; };
 		2FB0758A299DDB9000C0B37F /* TestApp.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = TestApp.xctestplan; sourceTree = "<group>"; };
+		2FE0B6E52A14C64E00818AE9 /* SpeziScheduler */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = SpeziScheduler; path = ../..; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,7 +49,7 @@
 			files = (
 				2F68C3C8292EA52000B3E12C /* Spezi in Frameworks */,
 				2F9F4D8A29B80B2400ABE259 /* Spezi in Frameworks */,
-				2F9F4D8E29B80C5600ABE259 /* SpeziScheduler in Frameworks */,
+				2FE0B6E72A14C65900818AE9 /* SpeziScheduler in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -56,6 +57,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2FE0B6EA2A14D82600818AE9 /* XCTestExtensions in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -66,7 +68,7 @@
 			isa = PBXGroup;
 			children = (
 				2FB0758A299DDB9000C0B37F /* TestApp.xctestplan */,
-				2F68C3C6292E9F8F00B3E12C /* Spezi */,
+				2FE0B6E52A14C64E00818AE9 /* SpeziScheduler */,
 				2F6D139428F5F384007C25D6 /* TestApp */,
 				2F6D13AF28F5F386007C25D6 /* TestAppUITests */,
 				2F6D139328F5F384007C25D6 /* Products */,
@@ -129,7 +131,7 @@
 			packageProductDependencies = (
 				2F68C3C7292EA52000B3E12C /* Spezi */,
 				2F9F4D8929B80B2400ABE259 /* Spezi */,
-				2F9F4D8D29B80C5600ABE259 /* SpeziScheduler */,
+				2FE0B6E62A14C65900818AE9 /* SpeziScheduler */,
 			);
 			productName = Example;
 			productReference = 2F6D139228F5F384007C25D6 /* TestApp.app */;
@@ -149,6 +151,9 @@
 				2F6D13AE28F5F386007C25D6 /* PBXTargetDependency */,
 			);
 			name = TestAppUITests;
+			packageProductDependencies = (
+				2FE0B6E92A14D82600818AE9 /* XCTestExtensions */,
+			);
 			productName = ExampleUITests;
 			productReference = 2F6D13AC28F5F386007C25D6 /* TestAppUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -183,6 +188,7 @@
 			mainGroup = 2F6D138928F5F384007C25D6;
 			packageReferences = (
 				2F9F4D8829B80B2400ABE259 /* XCRemoteSwiftPackageReference "Spezi" */,
+				2FE0B6E82A14D82600818AE9 /* XCRemoteSwiftPackageReference "XCTestExtensions" */,
 			);
 			productRefGroup = 2F6D139328F5F384007C25D6 /* Products */;
 			projectDirPath = "";
@@ -379,7 +385,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = edu.stanford.spezischeduler.testapp;
+				PRODUCT_BUNDLE_IDENTIFIER = edu.stanford.spezi.scheduler.testapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -410,7 +416,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = edu.stanford.spezischeduler.testapp;
+				PRODUCT_BUNDLE_IDENTIFIER = edu.stanford.spezi.scheduler.testapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -539,7 +545,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = edu.stanford.spezischeduler.testapp;
+				PRODUCT_BUNDLE_IDENTIFIER = edu.stanford.spezi.scheduler.testapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -557,7 +563,7 @@
 				DEVELOPMENT_TEAM = 637867499T;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = edu.stanford.Spezi.testappuitests;
+				PRODUCT_BUNDLE_IDENTIFIER = edu.stanford.spezi.scheduler.testappuitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -611,6 +617,14 @@
 				minimumVersion = 0.5.0;
 			};
 		};
+		2FE0B6E82A14D82600818AE9 /* XCRemoteSwiftPackageReference "XCTestExtensions" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/StanfordSpezi/XCTestExtensions.git";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.4.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -623,9 +637,14 @@
 			package = 2F9F4D8829B80B2400ABE259 /* XCRemoteSwiftPackageReference "Spezi" */;
 			productName = Spezi;
 		};
-		2F9F4D8D29B80C5600ABE259 /* SpeziScheduler */ = {
+		2FE0B6E62A14C65900818AE9 /* SpeziScheduler */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SpeziScheduler;
+		};
+		2FE0B6E92A14D82600818AE9 /* XCTestExtensions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2FE0B6E82A14D82600818AE9 /* XCRemoteSwiftPackageReference "XCTestExtensions" */;
+			productName = XCTestExtensions;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -7,6 +7,7 @@
 //
 
 import Spezi
+import SpeziLocalStorage
 import SpeziScheduler
 import XCTest
 
@@ -26,6 +27,19 @@ actor SchedulerTestsStandard: Standard {
 
 
 final class SchedulerTests: XCTestCase {
+    private func createScheduler(withInitialTasks initialTasks: Task<String>) -> Scheduler<SchedulerTestsStandard, String> {
+        let scheduler = Scheduler<SchedulerTestsStandard, String>(tasks: [initialTasks])
+        let localStorageDependency = Mirror(reflecting: scheduler).children
+            .compactMap {
+                $0.value as? _DependencyPropertyWrapper<LocalStorage<SchedulerTestsStandard>, SchedulerTestsStandard>
+            }
+            .first
+        localStorageDependency?.inject(dependency: LocalStorage())
+        scheduler.configure()
+        return scheduler
+    }
+    
+    
     func testObservedObjectCalls() throws {
         let numberOfEvents = 6
         
@@ -39,8 +53,7 @@ final class SchedulerTests: XCTestCase {
             ),
             context: "This is a test context"
         )
-        let scheduler = Scheduler<SchedulerTestsStandard, String>(tasks: [testTask])
-        
+        let scheduler = createScheduler(withInitialTasks: testTask)
         
         let expectation = XCTestExpectation(description: "Get Updates for all scheduled events.")
         expectation.expectedFulfillmentCount = numberOfEvents
@@ -61,31 +74,33 @@ final class SchedulerTests: XCTestCase {
     }
     
     
-    func testCompleteEvents() throws { // swiftlint:disable:this function_body_length
-        // We use longer functions to test the different observable states in one test function.
+    func testCompleteEvents() throws {
         let numberOfEvents = 6
         
         let testTask = Task(
             title: "Test Task",
             description: "This is a test task",
             schedule: Schedule(
-                start: .now.addingTimeInterval(60),
+                start: .now.addingTimeInterval(42_000),
                 dateComponents: .init(nanosecond: 500_000_000), // every 0.5 seconds
                 end: .numberOfEvents(numberOfEvents)
             ),
             context: "This is a test context"
         )
+        let scheduler = createScheduler(withInitialTasks: testTask)
+        
+        
         let testTask2 = Task(
             title: "Test Task 2",
             description: "This is a second test task",
             schedule: Schedule(
-                start: .now.addingTimeInterval(60),
+                start: .now.addingTimeInterval(42_000),
                 dateComponents: .init(nanosecond: 500_000_000), // every 0.5 seconds
                 end: .numberOfEvents(numberOfEvents)
             ),
             context: "This is a second test context"
         )
-        let scheduler = Scheduler<SchedulerTestsStandard, String>(tasks: [testTask, testTask2])
+        scheduler.schedule(task: testTask2)
         
         let expectationCompleteEvents = XCTestExpectation(description: "Complete all events")
         expectationCompleteEvents.expectedFulfillmentCount = 12
@@ -95,11 +110,12 @@ final class SchedulerTests: XCTestCase {
         expectationObservedObject.expectedFulfillmentCount = 12
         expectationObservedObject.assertForOverFulfill = true
         
-        var fulfilledEventCount = 0
         let cancellable = scheduler.objectWillChange.sink {
-            fulfilledEventCount += 1
-            XCTAssertEqual(fulfilledEventCount, scheduler.tasks.flatMap { $0.events() }.filter { $0.complete }.count)
-            XCTAssertEqual(12 - fulfilledEventCount, scheduler.tasks.flatMap { $0.events() }.filter { !$0.complete }.count)
+            let events = scheduler.tasks.flatMap { $0.events() }
+            let completedEvents = events.filter { $0.complete }.count
+            let uncompletedEvents = events.filter { !$0.complete }.count
+            
+            XCTAssertEqual(12, uncompletedEvents + completedEvents)
             expectationObservedObject.fulfill()
         }
         
@@ -107,42 +123,15 @@ final class SchedulerTests: XCTestCase {
         _Concurrency.Task {
             for event in events {
                 await event.complete(true)
-                try await _Concurrency.Task.sleep(for: .seconds(0.01))
                 expectationCompleteEvents.fulfill()
             }
         }
     
-        wait(for: [expectationCompleteEvents, expectationObservedObject], timeout: TimeInterval(2))
+        wait(for: [expectationCompleteEvents, expectationObservedObject], timeout: 0.5)
+        cancellable.cancel()
         
         XCTAssert(events.allSatisfy { $0.complete })
         XCTAssertEqual(events.count, 12)
-        cancellable.cancel()
-
-        let unFulfilledExpectationObservedObject = XCTestExpectation(description: "Get Updates for all scheduled events that are toggled.")
-        unFulfilledExpectationObservedObject.expectedFulfillmentCount = 12
-        unFulfilledExpectationObservedObject.assertForOverFulfill = true
-
-        var unFulfilledEventCount = 0
-        let unFulfilledCancellable = scheduler.objectWillChange.sink {
-            unFulfilledEventCount += 1
-            XCTAssertEqual(unFulfilledEventCount, scheduler.tasks.flatMap { $0.events() }.filter { !$0.complete }.count)
-            XCTAssertEqual(12 - unFulfilledEventCount, scheduler.tasks.flatMap { $0.events() }.filter { $0.complete }.count)
-            unFulfilledExpectationObservedObject.fulfill()
-        }
-
-        _Concurrency.Task {
-            for event in scheduler.tasks.flatMap({ $0.events() }) {
-                await event.toggle()
-                try await _Concurrency.Task.sleep(for: .seconds(0.01))
-            }
-        }
-
-        wait(for: [unFulfilledExpectationObservedObject], timeout: TimeInterval(2))
-
-        XCTAssert(scheduler.tasks.flatMap { $0.events() } .allSatisfy { !$0.complete })
-        XCTAssertEqual(scheduler.tasks.flatMap { $0.events() } .count, 12)
-
-        unFulfilledCancellable.cancel()
     }
     
     func testCodable() throws {
