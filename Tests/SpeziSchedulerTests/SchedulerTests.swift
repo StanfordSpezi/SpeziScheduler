@@ -7,6 +7,7 @@
 //
 
 import Spezi
+import SpeziLocalStorage
 import SpeziScheduler
 import XCTest
 
@@ -26,6 +27,19 @@ actor SchedulerTestsStandard: Standard {
 
 
 final class SchedulerTests: XCTestCase {
+    private func createScheduler(withInitialTasks initialTasks: Task<String>) -> Scheduler<SchedulerTestsStandard, String> {
+        let scheduler = Scheduler<SchedulerTestsStandard, String>(tasks: [initialTasks])
+        let localStorageDependency = Mirror(reflecting: scheduler).children
+            .compactMap {
+                $0.value as? _DependencyPropertyWrapper<LocalStorage<SchedulerTestsStandard>, SchedulerTestsStandard>
+            }
+            .first
+        localStorageDependency?.inject(dependency: LocalStorage())
+        scheduler.configure()
+        return scheduler
+    }
+    
+    
     func testObservedObjectCalls() throws {
         let numberOfEvents = 6
         
@@ -39,8 +53,7 @@ final class SchedulerTests: XCTestCase {
             ),
             context: "This is a test context"
         )
-        let scheduler = Scheduler<SchedulerTestsStandard, String>(tasks: [testTask])
-        
+        let scheduler = createScheduler(withInitialTasks: testTask)
         
         let expectation = XCTestExpectation(description: "Get Updates for all scheduled events.")
         expectation.expectedFulfillmentCount = numberOfEvents
@@ -75,6 +88,9 @@ final class SchedulerTests: XCTestCase {
             ),
             context: "This is a test context"
         )
+        let scheduler = createScheduler(withInitialTasks: testTask)
+        
+        
         let testTask2 = Task(
             title: "Test Task 2",
             description: "This is a second test task",
@@ -85,7 +101,8 @@ final class SchedulerTests: XCTestCase {
             ),
             context: "This is a second test context"
         )
-        let scheduler = Scheduler<SchedulerTestsStandard, String>(tasks: [testTask, testTask2])
+        scheduler.schedule(task: testTask2)
+        
         
         let expectationCompleteEvents = XCTestExpectation(description: "Complete all events")
         expectationCompleteEvents.expectedFulfillmentCount = 12
@@ -112,7 +129,7 @@ final class SchedulerTests: XCTestCase {
             }
         }
     
-        wait(for: [expectationCompleteEvents, expectationObservedObject], timeout: TimeInterval(2))
+        wait(for: [expectationCompleteEvents, expectationObservedObject], timeout: TimeInterval(1000))
         
         XCTAssert(events.allSatisfy { $0.complete })
         XCTAssertEqual(events.count, 12)

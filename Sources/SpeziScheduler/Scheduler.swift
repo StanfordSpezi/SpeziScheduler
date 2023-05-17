@@ -9,6 +9,7 @@
 import Combine
 import Foundation
 import Spezi
+import SpeziLocalStorage
 
 
 /// The ``Scheduler/Scheduler`` module allows the scheduling and observation of ``Task``s adhering to a specific ``Schedule``.
@@ -17,27 +18,18 @@ import Spezi
 /// to schedule tasks that you can obtain using the ``Scheduler/Scheduler/tasks`` property.
 /// You can use the ``Scheduler/Scheduler`` as an `ObservableObject` to automatically update your SwiftUI views when new events are emitted or events change.
 public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable, Module {
-    public private(set) var tasks: [Task<Context>]
+    @Dependency private var localStorage: LocalStorage
+    
+    public private(set) var tasks: [Task<Context>] = []
+    private var initialTasks: [Task<Context>]
     private var timers: [Timer] = []
     private var cancellables: Set<AnyCancellable> = []
     
     
     /// Creates a new ``Scheduler`` module.
     /// - Parameter tasks: The initial set of ``Task``s.
-    public init(tasks: [Task<Context>] = []) {
-        self.tasks = []
-        self.tasks.reserveCapacity(tasks.count)
-        
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(timeZoneChanged),
-            name: Notification.Name.NSSystemTimeZoneDidChange,
-            object: nil
-        )
-        
-        for task in tasks {
-            schedule(task: task)
-        }
+    public init(tasks initialTasks: [Task<Context>] = []) {
+        self.initialTasks = initialTasks
     }
     
     
@@ -46,32 +38,69 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
     }
     
     
-    /// Schedule a new ``Task`` in the ``Scheduler`` module.
-    /// - Parameter task: The new ``Task`` instance that should be scheduled.
-    public func schedule(task: Task<Context>) {
-        let futureEvents = task.events(from: .now, to: .endDate(.distantFuture))
-        timers.reserveCapacity(timers.count + futureEvents.count)
+    public func configure() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(timeZoneChanged),
+            name: Notification.Name.NSSystemTimeZoneDidChange,
+            object: nil
+        )
         
-        for futureEvent in futureEvents {
-            Timer.scheduledTimer(
-                withTimeInterval: Date.now.distance(to: futureEvent.scheduledAt),
-                repeats: false
-            ) { [weak self] timer in
-                timer.invalidate()
-                let `self` = self
-                _Concurrency.Task { @MainActor in
-                    self?.objectWillChange.send()
-                }
-            }
-        }
-        
-        task.objectWillChange
+        self.objectWillChange
             .sink {
-                _Concurrency.Task { @MainActor in
-                    self.objectWillChange.send()
+                _Concurrency.Task {
+                    do {
+                        try await self.localStorage.store(self.tasks)
+                    } catch {
+                        print(error)
+                    }
                 }
             }
             .store(in: &cancellables)
+        
+        
+        _Concurrency.Task {
+            guard let storedTasks = try? await localStorage.read([Task<Context>].self) else {
+                schedule(tasks: initialTasks)
+                return
+            }
+            
+            schedule(tasks: storedTasks)
+        }
+    }
+    
+    
+    /// Schedule a new ``Task`` in the ``Scheduler`` module.
+    /// - Parameter task: The new ``Task`` instance that should be scheduled.
+    public func schedule(task: Task<Context>) {
+        DispatchQueue.global(qos: .background).async {
+            let futureEvents = task.events(from: .now.addingTimeInterval(-1), to: .endDate(.distantFuture))
+            self.timers.reserveCapacity(self.timers.count + futureEvents.count)
+            
+            for futureEvent in futureEvents {
+                let scheduledTimer = Timer(
+                    timeInterval: max(Date.now.distance(to: futureEvent.scheduledAt), TimeInterval.leastNonzeroMagnitude),
+                    repeats: false,
+                    block: { timer in
+                        timer.invalidate()
+                        task.objectWillChange.send()
+                    }
+                )
+                
+                RunLoop.current.add(scheduledTimer, forMode: .common)
+                self.timers.append(scheduledTimer)
+            }
+            
+            RunLoop.current.run()
+        }
+        
+        task.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink {
+                self.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+        
         tasks.append(task)
     }
     
@@ -83,9 +112,16 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
         }
     }
     
+    private func schedule(tasks: [Task<Context>]) {
+        self.tasks.reserveCapacity(self.tasks.count + tasks.count)
+        for task in tasks {
+            schedule(task: task)
+        }
+    }
+    
     
     deinit {
-        for timer in timers {
+        for timer in timers where timer.isValid {
             timer.invalidate()
         }
         for cancellable in cancellables {
