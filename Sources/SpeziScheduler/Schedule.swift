@@ -162,7 +162,23 @@ public struct Schedule: Codable, Sendable {
                 return
             }
             
-            dates.append(result)
+            switch repetition {
+            case .matching:
+                dates.append(result)
+            case let .randomInvervalBetween(_, randomInvervalEndDateComponents):
+                let resultEndDate = calendar
+                    .nextDate(
+                        after: result,
+                        matching: randomInvervalEndDateComponents,
+                        matchingPolicy: .nextTime
+                    )
+                    ?? result
+                
+                let timeInterval = resultEndDate.timeIntervalSince(result)
+                let randomDisplacement = Double.random(in: 0...timeInterval)
+                
+                dates.append(result.addingTimeInterval(randomDisplacement))
+            }
         }
         return dates
     }
