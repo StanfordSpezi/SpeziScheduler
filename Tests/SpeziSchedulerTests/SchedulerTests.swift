@@ -74,8 +74,7 @@ final class SchedulerTests: XCTestCase {
     }
     
     
-    func testCompleteEvents() throws { // swiftlint:disable:this function_body_length
-        // We use longer functions to test the different observable states in one test function.
+    func testCompleteEvents() throws {
         let numberOfEvents = 6
         
         let testTask = Task(
