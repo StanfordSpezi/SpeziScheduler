@@ -44,11 +44,11 @@ final class SchedulerTests: XCTestCase {
         let numberOfEvents = 6
         
         let testTask = Task(
-            title: "Test Task",
-            description: "This is a test task",
+            title: "Observable Object Test Task",
+            description: "This is a Observable Object Test task",
             schedule: Schedule(
                 start: .now,
-                dateComponents: .init(nanosecond: 500_000_000), // every 0.5 seconds
+                repetition: .matching(.init(nanosecond: 0)), // Every full second
                 end: .numberOfEvents(numberOfEvents)
             ),
             context: "This is a test context"
@@ -59,16 +59,59 @@ final class SchedulerTests: XCTestCase {
         expectation.expectedFulfillmentCount = numberOfEvents
         expectation.assertForOverFulfill = true
         
-        var eventCount = 0
-        
         let cancellable = scheduler.objectWillChange.sink {
-            eventCount += 1
-            XCTAssertEqual(eventCount, scheduler.tasks.first?.events(to: .endDate(.now)).count)
-            XCTAssertEqual(numberOfEvents - eventCount, scheduler.tasks.first?.events(from: .now).count)
+            let events = scheduler.tasks.flatMap { $0.events() }
+            let completedEvents = events.filter { $0.complete }.count
+            let uncompletedEvents = events.filter { !$0.complete }.count
+            
+            XCTAssertEqual(numberOfEvents, uncompletedEvents + completedEvents)
             expectation.fulfill()
         }
         
-        wait(for: [expectation], timeout: TimeInterval(numberOfEvents + 3))
+        wait(for: [expectation], timeout: TimeInterval(numberOfEvents + 2))
+        
+        cancellable.cancel()
+    }
+    
+    func testRandomSchedulerFunctionality() throws {
+        let numberOfEvents = 10
+        
+        let testTask = Task(
+            title: "Random Scheduler Test Task",
+            description: "Random Scheduler Test task",
+            schedule: Schedule(
+                start: .now,
+                repetition: .randomBetween( // Randomely scheduled in the first half of each second.
+                    start: .init(nanosecond: 450_000_000),
+                    end: .init(nanosecond: 550_000_000)
+                ),
+                end: .numberOfEvents(numberOfEvents)
+            ),
+            context: "This is a test context"
+        )
+        let scheduler = createScheduler(withInitialTasks: testTask)
+        
+        let expectation = XCTestExpectation(description: "Get Updates for all scheduled events.")
+        expectation.expectedFulfillmentCount = numberOfEvents + 1
+        expectation.assertForOverFulfill = true
+        
+        let cancellable = scheduler.objectWillChange.sink {
+            let events = scheduler.tasks.flatMap { $0.events() }
+            let completedEvents = events.filter { $0.complete }.count
+            let uncompletedEvents = events.filter { !$0.complete }.count
+            
+            XCTAssertEqual(numberOfEvents, uncompletedEvents + completedEvents)
+            expectation.fulfill()
+        }
+        
+        let events = scheduler.tasks.flatMap { $0.events() }
+        for event in events {
+            let nanosecondsElement = Calendar.current.dateComponents([.nanosecond], from: event.scheduledAt).nanosecond ?? 0
+            XCTAssertGreaterThan(nanosecondsElement, 450_000_000)
+            XCTAssertLessThan(nanosecondsElement, 550_000_000)
+        }
+        
+        wait(for: [expectation], timeout: TimeInterval(numberOfEvents + 2))
         
         cancellable.cancel()
     }
@@ -82,7 +125,7 @@ final class SchedulerTests: XCTestCase {
             description: "This is a test task",
             schedule: Schedule(
                 start: .now.addingTimeInterval(42_000),
-                dateComponents: .init(nanosecond: 500_000_000), // every 0.5 seconds
+                repetition: .matching(.init(nanosecond: 0)), // Every full second
                 end: .numberOfEvents(numberOfEvents)
             ),
             context: "This is a test context"
@@ -95,7 +138,7 @@ final class SchedulerTests: XCTestCase {
             description: "This is a second test task",
             schedule: Schedule(
                 start: .now.addingTimeInterval(42_000),
-                dateComponents: .init(nanosecond: 500_000_000), // every 0.5 seconds
+                repetition: .matching(.init(nanosecond: 0)), // Every full second
                 end: .numberOfEvents(numberOfEvents)
             ),
             context: "This is a second test context"
@@ -115,7 +158,7 @@ final class SchedulerTests: XCTestCase {
             let completedEvents = events.filter { $0.complete }.count
             let uncompletedEvents = events.filter { !$0.complete }.count
             
-            XCTAssertEqual(12, uncompletedEvents + completedEvents)
+            XCTAssertEqual(numberOfEvents * 2, uncompletedEvents + completedEvents)
             expectationObservedObject.fulfill()
         }
         
@@ -141,7 +184,7 @@ final class SchedulerTests: XCTestCase {
                 description: "This is a test task",
                 schedule: Schedule(
                     start: .now,
-                    dateComponents: .init(nanosecond: 500_000_000), // every 0.5 seconds
+                    repetition: .matching(.init(nanosecond: 0)), // Every full second
                     end: .numberOfEvents(2)
                 ),
                 context: "This is a test context"
@@ -151,7 +194,7 @@ final class SchedulerTests: XCTestCase {
                 description: "This is a second test task",
                 schedule: Schedule(
                     start: .now.addingTimeInterval(10),
-                    dateComponents: .init(nanosecond: 500_000_000), // every 0.5 seconds
+                    repetition: .matching(.init(nanosecond: 0)), // Every full second
                     end: .numberOfEvents(2)
                 ),
                 context: "This is a second test context"
@@ -199,8 +242,12 @@ final class SchedulerTests: XCTestCase {
             "id": "DEDDE3FF-0A75-4A8C-9F0D-75AD417F1104",
             "schedule" : {
                 "calendar": "current",
-                "dateComponents": {
-                    "nanosecond": 500000000
+                "repetition" : {
+                    "matching" : {
+                        "_0" : {
+                            "nanosecond" : 500000000
+                        }
+                    }
                 },
                 "end" : {
                     "numberOfEvents": {
