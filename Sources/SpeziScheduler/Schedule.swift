@@ -12,7 +12,7 @@ import Foundation
 /// A ``Schedule`` describe how a ``Task`` should schedule ``Event``.
 /// Use the ``Schedule``.s ``Schedule/init(start:dateComponents:end:calendar:)`` initializer to define
 /// the start date, the repetition schedule (``Schedule/Repetition-swift.enum``), and the end time (``Schedule/End-swift.enum``) of the ``Schedule``
-public struct Schedule: Codable, Sendable {
+public class Schedule: Codable, @unchecked Sendable, ObservableObject {
     /// The  ``Schedule/Repetition-swift.enum`` defines the repeating pattern of the ``Schedule``
     public enum Repetition: Codable, Sendable {
         /// The ``Schedule`` defines a ``Schedule/Repetition-swift.enum`` that occurs on any time matching the `DateComponents`.
@@ -75,6 +75,14 @@ public struct Schedule: Codable, Sendable {
         }
     }
     
+    enum CodingKeys: CodingKey {
+        case start
+        case repetition
+        case end
+        case calendar
+        case randomDisplacements
+    }
+    
     
     /// The start of the ``Schedule``
     public let start: Date
@@ -85,9 +93,13 @@ public struct Schedule: Codable, Sendable {
     /// The `Calendar` used to schedule the ``Schedule`` including the time zone and locale.
     public let calendar: Calendar
     
-    private var randomDisplacements: [Date: TimeInterval] = [:] {
-        didSet {
-            
+    private var _randomDisplacements: [Date: TimeInterval]
+    private let queue = DispatchQueue(label: "Scheduler")
+    
+    
+    var randomDisplacements: [Date: TimeInterval] {
+        queue.sync {
+            _randomDisplacements
         }
     }
     
@@ -108,12 +120,14 @@ public struct Schedule: Codable, Sendable {
         self.repetition = repetition
         self.end = end
         self.calendar = calendar
+        self._randomDisplacements = [:]
     }
     
-    public init(from decoder: Decoder) throws {
+    public required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.start = try container.decode(Date.self, forKey: .start)
         self.repetition = try container.decode(Repetition.self, forKey: .repetition)
+        self.end = try container.decode(Schedule.End.self, forKey: .end)
         
         // We allow a remote instance of default configuration to use "current" as a valid string value for a calendar and
         // set it to the `.current` calendar value.
@@ -123,7 +137,18 @@ public struct Schedule: Codable, Sendable {
             self.calendar = try container.decode(Calendar.self, forKey: .calendar)
         }
         
-        self.end = try container.decode(Schedule.End.self, forKey: .end)
+        self._randomDisplacements = try container.decodeIfPresent([Date: TimeInterval].self, forKey: .randomDisplacements) ?? [:]
+    }
+    
+    
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        
+        try container.encode(start, forKey: .start)
+        try container.encode(repetition, forKey: .repetition)
+        try container.encode(end, forKey: .end)
+        try container.encode(calendar, forKey: .calendar)
+        try container.encode(_randomDisplacements, forKey: .randomDisplacements)
     }
     
     
@@ -131,7 +156,7 @@ public struct Schedule: Codable, Sendable {
     /// - Parameters:
     ///   - start: The start of the requested series of `Date`s. The start date of the ``Schedule`` is used if the start date is before the ``Schedule``'s start date.
     ///   - end: The end of the requested series of `Date`s. The end (number of events or date) of the ``Schedule`` is used if the start date is after the ``Schedule``'s end.
-    func dates(from searchStart: Date? = nil, to end: End? = nil, eventContext: EventContext) -> [Date] {
+    func dates(from searchStart: Date? = nil, to end: End? = nil) -> [Date] {
         let end = End.minimum(end ?? self.end, self.end)
         
         var dates: [Date] = []
@@ -146,6 +171,7 @@ public struct Schedule: Codable, Sendable {
             startDateComponents = randomBetweenStartDateComponents
         }
         
+        var randomDisplacementChanged = false
         
         calendar.enumerateDates(startingAfter: self.start, matching: startDateComponents, matchingPolicy: .nextTime) { result, _, stop in
             guard let result else {
@@ -176,21 +202,38 @@ public struct Schedule: Codable, Sendable {
                 if let storedRandomDisplacement = randomDisplacements[result] {
                     randomDisplacement = storedRandomDisplacement
                 } else {
-                    let resultEndDate = calendar
-                        .nextDate(
-                            after: result,
-                            matching: randomBetweenEndDateComponents,
-                            matchingPolicy: .nextTime
-                        )
-                        ?? result
-                    
-                    let timeInterval = resultEndDate.timeIntervalSince(result)
-                    randomDisplacement = Double.random(in: 0...timeInterval)
+                    randomDisplacement = newRandomDisplacementFor(date: result, randomBetweenEndDateComponents: randomBetweenEndDateComponents)
+                    insertRandomDisplacement(for: result, randomDisplacement)
+                    randomDisplacementChanged = true
                 }
                 
                 dates.append(result.addingTimeInterval(randomDisplacement))
             }
         }
+        
+        if randomDisplacementChanged {
+            objectWillChange.send()
+        }
+        
         return dates
+    }
+    
+    private func newRandomDisplacementFor(date: Date, randomBetweenEndDateComponents: DateComponents) -> Double {
+        let resultEndDate = calendar
+            .nextDate(
+                after: date,
+                matching: randomBetweenEndDateComponents,
+                matchingPolicy: .nextTime
+            )
+            ?? date
+        
+        let timeInterval = resultEndDate.timeIntervalSince(date)
+        return Double.random(in: 0...timeInterval)
+    }
+    
+    private func insertRandomDisplacement(for date: Date, _ timeInverval: TimeInterval?) {
+        queue.sync {
+            _randomDisplacements[date] = timeInverval
+        }
     }
 }

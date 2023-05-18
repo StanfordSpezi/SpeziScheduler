@@ -45,7 +45,7 @@ struct ContentView: View {
                     description: "New Task",
                     schedule: Schedule(
                         start: .now,
-                        repetition: .matching(.init(nanosecond: 500_000_000)), // every 0.5 seconds
+                        repetition: .matching(.init(nanosecond: 0)), // Every full second
                         end: .numberOfEvents(2)
                     ),
                     context: "New Task!"

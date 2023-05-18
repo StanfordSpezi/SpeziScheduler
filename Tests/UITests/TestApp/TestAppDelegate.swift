@@ -23,7 +23,7 @@ class TestAppDelegate: SpeziAppDelegate {
                         description: "Original Task",
                         schedule: Schedule(
                             start: .now,
-                            repetition: .matching(.init(nanosecond: 500_000_000)), // every 0.5 seconds
+                            repetition: .matching(.init(nanosecond: 0)), // Every full second
                             end: .numberOfEvents(1)
                         ),
                         context: "Original Task!"
