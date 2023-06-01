@@ -13,12 +13,13 @@ import Foundation
 /// A ``Task`` defines an instruction that is scheduled one to multiple times as defined by the ``Task/schedule`` property.
 ///
 /// A ``Task`` can have an additional ``Task/context`` associated with it that can be used to carry application-specific context.
-public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Hashable, ObservableObject, @unchecked Sendable, EventContext {
+public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Hashable, ObservableObject, @unchecked Sendable, TaskReference {
     enum CodingKeys: CodingKey {
         case id
         case title
         case description
         case schedule
+        case notifications
         case context
         case completedEvents
     }
@@ -32,6 +33,8 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     public let description: String
     /// The description of the ``Task`` as defined by a ``Schedule`` instance.
     public let schedule: Schedule
+    /// Determines of the task should register local notifications to remind the user to fulfill the task
+    public let notifications: Bool
     /// The customized context of the ``Task``.
     public let context: Context
     
@@ -45,12 +48,20 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     ///   - title: The title of the ``Task``.
     ///   - description: The description of the ``Task``.
     ///   - schedule: The description of the ``Task`` as defined by a ``Schedule`` instance.
+    ///   - notifications: Determines of the task should register local notifications to remind the user to fulfill the task.
     ///   - context: The customized context of the ``Task``.
-    public init(title: String, description: String, schedule: Schedule, context: Context) {
+    public init(
+        title: String,
+        description: String,
+        schedule: Schedule,
+        notifications: Bool = false,
+        context: Context
+    ) {
         self.id = UUID()
         self.title = title
         self.description = description
         self.schedule = schedule
+        self.notifications = notifications
         self.context = context
         self.completedEvents = [:]
         
@@ -68,17 +79,32 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
         self.title = try container.decode(String.self, forKey: .title)
         self.description = try container.decode(String.self, forKey: .description)
         self.schedule = try container.decode(Schedule.self, forKey: .schedule)
+        self.notifications = try container.decode(Bool.self, forKey: .notifications)
         self.context = try container.decode(Context.self, forKey: .context)
         self.completedEvents = try container.decode([Date: Event].self, forKey: .completedEvents)
         
         for completedEvent in completedEvents.values {
-            completedEvent.eventContext = self
+            completedEvent.taskReference = self
         }
     }
     
     
     public static func == (lhs: Task, rhs: Task) -> Bool {
         lhs.id == rhs.id
+    }
+    
+    
+    func scheduleTaskAndNotification() {
+        let futureEvents = events(from: .now.addingTimeInterval(-1), to: .endDate(.distantFuture))
+        
+        for futureEvent in futureEvents {
+            futureEvent.scheduleTaskAndNotification()
+        }
+    }
+    
+    
+    func sendObjectWillChange() {
+        objectWillChange.send()
     }
     
     
@@ -101,6 +127,7 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
         try container.encode(title, forKey: .title)
         try container.encode(description, forKey: .description)
         try container.encode(schedule, forKey: .schedule)
+        try container.encode(notifications, forKey: .notifications)
         try container.encode(context, forKey: .context)
         try container.encode(completedEvents, forKey: .completedEvents)
     }

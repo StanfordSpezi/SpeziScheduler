@@ -9,8 +9,14 @@
 import Foundation
 
 
-protocol EventContext: AnyObject {
+protocol TaskReference: AnyObject, ObservableObject {
     var id: UUID { get }
+    var title: String { get }
+    var description: String { get }
     var schedule: Schedule { get }
+    var notifications: Bool { get }
     var completedEvents: [Date: Event] { get set }
+    
+    
+    func sendObjectWillChange()
 }

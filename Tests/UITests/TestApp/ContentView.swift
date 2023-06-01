@@ -38,6 +38,11 @@ struct ContentView: View {
         Text("\(tasks) Tasks")
         Text("\(events) Events")
         Text("Fulfilled \(fulfilledEvents) Events")
+        Button("Request Notification Permissions") {
+            _Concurrency.Task {
+                try await scheduler.requestLocalNotificationAuthorization()
+            }
+        }
         Button("Add Task") {
             scheduler.schedule(
                 task: Task(
@@ -48,6 +53,21 @@ struct ContentView: View {
                         repetition: .matching(.init(nanosecond: 0)), // Every full second
                         end: .numberOfEvents(2)
                     ),
+                    context: "New Task!"
+                )
+            )
+        }
+        Button("Add Notification Task") {
+            scheduler.schedule(
+                task: Task(
+                    title: "New Task",
+                    description: "New Task",
+                    schedule: Schedule(
+                        start: .now,
+                        repetition: .matching(.init(nanosecond: 0)), // Every full second
+                        end: .numberOfEvents(2)
+                    ),
+                    notifications: true,
                     context: "New Task!"
                 )
             )

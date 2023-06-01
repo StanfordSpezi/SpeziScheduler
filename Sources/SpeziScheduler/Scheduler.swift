@@ -8,6 +8,7 @@
 
 import Combine
 import Foundation
+import UserNotifications
 import Spezi
 import SpeziLocalStorage
 
@@ -22,8 +23,8 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
     
     public private(set) var tasks: [Task<Context>] = []
     private var initialTasks: [Task<Context>]
-    private var timers: [Timer] = []
     private var cancellables: Set<AnyCancellable> = []
+    private let taskQueue: DispatchQueue = DispatchQueue(label: "Scheduler Task Queue", qos: .background)
     
     
     /// Creates a new ``Scheduler`` module.
@@ -68,36 +69,33 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
     }
     
     
+    public func requestLocalNotificationAuthorization() async throws {
+        if await UNUserNotificationCenter.current().notificationSettings().authorizationStatus != .authorized {
+            try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+        }
+        
+        taskQueue.async {
+            for task in self.tasks {
+                task.scheduleTaskAndNotification()
+            }
+        }
+    }
+    
+    
     /// Schedule a new ``Task`` in the ``Scheduler`` module.
     /// - Parameter task: The new ``Task`` instance that should be scheduled.
     public func schedule(task: Task<Context>) {
-        DispatchQueue(label: "Scheduler Task Queue", qos: .background).async {
-            let futureEvents = task.events(from: .now.addingTimeInterval(-1), to: .endDate(.distantFuture))
-            self.timers.reserveCapacity(self.timers.count + futureEvents.count)
-            
-            for futureEvent in futureEvents {
-                let scheduledTimer = Timer(
-                    timeInterval: max(Date.now.distance(to: futureEvent.scheduledAt), 0.01),
-                    repeats: false,
-                    block: { timer in
-                        timer.invalidate()
-                        task.objectWillChange.send()
-                    }
-                )
-                
-                RunLoop.current.add(scheduledTimer, forMode: .common)
-                self.timers.append(scheduledTimer)
-            }
-            
-            RunLoop.current.run()
-        }
-        
         task.objectWillChange
             .receive(on: RunLoop.main)
             .sink {
                 self.objectWillChange.send()
             }
             .store(in: &cancellables)
+        
+        taskQueue.async {
+            task.scheduleTaskAndNotification()
+            RunLoop.current.run()
+        }
         
         tasks.append(task)
     }
@@ -119,9 +117,6 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
     
     
     deinit {
-        for timer in timers where timer.isValid {
-            timer.invalidate()
-        }
         for cancellable in cancellables {
             cancellable.cancel()
         }
