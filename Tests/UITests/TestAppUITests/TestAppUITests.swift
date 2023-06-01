@@ -62,7 +62,7 @@ class TestAppUITests: XCTestCase {
         app.buttons["Unfulfull Event"].tap()
         app.assert(tasks: 2, events: 3, fulfilledEvents: 2)
         
-        app.buttons["Add Task"].tap()
+        app.buttons["Add Notification Task"].tap()
         app.assert(tasks: 3, events: 5, fulfilledEvents: 2)
         
         app.buttons["Fulfill Event"].tap()

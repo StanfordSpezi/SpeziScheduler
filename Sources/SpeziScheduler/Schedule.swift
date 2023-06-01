@@ -160,7 +160,6 @@ public class Schedule: Codable, @unchecked Sendable, ObservableObject {
         let end = End.minimum(end ?? self.end, self.end)
         
         var dates: [Date] = []
-        var numberOfEvents = 0
         
         
         let startDateComponents: DateComponents
@@ -179,12 +178,11 @@ public class Schedule: Codable, @unchecked Sendable, ObservableObject {
                 return
             }
             
-            numberOfEvents += 1
             if result < (searchStart ?? self.start) {
                 return
             }
             
-            if let maxNumberOfEvents = end.numberOfEvents, numberOfEvents > maxNumberOfEvents {
+            if let maxNumberOfEvents = end.numberOfEvents, dates.count >= maxNumberOfEvents {
                 stop = true
                 return
             }

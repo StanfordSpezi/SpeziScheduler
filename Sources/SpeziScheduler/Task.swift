@@ -13,14 +13,15 @@ import Foundation
 /// A ``Task`` defines an instruction that is scheduled one to multiple times as defined by the ``Task/schedule`` property.
 ///
 /// A ``Task`` can have an additional ``Task/context`` associated with it that can be used to carry application-specific context.
-public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Hashable, ObservableObject, @unchecked Sendable, EventContext {
+public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Hashable, ObservableObject, @unchecked Sendable, TaskReference {
     enum CodingKeys: CodingKey {
         case id
         case title
         case description
         case schedule
+        case notifications
         case context
-        case completedEvents
+        case events
     }
     
     
@@ -32,10 +33,12 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     public let description: String
     /// The description of the ``Task`` as defined by a ``Schedule`` instance.
     public let schedule: Schedule
+    /// Determines of the task should register local notifications to remind the user to fulfill the task
+    public let notifications: Bool
     /// The customized context of the ``Task``.
     public let context: Context
     
-    @Published var completedEvents: [Date: Event]
+    @Published var events: [Event]
     
     private var cancellables: Set<AnyCancellable> = []
     
@@ -45,14 +48,25 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     ///   - title: The title of the ``Task``.
     ///   - description: The description of the ``Task``.
     ///   - schedule: The description of the ``Task`` as defined by a ``Schedule`` instance.
+    ///   - notifications: Determines of the task should register local notifications to remind the user to fulfill the task.
     ///   - context: The customized context of the ``Task``.
-    public init(title: String, description: String, schedule: Schedule, context: Context) {
+    public init(
+        // swiftlint:disable:previous function_default_parameter_at_end
+        // The notification paramter is the last parameter excluding the user Context attached to a task.
+        title: String,
+        description: String,
+        schedule: Schedule,
+        notifications: Bool = false,
+        context: Context
+    ) {
         self.id = UUID()
         self.title = title
         self.description = description
         self.schedule = schedule
+        self.notifications = notifications
         self.context = context
-        self.completedEvents = [:]
+        self.events = [] // We first need to fully initalize the type.
+        self.events = schedule.dates().map { date in Event(scheduledAt: date, eventsContainer: self) }
         
         schedule.objectWillChange
             .sink {
@@ -68,11 +82,12 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
         self.title = try container.decode(String.self, forKey: .title)
         self.description = try container.decode(String.self, forKey: .description)
         self.schedule = try container.decode(Schedule.self, forKey: .schedule)
+        self.notifications = try container.decode(Bool.self, forKey: .notifications)
         self.context = try container.decode(Context.self, forKey: .context)
-        self.completedEvents = try container.decode([Date: Event].self, forKey: .completedEvents)
+        self.events = try container.decode([Event].self, forKey: .events)
         
-        for completedEvent in completedEvents.values {
-            completedEvent.eventContext = self
+        for event in events {
+            event.taskReference = self
         }
     }
     
@@ -82,17 +97,48 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     }
     
     
+    func scheduleTaskAndNotification() {
+        let futureEvents = events(from: .now.addingTimeInterval(-1), to: .endDate(.distantFuture))
+        
+        for futureEvent in futureEvents {
+            futureEvent.scheduleTaskAndNotification()
+        }
+    }
+    
+    
+    func sendObjectWillChange() {
+        objectWillChange.send()
+    }
+    
+    
     /// Returns all ``Event``s corresponding to a ``Task`` withi the `start` and `end` parameters.
     /// - Parameters:
     ///   - start: The start of the requested series of `Event`s. The start date of the ``Task/schedule`` is used if the start date is before the ``Task/schedule``'s start date.
     ///   - end: The end of the requested series of `Event`s. The end (number of events or date) of the ``Task/schedule`` is used if the start date is after the ``Task/schedule``'s end.
     public func events(from start: Date? = nil, to end: Schedule.End? = nil) -> [Event] {
-        let dates = schedule.dates(from: start, to: end)
+        var filteredEvents: [Event] = []
+        let sortedEvents = events.sorted { $0.scheduledAt < $1.scheduledAt }
         
-        return dates
-            .map { date in
-                completedEvents[date] ?? Event(scheduledAt: date, eventsContainer: self)
+        for event in sortedEvents {
+            // Filter out all events before the start date.
+            if let start, event.scheduledAt < start {
+                continue
             }
+            
+            // If there is a maximum number of elements and we are past that point we can return and end the appending of sorted events.
+            if let maxNumberOfEvents = end?.numberOfEvents, filteredEvents.count >= maxNumberOfEvents {
+                break
+            }
+            
+            // We exit the loop if we are past the end date
+            if let endDate = end?.endDate, event.scheduledAt > endDate {
+                break
+            }
+            
+            filteredEvents.append(event)
+        }
+        
+        return filteredEvents
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -101,8 +147,9 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
         try container.encode(title, forKey: .title)
         try container.encode(description, forKey: .description)
         try container.encode(schedule, forKey: .schedule)
+        try container.encode(notifications, forKey: .notifications)
         try container.encode(context, forKey: .context)
-        try container.encode(completedEvents, forKey: .completedEvents)
+        try container.encode(events, forKey: .events)
     }
     
     public func hash(into hasher: inout Hasher) {
