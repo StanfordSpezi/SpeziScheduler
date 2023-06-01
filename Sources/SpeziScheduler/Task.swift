@@ -51,6 +51,8 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     ///   - notifications: Determines of the task should register local notifications to remind the user to fulfill the task.
     ///   - context: The customized context of the ``Task``.
     public init(
+        // swiftlint:disable:previous function_default_parameter_at_end
+        // The notification paramter is the last parameter excluding the user Context attached to a task.
         title: String,
         description: String,
         schedule: Schedule,

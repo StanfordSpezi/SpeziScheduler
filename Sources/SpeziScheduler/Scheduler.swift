@@ -8,9 +8,9 @@
 
 import Combine
 import Foundation
-import UserNotifications
 import Spezi
 import SpeziLocalStorage
+import UserNotifications
 
 
 /// The ``Scheduler/Scheduler`` module allows the scheduling and observation of ``Task``s adhering to a specific ``Schedule``.
@@ -24,7 +24,7 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
     public private(set) var tasks: [Task<Context>] = []
     private var initialTasks: [Task<Context>]
     private var cancellables: Set<AnyCancellable> = []
-    private let taskQueue: DispatchQueue = DispatchQueue(label: "Scheduler Task Queue", qos: .background)
+    private let taskQueue = DispatchQueue(label: "Scheduler Task Queue", qos: .background)
     
     
     /// Creates a new ``Scheduler`` module.

@@ -61,8 +61,8 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
     }
     
     
-    deinit {
-        timer?.invalidate()
+    public static func == (lhs: Event, rhs: Event) -> Bool {
+        lhs.taskReference?.id == rhs.taskReference?.id && lhs.scheduledAt == rhs.scheduledAt
     }
     
     
@@ -115,11 +115,6 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
     }
     
     
-    public static func == (lhs: Event, rhs: Event) -> Bool {
-        lhs.taskReference?.id == rhs.taskReference?.id && lhs.scheduledAt == rhs.scheduledAt
-    }
-    
-    
     public func hash(into hasher: inout Hasher) {
         hasher.combine(taskReference?.id)
         hasher.combine(_scheduledAt)
@@ -142,5 +137,10 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
     /// Toggle the ``Event``'s ``Event/complete`` state.
     public func toggle() async {
         await complete(!complete)
+    }
+    
+    
+    deinit {
+        timer?.invalidate()
     }
 }
