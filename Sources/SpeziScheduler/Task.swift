@@ -126,7 +126,7 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
             }
             
             // If there is a maximum number of elements and we are past that point we can return and end the appending of sorted events.
-            if let maxNumberOfEvents = end?.numberOfEvents, filteredEvents.count > maxNumberOfEvents {
+            if let maxNumberOfEvents = end?.numberOfEvents, filteredEvents.count >= maxNumberOfEvents {
                 break
             }
             
@@ -138,7 +138,7 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
             filteredEvents.append(event)
         }
         
-        return sortedEvents
+        return filteredEvents
     }
     
     public func encode(to encoder: Encoder) throws {

@@ -129,6 +129,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
             } else {
                 completedAt = nil
             }
+            
             taskReference?.sendObjectWillChange()
         }
     }

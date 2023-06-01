@@ -92,7 +92,7 @@ final class SchedulerTests: XCTestCase {
         let scheduler = createScheduler(withInitialTasks: testTask)
         
         let expectation = XCTestExpectation(description: "Get Updates for all scheduled events.")
-        expectation.expectedFulfillmentCount = numberOfEvents + 1
+        expectation.expectedFulfillmentCount = numberOfEvents
         expectation.assertForOverFulfill = true
         
         let cancellable = scheduler.objectWillChange.sink {
@@ -236,7 +236,8 @@ final class SchedulerTests: XCTestCase {
     func testCurrentCalendarEncoding() throws {
         let json = """
         {
-            "completedEvents": [],
+            "events": [],
+            "notifications": false,
             "context": "This is a test context",
             "description": "This is a test task",
             "id": "DEDDE3FF-0A75-4A8C-9F0D-75AD417F1104",
