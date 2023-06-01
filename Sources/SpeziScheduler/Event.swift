@@ -19,7 +19,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
         // We use the underscore as the corresponding property `_scheduledAt` uses an underscore as it is a private property.
         // swiftlint:disable:next identifier_name
         case _scheduledAt = "scheduledAt"
-        case scheduledNotification
+        case notification
         case completedAt
     }
     
@@ -27,7 +27,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
     private let lock = Lock()
     private let timer: Timer? = nil
     private let _scheduledAt: Date
-    private var scheduledNotification: UUID?
+    private var notification: UUID?
     /// The date when the ``Event`` was completed.
     public private(set) var completedAt: Date?
     weak var taskReference: (any TaskReference)?
@@ -86,7 +86,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
         }
         
         // Only schedule a notification if it is enabled in a task and the notification has not yet been scheduled.
-        if taskReference.notifications && scheduledNotification == nil {
+        if taskReference.notifications && notification == nil {
             _Concurrency.Task {
                 let notificationCenter = UNUserNotificationCenter.current()
                 let authorizationStatus = await notificationCenter.notificationSettings().authorizationStatus
@@ -108,7 +108,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
                     
                     try await notificationCenter.add(request)
                     
-                    self.scheduledNotification = identifier
+                    self.notification = identifier
                 }
             }
         }
@@ -131,11 +131,10 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
         await lock.enter {
             if newValue {
                 completedAt = Date()
-                taskReference?.completedEvents[_scheduledAt] = self
             } else {
-                taskReference?.completedEvents[_scheduledAt] = nil
                 completedAt = nil
             }
+            taskReference?.sendObjectWillChange()
         }
     }
     

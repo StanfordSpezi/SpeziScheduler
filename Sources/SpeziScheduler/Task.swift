@@ -21,7 +21,7 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
         case schedule
         case notifications
         case context
-        case completedEvents
+        case events
     }
     
     
@@ -38,7 +38,7 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     /// The customized context of the ``Task``.
     public let context: Context
     
-    @Published var completedEvents: [Date: Event]
+    @Published var events: [Event]
     
     private var cancellables: Set<AnyCancellable> = []
     
@@ -63,7 +63,8 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
         self.schedule = schedule
         self.notifications = notifications
         self.context = context
-        self.completedEvents = [:]
+        self.events = [] // We first need to fully initalize the type.
+        self.events = schedule.dates().map { date in Event(scheduledAt: date, eventsContainer: self) }
         
         schedule.objectWillChange
             .sink {
@@ -81,10 +82,10 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
         self.schedule = try container.decode(Schedule.self, forKey: .schedule)
         self.notifications = try container.decode(Bool.self, forKey: .notifications)
         self.context = try container.decode(Context.self, forKey: .context)
-        self.completedEvents = try container.decode([Date: Event].self, forKey: .completedEvents)
+        self.events = try container.decode([Event].self, forKey: .events)
         
-        for completedEvent in completedEvents.values {
-            completedEvent.taskReference = self
+        for event in events {
+            event.taskReference = self
         }
     }
     
@@ -113,12 +114,29 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     ///   - start: The start of the requested series of `Event`s. The start date of the ``Task/schedule`` is used if the start date is before the ``Task/schedule``'s start date.
     ///   - end: The end of the requested series of `Event`s. The end (number of events or date) of the ``Task/schedule`` is used if the start date is after the ``Task/schedule``'s end.
     public func events(from start: Date? = nil, to end: Schedule.End? = nil) -> [Event] {
-        let dates = schedule.dates(from: start, to: end)
+        var filteredEvents: [Event] = []
+        let sortedEvents = events.sorted { $0.scheduledAt < $1.scheduledAt }
         
-        return dates
-            .map { date in
-                completedEvents[date] ?? Event(scheduledAt: date, eventsContainer: self)
+        for event in sortedEvents {
+            // Filter out all events before the start date.
+            if let start, event.scheduledAt < start {
+                continue
             }
+            
+            // If there is a maximum number of elements and we are past that point we can return and end the appending of sorted events.
+            if let maxNumberOfEvents = end?.numberOfEvents, filteredEvents.count > maxNumberOfEvents {
+                break
+            }
+            
+            // We exit the loop if we are past the end date
+            if let endDate = end?.endDate, event.scheduledAt > endDate {
+                break
+            }
+            
+            filteredEvents.append(event)
+        }
+        
+        return sortedEvents
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -129,7 +147,7 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
         try container.encode(schedule, forKey: .schedule)
         try container.encode(notifications, forKey: .notifications)
         try container.encode(context, forKey: .context)
-        try container.encode(completedEvents, forKey: .completedEvents)
+        try container.encode(events, forKey: .events)
     }
     
     public func hash(into hasher: inout Hasher) {
