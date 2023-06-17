@@ -76,6 +76,35 @@ class TestAppUITests: XCTestCase {
         
         app.assert(tasks: 3, events: 5, fulfilledEvents: 5)
     }
+    
+    
+    func testSchedulerNotifications() throws {
+        let app = XCUIApplication()
+        
+        XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
+        
+        app.assert(tasks: 1, events: 1, fulfilledEvents: 0)
+        
+        app.buttons["Add Notification Task"].tap()
+        app.assert(tasks: 2, events: 1, fulfilledEvents: 0)
+        
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        springboard.activate()
+        XCTAssert(springboard.wait(for: .runningForeground, timeout: 2))
+        
+        let notification = springboard.otherElements["NotificationShortLookView"]
+        XCTAssert(notification.waitForExistence(timeout: 120))
+        notification.tap()
+        
+        XCTAssert(app.wait(for: .runningForeground, timeout: 2))
+        
+        app.assert(tasks: 2, events: 2, fulfilledEvents: 0)
+        
+        XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
+        app.buttons["Fulfill Event"].tap()
+        app.buttons["Fulfill Event"].tap()
+        app.assert(tasks: 2, events: 2, fulfilledEvents: 2)
+    }
 }
 
 

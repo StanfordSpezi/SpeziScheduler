@@ -58,13 +58,19 @@ struct ContentView: View {
             )
         }
         Button("Add Notification Task") {
+            let currentDate = Date.now
+            let hour = Calendar.current.component(.hour, from: currentDate)
+            // We expect the UI test to take at least 20 seconds to mavigate out of the app and to the home screen.
+            // We then trigger the task in the minute after that, the UI test needs to wait at least one minute.
+            let minute = Calendar.current.component(.minute, from: currentDate.addingTimeInterval(20)) + 1
+            
             scheduler.schedule(
                 task: Task(
                     title: "New Task",
                     description: "New Task",
                     schedule: Schedule(
                         start: .now,
-                        repetition: .matching(.init(nanosecond: 0)), // Every full second
+                        repetition: .matching(.init(hour: hour, minute: minute)),
                         end: .numberOfEvents(2)
                     ),
                     notifications: true,
