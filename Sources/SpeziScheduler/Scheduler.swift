@@ -24,7 +24,6 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
     @Published public private(set) var tasks: [Task<Context>] = []
     private var initialTasks: [Task<Context>]
     private var cancellables: Set<AnyCancellable> = []
-    private let taskQueue = DispatchQueue(label: "Scheduler Task Queue", qos: .background)
     
     
     /// Creates a new ``Scheduler`` module.
@@ -74,10 +73,8 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
             try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
         }
         
-        taskQueue.async {
-            for task in self.tasks {
-                task.scheduleTaskAndNotification()
-            }
+        for task in self.tasks {
+            task.scheduleTaskAndNotification()
         }
     }
     
@@ -92,10 +89,7 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
             }
             .store(in: &cancellables)
         
-        taskQueue.async {
-            task.scheduleTaskAndNotification()
-            RunLoop.current.run()
-        }
+        task.scheduleTaskAndNotification()
         
         tasks.append(task)
     }

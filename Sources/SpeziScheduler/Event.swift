@@ -82,7 +82,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
                 }
             )
             
-            RunLoop.current.add(scheduledTimer, forMode: .common)
+            RunLoop.main.add(scheduledTimer, forMode: .common)
         }
         
         // Only schedule a notification if it is enabled in a task and the notification has not yet been scheduled.
