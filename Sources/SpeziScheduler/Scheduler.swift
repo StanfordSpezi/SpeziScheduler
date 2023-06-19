@@ -112,7 +112,7 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
     }
     
     private func updateScheduleTaskAndNotifications() {
-        let numberOfTasksWithNotifications = tasks.filter(\.notifications).count
+        let numberOfTasksWithNotifications = max(tasks.filter(\.notifications).count, 1)
         let prescheduleLimit = 64/numberOfTasksWithNotifications
         
         for task in self.tasks {
