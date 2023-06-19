@@ -132,7 +132,7 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
             }
             
             // We exit the loop if we are past the end date
-            if let endDate = end?.endDate, event.scheduledAt > endDate {
+            if let endDate = end?.endDate, event.scheduledAt >= endDate {
                 break
             }
             
