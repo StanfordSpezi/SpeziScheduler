@@ -25,7 +25,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
     
     
     private let lock = Lock()
-    private let timer: Timer? = nil
+    private var timer: Timer?
     private let _scheduledAt: Date
     private var notification: UUID?
     /// The date when the ``Event`` was completed.
@@ -73,7 +73,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
         
         // Schedule the timer for the event that refreshes the Observable Object.
         if timer == nil {
-            let scheduledTimer = Timer(
+            timer = Timer(
                 timeInterval: max(Date.now.distance(to: scheduledAt), 0.01),
                 repeats: false,
                 block: { timer in
@@ -82,7 +82,9 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
                 }
             )
             
-            RunLoop.current.add(scheduledTimer, forMode: .common)
+            if let timer {
+                RunLoop.main.add(timer, forMode: .common)
+            }
         }
         
         // Only schedule a notification if it is enabled in a task and the notification has not yet been scheduled.

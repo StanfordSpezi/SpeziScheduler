@@ -80,7 +80,48 @@ class TestAppUITests: XCTestCase {
         
         app.assert(tasks: 1, events: 1, pastEvents: 1, fulfilledEvents: 0)
         
-        app.buttons["Request Notification Permissions"].tap()
+        app.requestNotificationPermissions()
+        
+        app.buttons["Add Notification Task"].tap()
+        app.assert(tasks: 2, events: 129, pastEvents: 1, fulfilledEvents: 0)
+        
+        app.findAndTapNotification()
+        
+        app.assert(tasks: 2, events: 129, pastEvents: 2, fulfilledEvents: 0)
+        
+        XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
+        app.buttons["Fulfill Event"].tap()
+        app.buttons["Fulfill Event"].tap()
+        app.assert(tasks: 2, events: 129, pastEvents: 2, fulfilledEvents: 2)
+    }
+    
+    func testSchedulerNotificationsBeforePermissions() throws {
+        let app = XCUIApplication()
+        
+        XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
+        
+        app.assert(tasks: 1, events: 1, pastEvents: 1, fulfilledEvents: 0)
+        
+        app.buttons["Add Notification Task"].tap()
+        app.assert(tasks: 2, events: 129, pastEvents: 1, fulfilledEvents: 0)
+        
+        app.requestNotificationPermissions()
+        
+        app.findAndTapNotification()
+        
+        app.assert(tasks: 2, events: 129, pastEvents: 2, fulfilledEvents: 0)
+        
+        XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
+        app.buttons["Fulfill Event"].tap()
+        app.buttons["Fulfill Event"].tap()
+        app.assert(tasks: 2, events: 129, pastEvents: 2, fulfilledEvents: 2)
+    }
+}
+
+
+extension XCUIApplication {
+    fileprivate func requestNotificationPermissions() {
+        buttons["Request Notification Permissions"].tap()
         
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let alertAllowButton = springboard.buttons["Allow"]
@@ -89,10 +130,10 @@ class TestAppUITests: XCTestCase {
         } else {
             print("Did not observe the notification permissions alert. Permissions might have already been provided.")
         }
-        
-        app.buttons["Add Notification Task"].tap()
-        app.assert(tasks: 2, events: 2, pastEvents: 1, fulfilledEvents: 0)
-        
+    }
+    
+    fileprivate func findAndTapNotification() {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         springboard.activate()
         XCTAssert(springboard.wait(for: .runningForeground, timeout: 2))
         
@@ -100,19 +141,9 @@ class TestAppUITests: XCTestCase {
         XCTAssert(notification.waitForExistence(timeout: 120))
         notification.tap()
         
-        XCTAssert(app.wait(for: .runningForeground, timeout: 2))
-        
-        app.assert(tasks: 2, events: 2, pastEvents: 2, fulfilledEvents: 0)
-        
-        XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
-        app.buttons["Fulfill Event"].tap()
-        app.buttons["Fulfill Event"].tap()
-        app.assert(tasks: 2, events: 2, pastEvents: 2, fulfilledEvents: 2)
+        XCTAssert(wait(for: .runningForeground, timeout: 2))
     }
-}
-
-
-extension XCUIApplication {
+    
     // swiftlint:disable:next function_default_parameter_at_end
     fileprivate func assert(tasks: Int, events: Int, pastEvents: Int? = nil, fulfilledEvents: Int) {
         XCTAssert(staticTexts["\(tasks) Tasks"].waitForExistence(timeout: 2))

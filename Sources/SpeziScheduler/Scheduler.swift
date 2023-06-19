@@ -24,7 +24,6 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
     @Published public private(set) var tasks: [Task<Context>] = []
     private var initialTasks: [Task<Context>]
     private var cancellables: Set<AnyCancellable> = []
-    private let taskQueue = DispatchQueue(label: "Scheduler Task Queue", qos: .background)
     
     
     /// Creates a new ``Scheduler`` module.
@@ -66,6 +65,9 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
         }
         
         schedule(tasks: storedTasks)
+        
+        // Schedule tasks with a timer and make sure that we always schedule the next 16 tasks.
+        updateScheduleTaskAndNotifications()
     }
     
     
@@ -74,11 +76,7 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
             try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
         }
         
-        taskQueue.async {
-            for task in self.tasks {
-                task.scheduleTaskAndNotification()
-            }
-        }
+        updateScheduleTaskAndNotifications()
     }
     
     
@@ -89,13 +87,11 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
             .receive(on: RunLoop.main)
             .sink {
                 self.objectWillChange.send()
+                self.updateScheduleTaskAndNotifications()
             }
             .store(in: &cancellables)
         
-        taskQueue.async {
-            task.scheduleTaskAndNotification()
-            RunLoop.current.run()
-        }
+        task.scheduleTaskAndNotification()
         
         tasks.append(task)
     }
@@ -112,6 +108,15 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
         self.tasks.reserveCapacity(self.tasks.count + tasks.count)
         for task in tasks {
             schedule(task: task)
+        }
+    }
+    
+    private func updateScheduleTaskAndNotifications() {
+        let numberOfTasksWithNotifications = max(tasks.filter(\.notifications).count, 1)
+        let prescheduleLimit = 64 / numberOfTasksWithNotifications
+        
+        for task in self.tasks {
+            task.scheduleTaskAndNotification(prescheduleLimit)
         }
     }
     

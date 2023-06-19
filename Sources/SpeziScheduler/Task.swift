@@ -97,8 +97,9 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     }
     
     
-    func scheduleTaskAndNotification() {
-        let futureEvents = events(from: .now.addingTimeInterval(-1), to: .endDate(.distantFuture))
+    func scheduleTaskAndNotification(_ prescheduleLimit: Int = 16) {
+        // We only schedule the next few events as iOS only allows up to 64 notifications to be scheduled per one app.
+        let futureEvents = events(from: .now.addingTimeInterval(-1), to: .numberOfEvents(prescheduleLimit))
         
         for futureEvent in futureEvents {
             futureEvent.scheduleTaskAndNotification()
@@ -131,7 +132,7 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
             }
             
             // We exit the loop if we are past the end date
-            if let endDate = end?.endDate, event.scheduledAt > endDate {
+            if let endDate = end?.endDate, event.scheduledAt >= endDate {
                 break
             }
             
