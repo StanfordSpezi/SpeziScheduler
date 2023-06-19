@@ -24,6 +24,12 @@ struct ContentView: View {
             .count
     }
     
+    private var pastEvents: Int {
+        scheduler.tasks
+            .flatMap { $0.events(to: .endDate(.now)) }
+            .count
+    }
+    
     private var fulfilledEvents: Int {
         scheduler.tasks
             .flatMap { $0.events() }
@@ -37,6 +43,7 @@ struct ContentView: View {
             .font(.headline)
         Text("\(tasks) Tasks")
         Text("\(events) Events")
+        Text("\(pastEvents) Past Events")
         Text("Fulfilled \(fulfilledEvents) Events")
         Button("Request Notification Permissions") {
             _Concurrency.Task {
@@ -58,17 +65,23 @@ struct ContentView: View {
             )
         }
         Button("Add Notification Task") {
+            let currentDate = Date.now
+            let hour = Calendar.current.component(.hour, from: currentDate)
+            // We expect the UI test to take at least 20 seconds to mavigate out of the app and to the home screen.
+            // We then trigger the task in the minute after that, the UI test needs to wait at least one minute.
+            let minute = Calendar.current.component(.minute, from: currentDate.addingTimeInterval(20)) + 1
+            
             scheduler.schedule(
                 task: Task(
-                    title: "New Task",
-                    description: "New Task",
+                    title: "Notification Task",
+                    description: "Notification Task",
                     schedule: Schedule(
                         start: .now,
-                        repetition: .matching(.init(nanosecond: 0)), // Every full second
-                        end: .numberOfEvents(2)
+                        repetition: .matching(.init(hour: hour, minute: minute)),
+                        end: .numberOfEvents(1)
                     ),
                     notifications: true,
-                    context: "New Task!"
+                    context: "Notification Task!"
                 )
             )
         }
