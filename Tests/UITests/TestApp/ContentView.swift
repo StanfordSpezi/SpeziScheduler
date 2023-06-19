@@ -24,6 +24,12 @@ struct ContentView: View {
             .count
     }
     
+    private var pastEvents: Int {
+        scheduler.tasks
+            .flatMap { $0.events(to: .endDate(.now)) }
+            .count
+    }
+    
     private var fulfilledEvents: Int {
         scheduler.tasks
             .flatMap { $0.events() }
@@ -37,6 +43,7 @@ struct ContentView: View {
             .font(.headline)
         Text("\(tasks) Tasks")
         Text("\(events) Events")
+        Text("\(pastEvents) Past Events")
         Text("Fulfilled \(fulfilledEvents) Events")
         Button("Request Notification Permissions") {
             _Concurrency.Task {
@@ -66,15 +73,15 @@ struct ContentView: View {
             
             scheduler.schedule(
                 task: Task(
-                    title: "New Task",
-                    description: "New Task",
+                    title: "Notification Task",
+                    description: "Notification Task",
                     schedule: Schedule(
                         start: .now,
                         repetition: .matching(.init(hour: hour, minute: minute)),
-                        end: .numberOfEvents(2)
+                        end: .numberOfEvents(1)
                     ),
                     notifications: true,
-                    context: "New Task!"
+                    context: "Notification Task!"
                 )
             )
         }

@@ -87,10 +87,9 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
         
         // Only schedule a notification if it is enabled in a task and the notification has not yet been scheduled.
         if taskReference.notifications && notification == nil {
-            _Concurrency.Task {
-                let notificationCenter = UNUserNotificationCenter.current()
-                let authorizationStatus = await notificationCenter.notificationSettings().authorizationStatus
-                switch authorizationStatus {
+            let notificationCenter = UNUserNotificationCenter.current()
+            notificationCenter.getNotificationSettings { settings in
+                switch settings.authorizationStatus {
                 case .notDetermined, .denied:
                     return
                 default:
@@ -106,9 +105,14 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
                     let identifier = UUID()
                     let request = UNNotificationRequest(identifier: identifier.uuidString, content: content, trigger: trigger)
                     
-                    try await notificationCenter.add(request)
-                    
-                    self.notification = identifier
+                    notificationCenter.add(request) { error in
+                        if let error {
+                            print("Could not schedule task as local notification: \(error)")
+                            return
+                        }
+                        
+                        self.notification = identifier
+                    }
                 }
             }
         }

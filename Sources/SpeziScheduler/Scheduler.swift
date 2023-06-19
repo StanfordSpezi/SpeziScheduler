@@ -21,7 +21,7 @@ import UserNotifications
 public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable, Module {
     @Dependency private var localStorage: LocalStorage
     
-    public private(set) var tasks: [Task<Context>] = []
+    @Published public private(set) var tasks: [Task<Context>] = []
     private var initialTasks: [Task<Context>]
     private var cancellables: Set<AnyCancellable> = []
     private let taskQueue = DispatchQueue(label: "Scheduler Task Queue", qos: .background)
