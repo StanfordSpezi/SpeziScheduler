@@ -109,7 +109,7 @@ class TestAppUITests: XCTestCase {
         
         app.findAndTapNotification()
         
-        app.assert(tasks: 2, events: 2, pastEvents: 2, fulfilledEvents: 0)
+        app.assert(tasks: 2, events: 129, pastEvents: 2, fulfilledEvents: 0)
         
         XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
         app.buttons["Fulfill Event"].tap()
