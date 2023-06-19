@@ -65,6 +65,9 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
         }
         
         schedule(tasks: storedTasks)
+        
+        // Schedule tasks with a timer and make sure that we always schedule the next 16 tasks.
+        updateScheduleTaskAndNotifications()
     }
     
     
@@ -73,9 +76,7 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
             try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
         }
         
-        for task in self.tasks {
-            task.scheduleTaskAndNotification()
-        }
+        updateScheduleTaskAndNotifications()
     }
     
     
@@ -86,6 +87,7 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
             .receive(on: RunLoop.main)
             .sink {
                 self.objectWillChange.send()
+                self.updateScheduleTaskAndNotifications()
             }
             .store(in: &cancellables)
         
@@ -106,6 +108,15 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
         self.tasks.reserveCapacity(self.tasks.count + tasks.count)
         for task in tasks {
             schedule(task: task)
+        }
+    }
+    
+    private func updateScheduleTaskAndNotifications() {
+        let numberOfTasksWithNotifications = tasks.filter(\.notifications).count
+        let prescheduleLimit = 64/numberOfTasksWithNotifications
+        
+        for task in self.tasks {
+            task.scheduleTaskAndNotification(prescheduleLimit)
         }
     }
     
