@@ -83,16 +83,16 @@ class TestAppUITests: XCTestCase {
         app.requestNotificationPermissions()
         
         app.buttons["Add Notification Task"].tap()
-        app.assert(tasks: 2, events: 2, pastEvents: 1, fulfilledEvents: 0)
+        app.assert(tasks: 2, events: 129, pastEvents: 1, fulfilledEvents: 0)
         
         app.findAndTapNotification()
         
-        app.assert(tasks: 2, events: 2, pastEvents: 2, fulfilledEvents: 0)
+        app.assert(tasks: 2, events: 129, pastEvents: 2, fulfilledEvents: 0)
         
         XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
         app.buttons["Fulfill Event"].tap()
         app.buttons["Fulfill Event"].tap()
-        app.assert(tasks: 2, events: 2, pastEvents: 2, fulfilledEvents: 2)
+        app.assert(tasks: 2, events: 129, pastEvents: 2, fulfilledEvents: 2)
     }
     
     func testSchedulerNotificationsBeforePermissions() throws {
@@ -103,7 +103,7 @@ class TestAppUITests: XCTestCase {
         app.assert(tasks: 1, events: 1, pastEvents: 1, fulfilledEvents: 0)
         
         app.buttons["Add Notification Task"].tap()
-        app.assert(tasks: 2, events: 2, pastEvents: 1, fulfilledEvents: 0)
+        app.assert(tasks: 2, events: 129, pastEvents: 1, fulfilledEvents: 0)
         
         app.requestNotificationPermissions()
         
@@ -114,7 +114,7 @@ class TestAppUITests: XCTestCase {
         XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
         app.buttons["Fulfill Event"].tap()
         app.buttons["Fulfill Event"].tap()
-        app.assert(tasks: 2, events: 2, pastEvents: 2, fulfilledEvents: 2)
+        app.assert(tasks: 2, events: 129, pastEvents: 2, fulfilledEvents: 2)
     }
 }
 
