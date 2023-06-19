@@ -113,6 +113,7 @@ class TestAppUITests: XCTestCase {
 
 
 extension XCUIApplication {
+    // swiftlint:disable:next function_default_parameter_at_end
     fileprivate func assert(tasks: Int, events: Int, pastEvents: Int? = nil, fulfilledEvents: Int) {
         XCTAssert(staticTexts["\(tasks) Tasks"].waitForExistence(timeout: 2))
         XCTAssert(staticTexts["\(events) Events"].waitForExistence(timeout: 2))
