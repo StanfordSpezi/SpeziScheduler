@@ -10,8 +10,8 @@ import Combine
 import Foundation
 import Spezi
 import SpeziLocalStorage
-import UserNotifications
 import UIKit
+import UserNotifications
 
 
 /// The ``Scheduler/Scheduler`` module allows the scheduling and observation of ``Task``s adhering to a specific ``Schedule``.
@@ -31,11 +31,6 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: NSObject,
     /// - Parameter tasks: The initial set of ``Task``s.
     public init(tasks initialTasks: [Task<Context>] = []) {
         self.initialTasks = initialTasks
-    }
-    
-    
-    public static func == (lhs: Scheduler<ComponentStandard, Context>, rhs: Scheduler<ComponentStandard, Context>) -> Bool {
-        lhs.tasks == rhs.tasks
     }
     
     
@@ -91,7 +86,10 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: NSObject,
     }
     
     @MainActor
-    public func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
         self.objectWillChange.send()
         return [.badge, .banner, .sound]
     }
