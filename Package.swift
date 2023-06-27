@@ -20,7 +20,7 @@ let package = Package(
         .library(name: "SpeziScheduler", targets: ["SpeziScheduler"])
     ],
     dependencies: [
-        .package(url: "https://github.com/StanfordSpezi/Spezi", .upToNextMinor(from: "0.5.0")),
+        .package(url: "https://github.com/StanfordSpezi/Spezi", .upToNextMinor(from: "0.5.2")),
         .package(url: "https://github.com/StanfordSpezi/SpeziStorage", .upToNextMinor(from: "0.3.1"))
     ],
     targets: [

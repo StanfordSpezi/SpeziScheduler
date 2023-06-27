@@ -132,6 +132,11 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
         await lock.enter {
             if newValue {
                 completedAt = Date()
+                if let notification {
+                    let notificationCenter = UNUserNotificationCenter.current()
+                    notificationCenter.removeDeliveredNotifications(withIdentifiers: [notification.uuidString])
+                    notificationCenter.removePendingNotificationRequests(withIdentifiers: [notification.uuidString])
+                }
             } else {
                 completedAt = nil
             }

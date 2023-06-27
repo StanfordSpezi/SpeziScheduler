@@ -10,6 +10,7 @@ import Combine
 import Foundation
 import Spezi
 import SpeziLocalStorage
+import UIKit
 import UserNotifications
 
 
@@ -18,7 +19,7 @@ import UserNotifications
 /// Use the ``Scheduler/Scheduler/init(tasks:)`` initializer or the ``Scheduler/Scheduler/schedule(task:)`` function
 /// to schedule tasks that you can obtain using the ``Scheduler/Scheduler/tasks`` property.
 /// You can use the ``Scheduler/Scheduler`` as an `ObservableObject` to automatically update your SwiftUI views when new events are emitted or events change.
-public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable, Module {
+public class Scheduler<ComponentStandard: Standard, Context: Codable>: NSObject, UNUserNotificationCenterDelegate, Module {
     @Dependency private var localStorage: LocalStorage
     
     @Published public private(set) var tasks: [Task<Context>] = []
@@ -30,11 +31,6 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
     /// - Parameter tasks: The initial set of ``Task``s.
     public init(tasks initialTasks: [Task<Context>] = []) {
         self.initialTasks = initialTasks
-    }
-    
-    
-    public static func == (lhs: Scheduler<ComponentStandard, Context>, rhs: Scheduler<ComponentStandard, Context>) -> Bool {
-        lhs.tasks == rhs.tasks
     }
     
     
@@ -71,12 +67,36 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: Equatable
     }
     
     
+    /// Presents the system authentication UI to send local notifications if the application is not yet permitted to send local notifications.
     public func requestLocalNotificationAuthorization() async throws {
         if await UNUserNotificationCenter.current().notificationSettings().authorizationStatus != .authorized {
-            try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+            try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
         }
         
         updateScheduleTaskAndNotifications()
+    }
+    
+    public func willFinishLaunchingWithOptions(_ application: UIApplication, launchOptions: [UIApplication.LaunchOptionsKey: Any]) {
+        UNUserNotificationCenter.current().delegate = self
+    }
+    
+    @MainActor
+    public func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        self.objectWillChange.send()
+    }
+    
+    @MainActor
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        self.objectWillChange.send()
+        return [.badge, .banner, .sound]
+    }
+    
+    @MainActor
+    public func sceneWillEnterForeground(_ scene: UIScene) {
+        self.objectWillChange.send()
     }
     
     
