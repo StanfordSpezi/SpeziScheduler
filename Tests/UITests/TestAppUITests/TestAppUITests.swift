@@ -73,41 +73,37 @@ class TestAppUITests: XCTestCase {
     }
     
     
-    func testSchedulerNotifications() throws {
-        let app = XCUIApplication()
-        
-        XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
-        
-        app.assert(tasks: 1, events: 1, pastEvents: 1, fulfilledEvents: 0)
-        
-        app.requestNotificationPermissions()
-        
-        app.buttons["Add Notification Task"].tap()
-        app.assert(tasks: 2, events: 129, pastEvents: 1, fulfilledEvents: 0)
-        
-        app.findAndTapNotification()
-        
-        app.assert(tasks: 2, events: 129, pastEvents: 2, fulfilledEvents: 0)
-        
-        XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
-        app.buttons["Fulfill Event"].tap()
-        app.buttons["Fulfill Event"].tap()
-        app.assert(tasks: 2, events: 129, pastEvents: 2, fulfilledEvents: 2)
+    func testSchedulerBackgroundNotifications() throws {
+        conductSchedulerNoficationsTest(exitApp: true, askForPermissionsBeforTaskSchedule: true)
     }
     
     func testSchedulerNotificationsBeforePermissions() throws {
+        conductSchedulerNoficationsTest(exitApp: true, askForPermissionsBeforTaskSchedule: false)
+    }
+    
+    func testSchedulerNotifications() throws {
+        conductSchedulerNoficationsTest(exitApp: false, askForPermissionsBeforTaskSchedule: true)
+    }
+    
+    private func conductSchedulerNoficationsTest(exitApp: Bool, askForPermissionsBeforTaskSchedule: Bool = true) {
         let app = XCUIApplication()
         
         XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
         
         app.assert(tasks: 1, events: 1, pastEvents: 1, fulfilledEvents: 0)
         
+        if askForPermissionsBeforTaskSchedule {
+            app.requestNotificationPermissions()
+        }
+        
         app.buttons["Add Notification Task"].tap()
         app.assert(tasks: 2, events: 129, pastEvents: 1, fulfilledEvents: 0)
         
-        app.requestNotificationPermissions()
+        if !askForPermissionsBeforTaskSchedule {
+            app.requestNotificationPermissions()
+        }
         
-        app.findAndTapNotification()
+        app.findAndTapNotification(exitApp: exitApp)
         
         app.assert(tasks: 2, events: 129, pastEvents: 2, fulfilledEvents: 0)
         
@@ -132,10 +128,12 @@ extension XCUIApplication {
         }
     }
     
-    fileprivate func findAndTapNotification() {
+    fileprivate func findAndTapNotification(exitApp: Bool = true) {
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        springboard.activate()
-        XCTAssert(springboard.wait(for: .runningForeground, timeout: 2))
+        if exitApp {
+            springboard.activate()
+            XCTAssert(springboard.wait(for: .runningForeground, timeout: 2))
+        }
         
         let notification = springboard.otherElements["Notification"].descendants(matching: .any)["NotificationShortLookView"]
         XCTAssert(notification.waitForExistence(timeout: 120))
