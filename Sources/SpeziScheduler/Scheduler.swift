@@ -26,6 +26,12 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: NSObject,
     private var initialTasks: [Task<Context>]
     private var cancellables: Set<AnyCancellable> = []
     
+    /// Indicates whether the necessary authorization to deliver local notifications is already granted.
+    public var localNotificationAuthorization: Bool {
+        get async {
+            await UNUserNotificationCenter.current().notificationSettings().authorizationStatus == .authorized
+        }
+    }
     
     /// Creates a new ``Scheduler`` module.
     /// - Parameter tasks: The initial set of ``Task``s.
@@ -69,7 +75,7 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: NSObject,
     
     /// Presents the system authentication UI to send local notifications if the application is not yet permitted to send local notifications.
     public func requestLocalNotificationAuthorization() async throws {
-        if await UNUserNotificationCenter.current().notificationSettings().authorizationStatus != .authorized {
+        if await !localNotificationAuthorization {
             try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
         }
         
