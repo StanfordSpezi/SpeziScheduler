@@ -12,7 +12,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var scheduler: TestAppScheduler
-    @State private var notificationAuthorizationGranted: Bool = false
+    @State private var notificationAuthorizationGranted = false
     
     
     private var tasks: Int {
