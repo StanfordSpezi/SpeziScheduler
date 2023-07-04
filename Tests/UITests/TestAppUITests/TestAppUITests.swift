@@ -112,6 +112,27 @@ class TestAppUITests: XCTestCase {
         app.buttons["Fulfill Event"].tap()
         app.assert(tasks: 2, events: 129, pastEvents: 2, fulfilledEvents: 2)
     }
+    
+    func testRepeatedNotificationAuthorization() throws {
+        let app = XCUIApplication()
+        
+        XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
+        XCTAssert(app.buttons["Request Notification Permissions"].isEnabled)
+        
+        app.requestNotificationPermissions()
+        
+        // Wait for button to become disabled
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                !app.buttons["Request Notification Permissions"].isEnabled
+            },
+            object: .none
+        )
+
+        wait(for: [expectation], timeout: 2)
+        
+        XCTAssert(!app.buttons["Request Notification Permissions"].isEnabled)
+    }
 }
 
 

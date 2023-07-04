@@ -12,6 +12,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var scheduler: TestAppScheduler
+    @State private var notificationAuthorizationGranted = false
     
     
     private var tasks: Int {
@@ -48,8 +49,10 @@ struct ContentView: View {
         Button("Request Notification Permissions") {
             _Concurrency.Task {
                 try await scheduler.requestLocalNotificationAuthorization()
+                notificationAuthorizationGranted = await scheduler.localNotificationAuthorization
             }
         }
+        .disabled(notificationAuthorizationGranted)
         Button("Add Task") {
             scheduler.schedule(
                 task: Task(
