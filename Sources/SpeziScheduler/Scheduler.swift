@@ -77,8 +77,11 @@ public class Scheduler<ComponentStandard: Standard, Context: Codable>: NSObject,
     public func requestLocalNotificationAuthorization() async throws {
         if await !localNotificationAuthorization {
             try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
+            
             // Triggers an update of the UI in case the notification permissions are changed
-            self.objectWillChange.send()
+            _Concurrency.Task { @MainActor in
+                self.objectWillChange.send()
+            }
         }
         
         updateScheduleTaskAndNotifications()
