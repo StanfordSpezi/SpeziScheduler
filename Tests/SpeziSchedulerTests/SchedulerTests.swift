@@ -22,16 +22,19 @@ actor SchedulerTestsStandard: Standard {
     }
     
     
-    func registerDataSource(_ asyncSequence: some TypedAsyncSequence<DataChange<BaseType, RemovalContext>>) { }
+//    func registerDataSource(_ asyncSequence: some TypedAsyncSequence<DataChange<BaseType, RemovalContext>>) { }
 }
 
 
 final class SchedulerTests: XCTestCase {
-    private func createScheduler(withInitialTasks initialTasks: Task<String>) -> Scheduler<SchedulerTestsStandard, String> {
-        let scheduler = Scheduler<SchedulerTestsStandard, String>(tasks: [initialTasks])
+//    private func createScheduler(withInitialTasks initialTasks: Task<String>) -> Scheduler<SchedulerTestsStandard, String> {
+    private func createScheduler(withInitialTasks initialTasks: Task<String>) -> Scheduler<String> {
+//        let scheduler = Scheduler<SchedulerTestsStandard, String>(tasks: [initialTasks])
+        let scheduler = Scheduler<String>(tasks: [initialTasks])
         let localStorageDependency = Mirror(reflecting: scheduler).children
             .compactMap {
-                $0.value as? _DependencyPropertyWrapper<LocalStorage<SchedulerTestsStandard>, SchedulerTestsStandard>
+//                $0.value as? _DependencyPropertyWrapper<LocalStorage<SchedulerTestsStandard>, SchedulerTestsStandard>
+                $0.value as? _DependencyPropertyWrapper<LocalStorage>
             }
             .first
         localStorageDependency?.inject(dependency: LocalStorage())

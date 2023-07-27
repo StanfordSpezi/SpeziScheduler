@@ -8,14 +8,17 @@
 
 import Spezi
 import SpeziScheduler
+import Foundation
 
 
-typealias TestAppScheduler = Scheduler<TestAppStandard, String>
+typealias TestAppScheduler = Scheduler<String>
 
+/// an example Standard used for the configuration
+actor ExampleStandard: Standard, ObservableObjectProvider, ObservableObject { }
 
 class TestAppDelegate: SpeziAppDelegate {
     override var configuration: Configuration {
-        Configuration(standard: TestAppStandard()) {
+        Configuration(standard: ExampleStandard()) {
             TestAppScheduler(
                 tasks: [
                     Task(

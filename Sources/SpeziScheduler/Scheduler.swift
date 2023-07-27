@@ -19,7 +19,7 @@ import UserNotifications
 /// Use the ``Scheduler/Scheduler/init(tasks:)`` initializer or the ``Scheduler/Scheduler/schedule(task:)`` function
 /// to schedule tasks that you can obtain using the ``Scheduler/Scheduler/tasks`` property.
 /// You can use the ``Scheduler/Scheduler`` as an `ObservableObject` to automatically update your SwiftUI views when new events are emitted or events change.
-public class Scheduler<ComponentStandard: Standard, Context: Codable>: NSObject, UNUserNotificationCenterDelegate, Module {
+public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDelegate, Module {
     @Dependency private var localStorage: LocalStorage
     
     @Published public private(set) var tasks: [Task<Context>] = []

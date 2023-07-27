@@ -14,7 +14,7 @@ import SwiftUI
 struct UITestsApp: App {
     @UIApplicationDelegateAdaptor(TestAppDelegate.self) var appDelegate
     
-    
+    // TODO: Change back ID to edu.stanford.spezi.scheduler.testapp
     var body: some Scene {
         WindowGroup {
             ContentView()
