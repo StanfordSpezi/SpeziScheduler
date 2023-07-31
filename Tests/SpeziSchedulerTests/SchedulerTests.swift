@@ -20,20 +20,14 @@ actor SchedulerTestsStandard: Standard {
     struct CustomDataSourceType<T: Hashable>: Equatable, Identifiable {
         let id: T
     }
-    
-    
-//    func registerDataSource(_ asyncSequence: some TypedAsyncSequence<DataChange<BaseType, RemovalContext>>) { }
 }
 
 
 final class SchedulerTests: XCTestCase {
-//    private func createScheduler(withInitialTasks initialTasks: Task<String>) -> Scheduler<SchedulerTestsStandard, String> {
     private func createScheduler(withInitialTasks initialTasks: Task<String>) -> Scheduler<String> {
-//        let scheduler = Scheduler<SchedulerTestsStandard, String>(tasks: [initialTasks])
         let scheduler = Scheduler<String>(tasks: [initialTasks])
         let localStorageDependency = Mirror(reflecting: scheduler).children
             .compactMap {
-//                $0.value as? _DependencyPropertyWrapper<LocalStorage<SchedulerTestsStandard>, SchedulerTestsStandard>
                 $0.value as? _DependencyPropertyWrapper<LocalStorage>
             }
             .first
@@ -84,7 +78,7 @@ final class SchedulerTests: XCTestCase {
             description: "Random Scheduler Test task",
             schedule: Schedule(
                 start: .now,
-                repetition: .randomBetween( // Randomely scheduled in the first half of each second.
+                repetition: .randomBetween( // Randomly scheduled in the first half of each second.
                     start: .init(nanosecond: 450_000_000),
                     end: .init(nanosecond: 550_000_000)
                 ),

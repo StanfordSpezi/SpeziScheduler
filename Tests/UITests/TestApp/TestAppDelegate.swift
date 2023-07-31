@@ -6,15 +6,13 @@
 // SPDX-License-Identifier: MIT
 //
 
+import Foundation
 import Spezi
 import SpeziScheduler
-import Foundation
 
 
 typealias TestAppScheduler = Scheduler<String>
 
-/// an example Standard used for the configuration
-actor ExampleStandard: Standard, ObservableObjectProvider, ObservableObject { }
 
 class TestAppDelegate: SpeziAppDelegate {
     override var configuration: Configuration {
