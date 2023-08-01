@@ -8,8 +8,8 @@
 
 import Spezi
 import SpeziLocalStorage
-import SpeziSecureStorage
 import SpeziScheduler
+import SpeziSecureStorage
 import XCTest
 
 
