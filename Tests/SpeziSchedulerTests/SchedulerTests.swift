@@ -8,6 +8,7 @@
 
 import Spezi
 import SpeziLocalStorage
+import SpeziSecureStorage
 import SpeziScheduler
 import XCTest
 
@@ -25,14 +26,24 @@ actor SchedulerTestsStandard: Standard {
 
 final class SchedulerTests: XCTestCase {
     private func createScheduler(withInitialTasks initialTasks: Task<String>) -> Scheduler<String> {
+        let localStorage = LocalStorage()
+        let secureStorageDependency = Mirror(reflecting: localStorage).children
+            .compactMap {
+                $0.value as? _DependencyPropertyWrapper<SecureStorage>
+            }
+            .first
+        secureStorageDependency?.inject(dependency: SecureStorage())
+        
         let scheduler = Scheduler<String>(tasks: [initialTasks])
         let localStorageDependency = Mirror(reflecting: scheduler).children
             .compactMap {
                 $0.value as? _DependencyPropertyWrapper<LocalStorage>
             }
             .first
-        localStorageDependency?.inject(dependency: LocalStorage())
+        localStorageDependency?.inject(dependency: localStorage)
+        
         scheduler.configure()
+        
         return scheduler
     }
     
