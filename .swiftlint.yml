@@ -1,5 +1,5 @@
 #
-# This source file is part of the Spezi open source project
+# This source file is part of the Stanford Spezi open-source project
 #
 # SPDX-FileCopyrightText: 2022 Stanford University and the project authors (see CONTRIBUTORS.md)
 #
@@ -10,7 +10,7 @@
 only_rules:
   # All Images that provide context should have an accessibility label. Purely decorative images can be hidden from accessibility.
   - accessibility_label_for_image
-    # Attributes should be on their own lines in functions and types, but on the same line as variables and imports.
+  # Attributes should be on their own lines in functions and types, but on the same line as variables and imports.
   - attributes
   # Prefer using Array(seq) over seq.map { $0 } to convert a sequence into an Array.
   - array_init
