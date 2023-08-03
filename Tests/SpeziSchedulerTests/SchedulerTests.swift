@@ -13,17 +13,6 @@ import SpeziSecureStorage
 import XCTest
 
 
-actor SchedulerTestsStandard: Standard {
-    typealias BaseType = CustomDataSourceType<String>
-    typealias RemovalContext = CustomDataSourceType<String>
-    
-    
-    struct CustomDataSourceType<T: Hashable>: Equatable, Identifiable {
-        let id: T
-    }
-}
-
-
 final class SchedulerTests: XCTestCase {
     private func createScheduler(withInitialTasks initialTasks: Task<String>) -> Scheduler<String> {
         let localStorage = LocalStorage()

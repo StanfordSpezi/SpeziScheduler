@@ -6,7 +6,6 @@
 // SPDX-License-Identifier: MIT
 //
 
-import Foundation
 import Spezi
 import SpeziScheduler
 
@@ -16,7 +15,7 @@ typealias TestAppScheduler = Scheduler<String>
 
 class TestAppDelegate: SpeziAppDelegate {
     override var configuration: Configuration {
-        Configuration(standard: ExampleStandard()) {
+        Configuration {
             TestAppScheduler(
                 tasks: [
                     Task(
