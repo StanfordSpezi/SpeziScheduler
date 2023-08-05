@@ -10,12 +10,12 @@ import Spezi
 import SpeziScheduler
 
 
-typealias TestAppScheduler = Scheduler<TestAppStandard, String>
+typealias TestAppScheduler = Scheduler<String>
 
 
 class TestAppDelegate: SpeziAppDelegate {
     override var configuration: Configuration {
-        Configuration(standard: TestAppStandard()) {
+        Configuration {
             TestAppScheduler(
                 tasks: [
                     Task(

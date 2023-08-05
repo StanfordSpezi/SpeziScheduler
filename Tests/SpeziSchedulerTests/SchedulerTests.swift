@@ -9,33 +9,30 @@
 import Spezi
 import SpeziLocalStorage
 import SpeziScheduler
+import SpeziSecureStorage
 import XCTest
 
 
-actor SchedulerTestsStandard: Standard {
-    typealias BaseType = CustomDataSourceType<String>
-    typealias RemovalContext = CustomDataSourceType<String>
-    
-    
-    struct CustomDataSourceType<T: Hashable>: Equatable, Identifiable {
-        let id: T
-    }
-    
-    
-    func registerDataSource(_ asyncSequence: some TypedAsyncSequence<DataChange<BaseType, RemovalContext>>) { }
-}
-
-
 final class SchedulerTests: XCTestCase {
-    private func createScheduler(withInitialTasks initialTasks: Task<String>) -> Scheduler<SchedulerTestsStandard, String> {
-        let scheduler = Scheduler<SchedulerTestsStandard, String>(tasks: [initialTasks])
-        let localStorageDependency = Mirror(reflecting: scheduler).children
+    private func createScheduler(withInitialTasks initialTasks: Task<String>) -> Scheduler<String> {
+        let localStorage = LocalStorage()
+        let secureStorageDependency = Mirror(reflecting: localStorage).children
             .compactMap {
-                $0.value as? _DependencyPropertyWrapper<LocalStorage<SchedulerTestsStandard>, SchedulerTestsStandard>
+                $0.value as? _DependencyPropertyWrapper<SecureStorage>
             }
             .first
-        localStorageDependency?.inject(dependency: LocalStorage())
+        secureStorageDependency?.inject(dependency: SecureStorage())
+        
+        let scheduler = Scheduler<String>(tasks: [initialTasks])
+        let localStorageDependency = Mirror(reflecting: scheduler).children
+            .compactMap {
+                $0.value as? _DependencyPropertyWrapper<LocalStorage>
+            }
+            .first
+        localStorageDependency?.inject(dependency: localStorage)
+        
         scheduler.configure()
+        
         return scheduler
     }
     
@@ -81,7 +78,7 @@ final class SchedulerTests: XCTestCase {
             description: "Random Scheduler Test task",
             schedule: Schedule(
                 start: .now,
-                repetition: .randomBetween( // Randomely scheduled in the first half of each second.
+                repetition: .randomBetween( // Randomly scheduled in the first half of each second.
                     start: .init(nanosecond: 450_000_000),
                     end: .init(nanosecond: 550_000_000)
                 ),

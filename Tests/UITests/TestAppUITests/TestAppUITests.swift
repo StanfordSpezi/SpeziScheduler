@@ -74,32 +74,32 @@ class TestAppUITests: XCTestCase {
     
     
     func testSchedulerBackgroundNotifications() throws {
-        conductSchedulerNoficationsTest(exitApp: true, askForPermissionsBeforTaskSchedule: true)
+        conductSchedulerNoficationsTest(exitApp: true, askForPermissionsBeforeTaskSchedule: true)
     }
     
     func testSchedulerNotificationsBeforePermissions() throws {
-        conductSchedulerNoficationsTest(exitApp: true, askForPermissionsBeforTaskSchedule: false)
+        conductSchedulerNoficationsTest(exitApp: true, askForPermissionsBeforeTaskSchedule: false)
     }
     
     func testSchedulerNotifications() throws {
-        conductSchedulerNoficationsTest(exitApp: false, askForPermissionsBeforTaskSchedule: true)
+        conductSchedulerNoficationsTest(exitApp: false, askForPermissionsBeforeTaskSchedule: true)
     }
     
-    private func conductSchedulerNoficationsTest(exitApp: Bool, askForPermissionsBeforTaskSchedule: Bool = true) {
+    private func conductSchedulerNoficationsTest(exitApp: Bool, askForPermissionsBeforeTaskSchedule: Bool = true) {
         let app = XCUIApplication()
         
         XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
         
         app.assert(tasks: 1, events: 1, pastEvents: 1, fulfilledEvents: 0)
         
-        if askForPermissionsBeforTaskSchedule {
+        if askForPermissionsBeforeTaskSchedule {
             app.requestNotificationPermissions()
         }
         
         app.buttons["Add Notification Task"].tap()
         app.assert(tasks: 2, events: 129, pastEvents: 1, fulfilledEvents: 0)
         
-        if !askForPermissionsBeforTaskSchedule {
+        if !askForPermissionsBeforeTaskSchedule {
             app.requestNotificationPermissions()
         }
         

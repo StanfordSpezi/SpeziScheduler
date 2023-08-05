@@ -1,7 +1,7 @@
 // swift-tools-version:5.7
 
 //
-// This source file is part of the Spezi open source project
+// This source file is part of the Stanford Spezi open-source project
 // 
 // SPDX-FileCopyrightText: 2022 Stanford University and the project authors (see CONTRIBUTORS.md)
 // 
@@ -20,8 +20,8 @@ let package = Package(
         .library(name: "SpeziScheduler", targets: ["SpeziScheduler"])
     ],
     dependencies: [
-        .package(url: "https://github.com/StanfordSpezi/Spezi", .upToNextMinor(from: "0.5.2")),
-        .package(url: "https://github.com/StanfordSpezi/SpeziStorage", .upToNextMinor(from: "0.3.1"))
+        .package(url: "https://github.com/StanfordSpezi/Spezi", .upToNextMinor(from: "0.7.0")),
+        .package(url: "https://github.com/StanfordSpezi/SpeziStorage", .upToNextMinor(from: "0.4.1"))
     ],
     targets: [
         .target(
