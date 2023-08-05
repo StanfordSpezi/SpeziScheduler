@@ -91,23 +91,36 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         UNUserNotificationCenter.current().delegate = self
     }
     
-    @MainActor
-    public func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
-        self.objectWillChange.send()
-    }
-    
-    @MainActor
+    // Unfortunately, the async overload of the `UNUserNotificationCenterDelegate` results in a runtime crash.
+    // Reverify this in iOS versions after iOS 17.0
     public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification
-    ) async -> UNNotificationPresentationOptions {
-        self.objectWillChange.send()
-        return [.badge, .banner, .sound]
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        _Concurrency.Task { @MainActor in
+            self.objectWillChange.send()
+            completionHandler()
+        }
     }
     
-    @MainActor
+    // Unfortunately, the async overload of the `UNUserNotificationCenterDelegate` results in a runtime crash.
+    // Reverify this in iOS versions after iOS 17.0
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        _Concurrency.Task { @MainActor in
+            self.objectWillChange.send()
+            completionHandler([.badge, .banner, .sound])
+        }
+    }
+    
     public func sceneWillEnterForeground(_ scene: UIScene) {
-        self.objectWillChange.send()
+        _Concurrency.Task { @MainActor in
+            self.objectWillChange.send()
+        }
     }
     
     
