@@ -8,6 +8,7 @@
 
 import Combine
 import Foundation
+import OSLog
 import Spezi
 import SpeziLocalStorage
 import UIKit
@@ -49,12 +50,13 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         )
         
         self.objectWillChange
+            .throttle(for: .seconds(0.25), scheduler: RunLoop.main, latest: true)
             .sink {
                 _Concurrency.Task {
                     do {
                         try self.localStorage.store(self.tasks)
                     } catch {
-                        print(error)
+                        os_log(.error, "Could not persist the tasks of the scheduler module: \(error)")
                     }
                 }
             }

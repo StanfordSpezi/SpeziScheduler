@@ -8,6 +8,7 @@
 
 import Combine
 import Foundation
+import OSLog
 
 
 /// A ``Task`` defines an instruction that is scheduled one to multiple times as defined by the ``Task/schedule`` property.

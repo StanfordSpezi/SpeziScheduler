@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import OSLog
 import UserNotifications
 
 
@@ -27,9 +28,17 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
     private let lock = Lock()
     private var timer: Timer?
     private let _scheduledAt: Date
-    private var notification: UUID?
+    private var notification: UUID? {
+        willSet {
+            taskReference?.sendObjectWillChange()
+        }
+    }
     /// The date when the ``Event`` was completed.
-    public private(set) var completedAt: Date?
+    public private(set) var completedAt: Date? {
+        willSet {
+            taskReference?.sendObjectWillChange()
+        }
+    }
     weak var taskReference: (any TaskReference)?
     
     
@@ -109,7 +118,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
                     
                     notificationCenter.add(request) { error in
                         if let error {
-                            print("Could not schedule task as local notification: \(error)")
+                            os_log(.error, "Could not schedule task as local notification: \(error)")
                             return
                         }
                         
@@ -140,8 +149,6 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
             } else {
                 completedAt = nil
             }
-            
-            taskReference?.sendObjectWillChange()
         }
     }
     
