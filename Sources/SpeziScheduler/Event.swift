@@ -28,7 +28,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
     private let lock = Lock()
     private var timer: Timer?
     private let _scheduledAt: Date
-    private var notification: UUID? {
+    private(set) var notification: UUID? {
         willSet {
             taskReference?.sendObjectWillChange()
         }
@@ -74,6 +74,17 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
         lhs.taskReference?.id == rhs.taskReference?.id && lhs.scheduledAt == rhs.scheduledAt
     }
     
+    
+    func cancelNotification() {
+        guard let notification else {
+            return
+        }
+        
+        let notificationCenter = UNUserNotificationCenter.current()
+        notificationCenter.removePendingNotificationRequests(withIdentifiers: [notification.uuidString])
+        
+        self.notification = nil
+    }
     
     func scheduleTaskAndNotification() {
         guard let taskReference = taskReference else {

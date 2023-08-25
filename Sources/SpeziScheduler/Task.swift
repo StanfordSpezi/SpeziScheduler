@@ -8,7 +8,6 @@
 
 import Combine
 import Foundation
-import OSLog
 
 
 /// A ``Task`` defines an instruction that is scheduled one to multiple times as defined by the ``Task/schedule`` property.
@@ -98,11 +97,30 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     }
     
     
-    func scheduleTaskAndNotification(_ prescheduleLimit: Int = 16) {
-        // We only schedule the next few events as iOS only allows up to 64 notifications to be scheduled per one app.
-        let futureEvents = events(from: .now.addingTimeInterval(-1), to: .numberOfEvents(prescheduleLimit))
+    func contains(scheduledNotificationWithId notification: String) -> Bool {
+        guard notifications else {
+            return false
+        }
         
+        // See if the notification identifier is persisted in the events that have already been scheduled.
+        return events(to: .endDate(.now)).contains { event in
+            event.notification?.uuidString == notification
+        }
+    }
+    
+    func scheduleTaskAndNotification(_ prescheduleLimit: Int) {
+        // We only schedule the next few events as iOS.
+        let futureEvents = events(from: .now.addingTimeInterval(-1))
+        
+        // iOS only allows up to 64 notifications to be scheduled per one app, this is why we have to do the following logic with the prescheduleLimit:
+        
+        // Cancel all future notifications to ensure that we only register up to the defined limit.
         for futureEvent in futureEvents {
+            futureEvent.cancelNotification()
+        }
+        
+        // Only allows up to 64 notifications to be scheduled per one app, we ensure that we do not exceed the preschedule limit.
+        for futureEvent in futureEvents.sorted(by: { $0.scheduledAt < $1.scheduledAt }).prefix(prescheduleLimit) {
             futureEvent.scheduleTaskAndNotification()
         }
     }
