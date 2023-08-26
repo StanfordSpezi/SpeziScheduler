@@ -11,6 +11,12 @@ import SwiftUI
 
 
 struct ContentView: View {
+    struct EventLog: Identifiable {
+        let id: Date
+        let log: String
+    }
+    
+    
     @EnvironmentObject private var scheduler: TestAppScheduler
     @State private var notificationAuthorizationGranted = false
     
@@ -38,6 +44,18 @@ struct ContentView: View {
             .count
     }
     
+    private var eventLogs: [EventLog] {
+        scheduler.tasks
+            .flatMap { $0.events() }
+            .compactMap { event in
+                guard let log = event.log else {
+                    return nil
+                }
+                
+                return EventLog(id: event.scheduledAt, log: log)
+            }
+    }
+    
     
     var body: some View {
         Text("Scheduler")
@@ -52,43 +70,47 @@ struct ContentView: View {
                 notificationAuthorizationGranted = await scheduler.localNotificationAuthorization
             }
         }
-        .disabled(notificationAuthorizationGranted)
+            .disabled(notificationAuthorizationGranted)
         Button("Add Task") {
-            scheduler.schedule(
-                task: Task(
-                    title: "New Task",
-                    description: "New Task",
-                    schedule: Schedule(
-                        start: .now,
-                        repetition: .matching(.init(nanosecond: 0)), // Every full second
-                        end: .numberOfEvents(2)
-                    ),
-                    context: "New Task!"
+            _Concurrency.Task {
+                await scheduler.schedule(
+                    task: Task(
+                        title: "New Task",
+                        description: "New Task",
+                        schedule: Schedule(
+                            start: .now,
+                            repetition: .matching(.init(nanosecond: 0)), // Every full second
+                            end: .numberOfEvents(2)
+                        ),
+                        context: "New Task!"
+                    )
                 )
-            )
+            }
         }
         Button("Add Notification Task") {
-            let currentDate = Date.now
-            let hour = Calendar.current.component(.hour, from: currentDate)
-            // We expect the UI test to take at least 20 seconds to mavigate out of the app and to the home screen.
-            // We then trigger the task in the minute after that, the UI test needs to wait at least one minute.
-            let minute = Calendar.current.component(.minute, from: currentDate.addingTimeInterval(20)) + 1
-            
-            // We schedule 128 notifications to test that the schedule limit to 64 notifications per device is enforced
-            // and notifications show on the device (iOS only limits up to 64 scheduled local notifications.
-            scheduler.schedule(
-                task: Task(
-                    title: "Notification Task",
-                    description: "Notification Task",
-                    schedule: Schedule(
-                        start: .now,
-                        repetition: .matching(.init(hour: hour, minute: minute)),
-                        end: .numberOfEvents(128)
-                    ),
-                    notifications: true,
-                    context: "Notification Task!"
+            _Concurrency.Task {
+                let currentDate = Date.now
+                let hour = Calendar.current.component(.hour, from: currentDate)
+                // We expect the UI test to take at least 20 seconds to mavigate out of the app and to the home screen.
+                // We then trigger the task in the minute after that, the UI test needs to wait at least one minute.
+                let minute = Calendar.current.component(.minute, from: currentDate.addingTimeInterval(20)) + 1
+                
+                // We schedule 128 notifications to test that the schedule limit to 64 notifications per device is enforced
+                // and notifications show on the device (iOS only limits up to 64 scheduled local notifications.
+                await scheduler.schedule(
+                    task: Task(
+                        title: "Notification Task",
+                        description: "Notification Task",
+                        schedule: Schedule(
+                            start: .now,
+                            repetition: .matching(.init(hour: hour, minute: minute)),
+                            end: .numberOfEvents(128)
+                        ),
+                        notifications: true,
+                        context: "Notification Task!"
+                    )
                 )
-            )
+            }
         }
         Button("Fulfill Event") {
             guard let uncompletedEvent = scheduler.tasks
@@ -109,6 +131,14 @@ struct ContentView: View {
             _Concurrency.Task {
                 await completedEvent.complete(false)
             }
+        }
+        if #available(iOS 17.0, *) {
+            ScrollView {
+                ForEach(eventLogs) { eventLog in
+                    Text(eventLog.log)
+                }
+            }
+                .defaultScrollAnchor(.top)
         }
     }
 }

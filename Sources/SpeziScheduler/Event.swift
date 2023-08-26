@@ -39,6 +39,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
             taskReference?.sendObjectWillChange()
         }
     }
+    public var log: String?
     weak var taskReference: (any TaskReference)?
     
     
@@ -108,7 +109,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
         }
     }
     
-    func scheduleNotification() {
+    func scheduleNotification() async {
         guard let taskReference = taskReference else {
             return
         }
@@ -116,31 +117,29 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
         // Only schedule a notification if it is enabled in a task and the notification has not yet been scheduled.
         if taskReference.notifications && notification == nil {
             let notificationCenter = UNUserNotificationCenter.current()
-            notificationCenter.getNotificationSettings { settings in
-                switch settings.authorizationStatus {
-                case .notDetermined, .denied:
-                    return
-                default:
-                    let content = UNMutableNotificationContent()
-                    content.title = taskReference.title
-                    content.body = taskReference.description
-                    
-                    let trigger = UNTimeIntervalNotificationTrigger(
-                        timeInterval: max(self.scheduledAt.timeIntervalSince(.now), TimeInterval.leastNonzeroMagnitude),
-                        repeats: false
-                    )
-                    
-                    let identifier = UUID()
-                    let request = UNNotificationRequest(identifier: identifier.uuidString, content: content, trigger: trigger)
-                    
-                    notificationCenter.add(request) { error in
-                        if let error {
-                            os_log(.error, "Could not schedule task as local notification: \(error)")
-                            return
-                        }
-                        
-                        self.notification = identifier
-                    }
+            switch await notificationCenter.notificationSettings().authorizationStatus {
+            case .notDetermined, .denied:
+                return
+            default:
+                let content = UNMutableNotificationContent()
+                content.title = taskReference.title
+                content.body = taskReference.description
+                
+                let trigger = UNTimeIntervalNotificationTrigger(
+                    timeInterval: max(self.scheduledAt.timeIntervalSince(.now), TimeInterval.leastNonzeroMagnitude),
+                    repeats: false
+                )
+                
+                let identifier = UUID()
+                let request = UNNotificationRequest(identifier: identifier.uuidString, content: content, trigger: trigger)
+                
+                do {
+                    try await notificationCenter.add(request)
+                    self.log = "Registered at \(self.scheduledAt.timeIntervalSince(.now))"
+                    self.notification = identifier
+                } catch {
+                    os_log(.error, "Could not schedule task as local notification: \(error)")
+                    self.log = "Could not schedule task as local notification: \(error)"
                 }
             }
         }
