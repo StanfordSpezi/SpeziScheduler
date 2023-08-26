@@ -110,7 +110,7 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     
     func scheduleTaskAndNotification(_ prescheduleLimit: Int) {
         // We only schedule the next few events as iOS.
-        let futureEvents = events(from: .now.addingTimeInterval(-1))
+        let futureEvents = events(from: .now)
         
         // iOS only allows up to 64 notifications to be scheduled per one app, this is why we have to do the following logic with the prescheduleLimit:
         
