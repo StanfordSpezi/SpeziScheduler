@@ -167,12 +167,12 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     
     func sendObjectWillChange(skipInternalUpdates: Bool = false) {
         if skipInternalUpdates {
-            print("sendObjectWillChange(skipInternalUpdates: true)")
+            os_log(.debug, "sendObjectWillChange(skipInternalUpdates: true)")
             _Concurrency.Task { @MainActor in
                 self.objectWillChange.send()
             }
         } else {
-            print("sendObjectWillChange(skipInternalUpdates: false)")
+            os_log(.debug, "sendObjectWillChange(skipInternalUpdates: false)")
             _Concurrency.Task {
                 self.updateTasks()
                 await self.updateScheduleNotifications()
@@ -209,6 +209,13 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         
         // Disable notification center interaction when running unit tests:
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
+            // First, remove all notifications from completed events:
+            for task in self.tasks {
+                for event in task.events where event.complete {
+                    event.cancelNotification()
+                }
+            }
+            
             let notificationCenter = UNUserNotificationCenter.current()
             
             if self.prescheduleNotificationLimit < numberOfTasksWithNotifications {

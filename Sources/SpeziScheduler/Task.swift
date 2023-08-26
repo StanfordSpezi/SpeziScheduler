@@ -119,19 +119,19 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     }
     
     func scheduleNotification(_ prescheduleLimit: Int) async {
-        // We only schedule the future events.
-        let futureEvents = events(from: .now)
-        
         // iOS only allows up to 64 notifications to be scheduled per one app, this is why we have to do the following logic with the prescheduleLimit:
         
         // Cancel all future notifications to ensure that we only register up to the defined limit.
+        let futureEvents = events(from: .now)
+        
         for futureEvent in futureEvents {
             futureEvent.cancelNotification()
         }
         
         if notifications {
+            // We only schedule the future events.
             // Only allows up to 64 notifications to be scheduled per one app, we ensure that we do not exceed the preschedule limit.
-            for futureEvent in futureEvents.sorted(by: { $0.scheduledAt < $1.scheduledAt }).prefix(prescheduleLimit) {
+            for futureEvent in futureEvents.filter({ !$0.complete }).sorted(by: { $0.scheduledAt < $1.scheduledAt }).prefix(prescheduleLimit) {
                 await futureEvent.scheduleNotification()
             }
         }

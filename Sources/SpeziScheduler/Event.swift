@@ -39,7 +39,8 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
             taskReference?.sendObjectWillChange()
         }
     }
-    public var log: String?
+    /// Only used for test purposes to identify the current state of the log in the UI testing application.
+    internal private(set) var log: String?
     weak var taskReference: (any TaskReference)?
     
     
@@ -85,6 +86,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
         notificationCenter.removePendingNotificationRequests(withIdentifiers: [notification.uuidString])
         
         self.notification = nil
+        self.log = "No Notification - Complete: \(complete)"
     }
     
     func scheduleTask() {
@@ -119,6 +121,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
             let notificationCenter = UNUserNotificationCenter.current()
             switch await notificationCenter.notificationSettings().authorizationStatus {
             case .notDetermined, .denied:
+                self.log = "Could not register due to missing permissions ..."
                 return
             default:
                 let content = UNMutableNotificationContent()

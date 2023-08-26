@@ -71,7 +71,7 @@ final class SchedulerTests: XCTestCase {
             test += 1
         }
         
-        wait(for: [expectation], timeout: TimeInterval(numberOfEvents + 2))
+        await fulfillment(of: [expectation], timeout: TimeInterval(numberOfEvents + 2))
         
         cancellable.cancel()
     }
@@ -116,7 +116,7 @@ final class SchedulerTests: XCTestCase {
             XCTAssertLessThan(nanosecondsElement, 550_000_000)
         }
         
-        wait(for: [expectation], timeout: TimeInterval(numberOfEvents + 2))
+        await fulfillment(of: [expectation], timeout: TimeInterval(numberOfEvents + 2))
         
         cancellable.cancel()
     }
@@ -155,7 +155,7 @@ final class SchedulerTests: XCTestCase {
         )
         await scheduler.schedule(task: testTask2)
         
-        wait(for: [calledObjectWillChange], timeout: 0.5)
+        await fulfillment(of: [calledObjectWillChange], timeout: 0.5)
         cancellable.cancel()
         
         let expectationCompleteEvents = XCTestExpectation(description: "Complete all events")
@@ -184,7 +184,7 @@ final class SchedulerTests: XCTestCase {
             }
         }
     
-        wait(for: [expectationCompleteEvents, expectationObservedObject], timeout: 100.0)
+        await fulfillment(of: [expectationCompleteEvents, expectationObservedObject], timeout: 100.0)
         cancellable.cancel()
         
         XCTAssert(events.allSatisfy { $0.complete })

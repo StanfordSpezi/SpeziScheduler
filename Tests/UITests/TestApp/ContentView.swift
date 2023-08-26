@@ -6,12 +6,17 @@
 // SPDX-License-Identifier: MIT
 //
 
-import SpeziScheduler
+@testable import SpeziScheduler
 import SwiftUI
 
 
 struct ContentView: View {
-    struct EventLog: Identifiable {
+    struct EventLog: Identifiable, Comparable {
+        static func < (lhs: ContentView.EventLog, rhs: ContentView.EventLog) -> Bool {
+            lhs.id < rhs.id
+        }
+        
+        
         let id: Date
         let log: String
     }
@@ -54,6 +59,7 @@ struct ContentView: View {
                 
                 return EventLog(id: event.scheduledAt, log: log)
             }
+            .sorted()
     }
     
     
@@ -132,13 +138,10 @@ struct ContentView: View {
                 await completedEvent.complete(false)
             }
         }
-        if #available(iOS 17.0, *) {
-            ScrollView {
-                ForEach(eventLogs) { eventLog in
-                    Text(eventLog.log)
-                }
+        ScrollView {
+            ForEach(eventLogs) { eventLog in
+                Text(eventLog.log)
             }
-                .defaultScrollAnchor(.top)
         }
     }
 }
