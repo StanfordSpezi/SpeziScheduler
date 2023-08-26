@@ -86,7 +86,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
         self.notification = nil
     }
     
-    func scheduleTaskAndNotification() {
+    func scheduleTask() {
         guard let taskReference = taskReference else {
             return
         }
@@ -105,6 +105,12 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
             if let timer {
                 RunLoop.main.add(timer, forMode: .common)
             }
+        }
+    }
+    
+    func scheduleNotification() {
+        guard let taskReference = taskReference else {
+            return
         }
         
         // Only schedule a notification if it is enabled in a task and the notification has not yet been scheduled.

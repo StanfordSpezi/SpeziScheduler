@@ -60,11 +60,14 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         
         super.init()
         
-        let notificationCenter = UNUserNotificationCenter.current()
-        if firstLaunch {
-            notificationCenter.removeAllDeliveredNotifications()
-            notificationCenter.removeAllPendingNotificationRequests()
-            firstLaunch = false
+        // Only run the notification setup when not running unit tests:
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
+            let notificationCenter = UNUserNotificationCenter.current()
+            if firstLaunch {
+                notificationCenter.removeAllDeliveredNotifications()
+                notificationCenter.removeAllPendingNotificationRequests()
+                firstLaunch = false
+            }
         }
     }
     
@@ -181,33 +184,39 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     
     private func updateScheduleTaskAndNotifications() {
         _Concurrency.Task {
-            let notificationCenter = UNUserNotificationCenter.current()
-            
             // Get all tasks that have notifications enabled and that have events in the future.
             let numberOfTasksWithNotifications = max(1, tasks.filter { $0.notifications && !$0.events(from: .now).isEmpty }.count)
+            let prescheduleNotificationLimit: Int
             
-            if prescheduleNotificationLimit < numberOfTasksWithNotifications {
-                os_log(.error, "The preschedule notification limit \(self.prescheduleNotificationLimit) is smaller than the numer of tasks with active notifications: \(numberOfTasksWithNotifications)")
-                assertionFailure("Please ensure that your preschedule notification limit is bigger than the teasks with active notifications")
-            }
-            
-            let deliveredNotifications = await notificationCenter.deliveredNotifications().sorted(by: { $0.date < $1.date })
-            let prescheduleNotificationLimit = max(self.prescheduleNotificationLimit - deliveredNotifications.count, 1)
-            
-            if prescheduleNotificationLimit < numberOfTasksWithNotifications {
-                os_log(.error, "The number of available notification slots is smaller than the numer of tasks with active notifications: \(numberOfTasksWithNotifications), removing the oldest \(numberOfTasksWithNotifications - prescheduleNotificationLimit) notifications.")
+            // Disable notification center interaction when running unit tests:
+            if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
+                let notificationCenter = UNUserNotificationCenter.current()
                 
-                let notificationsToBeRemoved = Array(deliveredNotifications
-                    .map(\.request.identifier)
-                    .filter { identifier in
-                        // Only remove notifications that have been scheduled by a task in the Scheduler module:
-                        tasks.contains { task in
-                            task.contains(scheduledNotificationWithId: identifier)
+                if self.prescheduleNotificationLimit < numberOfTasksWithNotifications {
+                    os_log(.error, "The preschedule notification limit \(self.prescheduleNotificationLimit) is smaller than the numer of tasks with active notifications: \(numberOfTasksWithNotifications)")
+                    assertionFailure("Please ensure that your preschedule notification limit is bigger than the teasks with active notifications")
+                }
+                
+                let deliveredNotifications = await notificationCenter.deliveredNotifications().sorted(by: { $0.date < $1.date })
+                prescheduleNotificationLimit = max(self.prescheduleNotificationLimit - deliveredNotifications.count, 1)
+                
+                if prescheduleNotificationLimit < numberOfTasksWithNotifications {
+                    os_log(.error, "The number of available notification slots is smaller than the numer of tasks with active notifications: \(numberOfTasksWithNotifications), removing the oldest \(numberOfTasksWithNotifications - prescheduleNotificationLimit) notifications.")
+                    
+                    let notificationsToBeRemoved = Array(deliveredNotifications
+                        .map(\.request.identifier)
+                        .filter { identifier in
+                            // Only remove notifications that have been scheduled by a task in the Scheduler module:
+                            tasks.contains { task in
+                                task.contains(scheduledNotificationWithId: identifier)
+                            }
                         }
-                    }
-                    .prefix(max(0, numberOfTasksWithNotifications - prescheduleNotificationLimit)))
-                
-                notificationCenter.removeDeliveredNotifications(withIdentifiers: notificationsToBeRemoved)
+                        .prefix(max(0, numberOfTasksWithNotifications - prescheduleNotificationLimit)))
+                    
+                    notificationCenter.removeDeliveredNotifications(withIdentifiers: notificationsToBeRemoved)
+                }
+            } else {
+                prescheduleNotificationLimit = 0
             }
             
             let prescheduleNotificationLimitPerTask = prescheduleNotificationLimit / numberOfTasksWithNotifications

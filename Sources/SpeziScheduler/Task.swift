@@ -119,9 +119,14 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
             futureEvent.cancelNotification()
         }
         
+        // Set the timers for all events.
+        for futureEvent in futureEvents {
+            futureEvent.scheduleTask()
+        }
+        
         // Only allows up to 64 notifications to be scheduled per one app, we ensure that we do not exceed the preschedule limit.
         for futureEvent in futureEvents.sorted(by: { $0.scheduledAt < $1.scheduledAt }).prefix(prescheduleLimit) {
-            futureEvent.scheduleTaskAndNotification()
+            futureEvent.scheduleNotification()
         }
     }
     
