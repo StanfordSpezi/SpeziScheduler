@@ -149,7 +149,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         task.objectWillChange
             .receive(on: RunLoop.main)
             .sink {
-                self.objectWillChange.send()
+                self.sendObjectWillChange()
             }
             .store(in: &cancellables)
         
@@ -166,6 +166,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     }
     
     func sendObjectWillChange() {
+        print("sendObjectWillChange")
         _Concurrency.Task { @MainActor in
             self.objectWillChange.send()
         }

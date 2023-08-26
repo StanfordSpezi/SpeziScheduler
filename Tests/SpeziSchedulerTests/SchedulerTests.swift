@@ -143,11 +143,12 @@ final class SchedulerTests: XCTestCase {
         scheduler.schedule(task: testTask2)
         
         let expectationCompleteEvents = XCTestExpectation(description: "Complete all events")
-        expectationCompleteEvents.expectedFulfillmentCount = 12
+        expectationCompleteEvents.expectedFulfillmentCount = numberOfEvents * 2
         expectationCompleteEvents.assertForOverFulfill = true
         
         let expectationObservedObject = XCTestExpectation(description: "Get Updates for all scheduled events.")
-        expectationObservedObject.expectedFulfillmentCount = 12
+        // Two times for registering the tasks, each time for an event that is completed.
+        expectationObservedObject.expectedFulfillmentCount = (numberOfEvents * 2) + 2
         expectationObservedObject.assertForOverFulfill = true
         
         let cancellable = scheduler.objectWillChange.sink {
