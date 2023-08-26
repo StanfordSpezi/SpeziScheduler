@@ -11,6 +11,7 @@ import Foundation
 import OSLog
 import Spezi
 import SpeziLocalStorage
+import SwiftUI
 import UIKit
 import UserNotifications
 
@@ -23,7 +24,16 @@ import UserNotifications
 public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDelegate, Module {
     @Dependency private var localStorage: LocalStorage
     
-    @Published public private(set) var tasks: [Task<Context>] = []
+    public private(set) var tasks: [Task<Context>] = [] {
+        didSet {
+            guard oldValue != tasks else {
+                return
+            }
+            
+            persistChanges()
+        }
+    }
+    @AppStorage("Spezi.Scheduler.firstlaunch") private var firstLaunch = true
     private var initialTasks: [Task<Context>]
     private var cancellables: Set<AnyCancellable> = []
     private let prescheduleNotificationLimit: Int
@@ -47,6 +57,15 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         
         self.prescheduleNotificationLimit = prescheduleNotificationLimit
         self.initialTasks = initialTasks
+        
+        super.init()
+        
+        let notificationCenter = UNUserNotificationCenter.current()
+        if firstLaunch {
+            notificationCenter.removeAllDeliveredNotifications()
+            notificationCenter.removeAllPendingNotificationRequests()
+            firstLaunch = false
+        }
     }
     
     
@@ -61,13 +80,8 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         self.objectWillChange
             .throttle(for: .seconds(0.25), scheduler: RunLoop.main, latest: true)
             .sink {
-                _Concurrency.Task {
-                    do {
-                        try self.localStorage.store(self.tasks)
-                    } catch {
-                        os_log(.error, "Could not persist the tasks of the scheduler module: \(error)")
-                    }
-                }
+                self.updateScheduleTaskAndNotifications()
+                self.persistChanges()
             }
             .store(in: &cancellables)
         
@@ -78,9 +92,6 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         }
         
         schedule(tasks: storedTasks)
-        
-        // Schedule tasks with a timer and make sure that we always schedule the next 16 tasks.
-        updateScheduleTaskAndNotifications()
     }
     
     
@@ -90,16 +101,16 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
             try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
             
             // Triggers an update of the UI in case the notification permissions are changed
-            _Concurrency.Task { @MainActor in
-                self.objectWillChange.send()
-            }
+            sendObjectWillChange()
         }
-        
-        updateScheduleTaskAndNotifications()
     }
     
     public func willFinishLaunchingWithOptions(_ application: UIApplication, launchOptions: [UIApplication.LaunchOptionsKey: Any]) {
         UNUserNotificationCenter.current().delegate = self
+    }
+    
+    public func applicationWillTerminate(_ application: UIApplication) {
+        persistChanges()
     }
     
     // Unfortunately, the async overload of the `UNUserNotificationCenterDelegate` results in a runtime crash.
@@ -109,10 +120,8 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        _Concurrency.Task { @MainActor in
-            self.objectWillChange.send()
-            completionHandler()
-        }
+        sendObjectWillChange()
+        completionHandler()
     }
     
     // Unfortunately, the async overload of the `UNUserNotificationCenterDelegate` results in a runtime crash.
@@ -122,16 +131,12 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        _Concurrency.Task { @MainActor in
-            self.objectWillChange.send()
-            completionHandler([.badge, .banner, .sound])
-        }
+        sendObjectWillChange()
+        completionHandler([.badge, .banner, .sound])
     }
     
     public func sceneWillEnterForeground(_ scene: UIScene) {
-        _Concurrency.Task { @MainActor in
-            self.objectWillChange.send()
-        }
+        sendObjectWillChange()
     }
     
     
@@ -142,25 +147,33 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
             .receive(on: RunLoop.main)
             .sink {
                 self.objectWillChange.send()
-                self.updateScheduleTaskAndNotifications()
             }
             .store(in: &cancellables)
         
-        self.updateScheduleTaskAndNotifications()
-        
         tasks.append(task)
+        self.sendObjectWillChange()
     }
     
+    func persistChanges() {
+        do {
+            try self.localStorage.store(self.tasks)
+        } catch {
+            os_log(.error, "Could not persist the tasks of the scheduler module: \(error)")
+        }
+    }
     
-    @objc
-    private func timeZoneChanged() async {
+    func sendObjectWillChange() {
         _Concurrency.Task { @MainActor in
             self.objectWillChange.send()
         }
     }
     
+    @objc
+    private func timeZoneChanged() {
+        sendObjectWillChange()
+    }
+    
     private func schedule(tasks: [Task<Context>]) {
-        self.tasks.reserveCapacity(self.tasks.count + tasks.count)
         for task in tasks {
             schedule(task: task)
         }
@@ -169,6 +182,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     private func updateScheduleTaskAndNotifications() {
         _Concurrency.Task {
             let notificationCenter = UNUserNotificationCenter.current()
+            
             // Get all tasks that have notifications enabled and that have events in the future.
             let numberOfTasksWithNotifications = max(1, tasks.filter { $0.notifications && !$0.events(from: .now).isEmpty }.count)
             
@@ -201,13 +215,8 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
             for task in self.tasks {
                 task.scheduleTaskAndNotification(prescheduleNotificationLimitPerTask)
             }
-        }
-    }
-    
-    
-    deinit {
-        for cancellable in cancellables {
-            cancellable.cancel()
+            
+            persistChanges()
         }
     }
 }

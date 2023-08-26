@@ -28,14 +28,14 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
     private let lock = Lock()
     private var timer: Timer?
     private let _scheduledAt: Date
-    private(set) var notification: UUID? {
-        willSet {
-            taskReference?.sendObjectWillChange()
-        }
-    }
+    private(set) var notification: UUID?
     /// The date when the ``Event`` was completed.
     public private(set) var completedAt: Date? {
-        willSet {
+        didSet {
+            guard completedAt != oldValue else {
+                return
+            }
+            
             taskReference?.sendObjectWillChange()
         }
     }

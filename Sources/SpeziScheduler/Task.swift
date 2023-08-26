@@ -38,7 +38,7 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     /// The customized context of the ``Task``.
     public let context: Context
     
-    @Published var events: [Event]
+    private(set) var events: [Event]
     
     private var cancellables: Set<AnyCancellable> = []
     
@@ -125,9 +125,8 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
         }
     }
     
-    
     func sendObjectWillChange() {
-        objectWillChange.send()
+        self.objectWillChange.send()
     }
     
     

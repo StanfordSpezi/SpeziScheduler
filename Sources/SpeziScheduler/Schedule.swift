@@ -210,7 +210,7 @@ public class Schedule: Codable, @unchecked Sendable, ObservableObject {
         }
         
         if randomDisplacementChanged {
-            objectWillChange.send()
+            self.objectWillChange.send()
         }
         
         return dates
