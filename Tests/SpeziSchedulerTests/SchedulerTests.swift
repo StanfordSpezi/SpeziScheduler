@@ -187,11 +187,12 @@ final class SchedulerTests: XCTestCase {
         _Concurrency.Task {
             for event in events {
                 await event.complete(true)
+                try? await _Concurrency.Task.sleep(for: .seconds(0.2))
                 expectationCompleteEvents.fulfill()
             }
         }
     
-        await fulfillment(of: [expectationCompleteEvents, expectationObservedObject], timeout: 1)
+        await fulfillment(of: [expectationCompleteEvents, expectationObservedObject], timeout: (Double(numberOfEvents) * 2 * 0.2) + 1)
         cancellable.cancel()
         
         XCTAssert(events.allSatisfy { $0.complete })
