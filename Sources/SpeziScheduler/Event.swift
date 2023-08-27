@@ -83,6 +83,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
         }
         
         let notificationCenter = UNUserNotificationCenter.current()
+        notificationCenter.removeDeliveredNotifications(withIdentifiers: [notification.uuidString])
         notificationCenter.removePendingNotificationRequests(withIdentifiers: [notification.uuidString])
         
         self.notification = nil
@@ -97,7 +98,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
         // Schedule the timer for the event that refreshes the Observable Object.
         if timer == nil {
             timer = Timer(
-                timeInterval: max(Date.now.distance(to: scheduledAt), 0.01),
+                timeInterval: max(Date.now.distance(to: scheduledAt), .leastNonzeroMagnitude),
                 repeats: false,
                 block: { timer in
                     timer.invalidate()
@@ -141,7 +142,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
                     self.log = "Registered at \(self.scheduledAt.timeIntervalSince(.now))"
                     self.notification = identifier
                 } catch {
-                    os_log(.error, "Could not schedule task as local notification: \(error)")
+                    os_log(.error, "Spezi.Scheduler: Could not schedule task as local notification: \(error)")
                     self.log = "Could not schedule task as local notification: \(error)"
                 }
             }

@@ -120,9 +120,10 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     
     func scheduleNotification(_ prescheduleLimit: Int) async {
         // iOS only allows up to 64 notifications to be scheduled per one app, this is why we have to do the following logic with the prescheduleLimit:
+        // We don't check notifications here in case notifications might becomes mutable in the future.
         
         // Cancel all future notifications to ensure that we only register up to the defined limit.
-        let futureEvents = events(from: .now)
+        let futureEvents = events(from: .now.addingTimeInterval(.leastNonzeroMagnitude))
         
         for futureEvent in futureEvents {
             futureEvent.cancelNotification()
