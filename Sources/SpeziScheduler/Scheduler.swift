@@ -140,7 +140,6 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     /// - Parameter task: The new ``Task`` instance that should be scheduled.
     public func schedule(task: Task<Context>) async {
         task.objectWillChange
-            .receive(on: RunLoop.main)
             .sink {
                 self.sendObjectWillChange()
             }
