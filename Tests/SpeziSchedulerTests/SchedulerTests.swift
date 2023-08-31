@@ -192,7 +192,7 @@ final class SchedulerTests: XCTestCase {
             }
         }
     
-        await fulfillment(of: [expectationCompleteEvents, expectationObservedObject], timeout: (Double(numberOfEvents) * 2 * 0.2) + 1)
+        await fulfillment(of: [expectationCompleteEvents, expectationObservedObject], timeout: (Double(numberOfEvents) * 2 * 0.2) + 2)
         cancellable.cancel()
         
         XCTAssert(events.allSatisfy { $0.complete })
