@@ -90,7 +90,7 @@ final class SchedulerTests: XCTestCase {
                 repetition: .randomBetween( // Randomly scheduled in the first half of each second.
                     start: .init(nanosecond: 450_000_000),
                     end: .init(nanosecond: 550_000_000)
-                ),
+                                          ),
                 end: .numberOfEvents(numberOfEvents)
             ),
             context: "This is a test context"
@@ -145,6 +145,7 @@ final class SchedulerTests: XCTestCase {
         
         let calledObjectWillChange = XCTestExpectation(description: "Called object will change during registration.")
         calledObjectWillChange.assertForOverFulfill = true
+        
         var cancellable = scheduler.objectWillChange
             .subscribe(on: expectationQueue)
             .sink {
@@ -165,6 +166,9 @@ final class SchedulerTests: XCTestCase {
         
         await fulfillment(of: [calledObjectWillChange], timeout: 1)
         cancellable.cancel()
+        
+        try await _Concurrency.Task.sleep(for: .seconds(1))
+        
         
         let expectationCompleteEvents = XCTestExpectation(description: "Complete all events")
         expectationCompleteEvents.expectedFulfillmentCount = numberOfEvents * 2
@@ -194,7 +198,7 @@ final class SchedulerTests: XCTestCase {
                 expectationCompleteEvents.fulfill()
             }
         }
-    
+        
         await fulfillment(of: [expectationCompleteEvents, expectationObservedObject], timeout: (Double(numberOfEvents) * 2 * 0.5) + 3)
         cancellable.cancel()
         

@@ -48,8 +48,10 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     /// Creates a new ``Scheduler`` module.
     /// - Parameter prescheduleLimit: The number of prescheduled notifications that should be registerd.
     ///                               Must be bigger than 1 and smaller than the limit of 64 local notifications at a time.
+    ///                               We recommend setting the limit to a value lower than 64, e.g., 56, to ensure room inaccuracies in the iOS scheduling APIs.
+    ///                               The default value is `56`.
     /// - Parameter tasks: The initial set of ``Task``s.
-    public init(prescheduleNotificationLimit: Int = 64, tasks initialTasks: [Task<Context>] = []) {
+    public init(prescheduleNotificationLimit: Int = 56, tasks initialTasks: [Task<Context>] = []) {
         assert(
             prescheduleNotificationLimit >= 1 && prescheduleNotificationLimit <= 64,
             "The prescheduleLimit must be bigger than 1 and smaller than the limit of 64 local notifications at a time"
