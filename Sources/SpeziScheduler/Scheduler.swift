@@ -97,7 +97,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
             try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
             
             // Triggers an update of the UI in case the notification permissions are changed
-            sendObjectWillChange()
+            await sendObjectWillChange()
         }
     }
     
@@ -113,26 +113,25 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     // Reverify this in iOS versions after iOS 17.0
     public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) {
-        sendObjectWillChange()
-        completionHandler()
+        didReceive response: UNNotificationResponse
+    ) async {
+        await sendObjectWillChange()
     }
     
     // Unfortunately, the async overload of the `UNUserNotificationCenterDelegate` results in a runtime crash.
     // Reverify this in iOS versions after iOS 17.0
     public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-    ) {
-        sendObjectWillChange()
-        completionHandler([.badge, .banner, .sound, .list])
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        await sendObjectWillChange()
+        return [.badge, .banner, .sound, .list]
     }
     
     public func sceneWillEnterForeground(_ scene: UIScene) {
-        sendObjectWillChange()
+        _Concurrency.Task {
+            await sendObjectWillChange()
+        }
     }
     
     
@@ -141,7 +140,9 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     public func schedule(task: Task<Context>) async {
         task.objectWillChange
             .sink {
-                self.sendObjectWillChange()
+                _Concurrency.Task {
+                    await self.sendObjectWillChange()
+                }
             }
             .store(in: &cancellables)
         
@@ -153,7 +154,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         }
         persistChanges()
         
-        sendObjectWillChange(skipInternalUpdates: true)
+        await sendObjectWillChange(skipInternalUpdates: true)
     }
     
     func persistChanges() {
@@ -164,27 +165,28 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         }
     }
     
-    func sendObjectWillChange(skipInternalUpdates: Bool = false) {
+    func sendObjectWillChange(skipInternalUpdates: Bool = false) async {
         os_log(.debug, "Spezi.Scheduler: Object will change (skipInternalUpdates: \(skipInternalUpdates)")
         if skipInternalUpdates {
-            _Concurrency.Task { @MainActor in
+            await MainActor.run {
                 self.objectWillChange.send()
             }
         } else {
-            _Concurrency.Task {
-                self.updateTasks()
-                await self.updateScheduleNotifications()
-                self.persistChanges()
-                await MainActor.run {
-                    self.objectWillChange.send()
-                }
+            self.updateTasks()
+            await self.updateScheduleNotifications()
+            self.persistChanges()
+            await MainActor.run {
+                self.objectWillChange.send()
             }
         }
     }
     
+    
     @objc
     private func timeZoneChanged() {
-        sendObjectWillChange()
+        _Concurrency.Task {
+            await sendObjectWillChange()
+        }
     }
     
     private func schedule(tasks: [Task<Context>]) async {
@@ -213,9 +215,9 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
             return
         }
         
-        // First, remove all notifications from completed events:
+        // First, remove all notifications from past events that are be complete.
         for task in self.tasks {
-            for event in task.events where event.complete {
+            for event in task.events {
                 event.cancelNotification()
             }
         }

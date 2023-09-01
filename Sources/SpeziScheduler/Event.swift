@@ -82,6 +82,11 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
             return
         }
         
+        guard complete || scheduledAt > .now else {
+            self.log = "Notification Delivered - Not yet Completed"
+            return
+        }
+        
         let notificationCenter = UNUserNotificationCenter.current()
         notificationCenter.removeDeliveredNotifications(withIdentifiers: [notification.uuidString])
         notificationCenter.removePendingNotificationRequests(withIdentifiers: [notification.uuidString])
@@ -139,7 +144,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
                 
                 do {
                     try await notificationCenter.add(request)
-                    self.log = "Registered at \(self.scheduledAt.timeIntervalSince(.now))"
+                    self.log = "Registered at \(self.scheduledAt.formatted(date: .abbreviated, time: .complete))"
                     self.notification = identifier
                 } catch {
                     os_log(.error, "Spezi.Scheduler: Could not schedule task as local notification: \(error)")

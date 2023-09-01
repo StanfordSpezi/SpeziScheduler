@@ -16,6 +16,13 @@ on:
   workflow_dispatch:
 
 jobs:
+  build:
+    name: Build Swift Package on Xcode 14
+    uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
+    with:
+      runsonlabels: '["macOS", "self-hosted"]'
+      scheme: SpeziScheduler
+      test: false
   buildandtest:
     name: Build and Test Swift Package
     uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
