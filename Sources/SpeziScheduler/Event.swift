@@ -77,6 +77,34 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
     }
     
     
+    /// Use this function to mark an ``Event`` as complete or incomplete.
+    /// - Parameter newValue: The new state of the ``Event``.
+    public func complete(_ newValue: Bool) async {
+        await lock.enter {
+            if newValue {
+                completedAt = Date()
+                if let notification {
+                    let notificationCenter = UNUserNotificationCenter.current()
+                    notificationCenter.removeDeliveredNotifications(withIdentifiers: [notification.uuidString])
+                    notificationCenter.removePendingNotificationRequests(withIdentifiers: [notification.uuidString])
+                }
+            } else {
+                completedAt = nil
+            }
+        }
+    }
+    
+    /// Toggle the ``Event``'s ``Event/complete`` state.
+    public func toggle() async {
+        await complete(!complete)
+    }
+    
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(taskReference?.id)
+        hasher.combine(_scheduledAt)
+    }
+    
+    
     func cancelNotification() {
         guard let notification else {
             return
@@ -152,35 +180,6 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
                 }
             }
         }
-    }
-    
-    
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(taskReference?.id)
-        hasher.combine(_scheduledAt)
-    }
-    
-    /// Use this function to mark an ``Event`` as complete or incomplete.
-    /// - Parameter newValue: The new state of the ``Event``.
-    public func complete(_ newValue: Bool) async {
-        await lock.enter {
-            if newValue {
-                completedAt = Date()
-                if let notification {
-                    let notificationCenter = UNUserNotificationCenter.current()
-                    notificationCenter.removeDeliveredNotifications(withIdentifiers: [notification.uuidString])
-                    notificationCenter.removePendingNotificationRequests(withIdentifiers: [notification.uuidString])
-                }
-            } else {
-                completedAt = nil
-            }
-        }
-    }
-    
-    
-    /// Toggle the ``Event``'s ``Event/complete`` state.
-    public func toggle() async {
-        await complete(!complete)
     }
     
     

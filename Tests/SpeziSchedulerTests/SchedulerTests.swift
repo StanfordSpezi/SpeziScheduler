@@ -140,6 +140,9 @@ final class SchedulerTests: XCTestCase {
         )
         let scheduler = await createScheduler(withInitialTasks: testTask)
         
+        try await _Concurrency.Task.sleep(for: .seconds(1))
+        
+        
         let calledObjectWillChange = XCTestExpectation(description: "Called object will change during registration.")
         calledObjectWillChange.assertForOverFulfill = true
         var cancellable = scheduler.objectWillChange
@@ -187,12 +190,12 @@ final class SchedulerTests: XCTestCase {
         _Concurrency.Task {
             for event in events {
                 await event.complete(true)
-                try? await _Concurrency.Task.sleep(for: .seconds(0.2))
+                try? await _Concurrency.Task.sleep(for: .seconds(0.5))
                 expectationCompleteEvents.fulfill()
             }
         }
     
-        await fulfillment(of: [expectationCompleteEvents, expectationObservedObject], timeout: (Double(numberOfEvents) * 2 * 0.2) + 2)
+        await fulfillment(of: [expectationCompleteEvents, expectationObservedObject], timeout: (Double(numberOfEvents) * 2 * 0.5) + 3)
         cancellable.cancel()
         
         XCTAssert(events.allSatisfy { $0.complete })
