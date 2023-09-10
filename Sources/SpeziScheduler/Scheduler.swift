@@ -206,10 +206,25 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     
     private func updateScheduleNotifications() async {
         // Get all tasks that have notifications enabled and that have events in the future that are not yet complete.
-        let numberOfTasksWithNotifications = max(
-            1,
-            tasks.filter { $0.notifications && !$0.events(from: .now).contains(where: { !$0.complete }) }.count
-        )
+        // Same as but there is a Swift compiler bug that is causing a crash using Swift 5.9 when archiving in a release build.
+        // Check with newer Swift versions:
+        // ```swift
+        // let numberOfTasksWithNotifications = max(
+        //     1,
+        //     tasks.filter { $0.notifications && !$0.events(from: .now, complete: false).contains(where: { !$0.complete }) }.count
+        // )
+        // ```
+        var numberOfTasksWithNotificationsCounter: Int = 0
+        for task in tasks where task.notifications {
+            let events = task.events(from: .now)
+            
+            guard events.contains(where: { !$0.complete }) else {
+                continue
+            }
+            
+            numberOfTasksWithNotificationsCounter += 1
+        }
+        let numberOfTasksWithNotifications = max(1, numberOfTasksWithNotificationsCounter)
         
         
         // Disable notification center interaction when running unit tests:
@@ -237,17 +252,32 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         if prescheduleNotificationLimit < numberOfTasksWithNotifications {
             os_log(.error, "Spezi.Scheduler: The number of available notification slots is smaller than the numer of tasks with active notifications: \(numberOfTasksWithNotifications), removing the oldest \(numberOfTasksWithNotifications - prescheduleNotificationLimit) notifications.")
             
-            let notificationsToBeRemoved = Array(deliveredNotifications
-                .map(\.request.identifier)
-                .filter { identifier in
-                    // Only remove notifications that have been scheduled by a task in the Scheduler module:
-                    tasks.contains { task in
-                        task.contains(scheduledNotificationWithId: identifier)
-                    }
-                }
-                .prefix(max(0, numberOfTasksWithNotifications - prescheduleNotificationLimit)))
+            // Same as but there is a Swift compiler bug that is causing a crash using Swift 5.9 when archiving in a release build.
+            // Check with newer Swift versions:
+            // ```swift
+            // let notificationsToBeRemoved = Array(deliveredNotifications
+            //     .map(\.request.identifier)
+            //     .filter { identifier in
+            //         tasks.contains { task in
+            //             task.contains(scheduledNotificationWithId: identifier)
+            //         }
+            //     }
+            //     .prefix(max(0, numberOfTasksWithNotifications - prescheduleNotificationLimit)))
             
-            notificationCenter.removeDeliveredNotifications(withIdentifiers: notificationsToBeRemoved)
+            var notificationsThatMayBeRemovedIdentifiers: [String] = []
+            for deliveredNotification in deliveredNotifications {
+                let identifier = deliveredNotification.request.identifier
+                // Only remove notifications that have been scheduled by a task in the Scheduler module:
+                for task in tasks where task.contains(scheduledNotificationWithId: identifier) {
+                    notificationsThatMayBeRemovedIdentifiers.append(identifier)
+                    break // Continue to the next deliveredNotification.
+                }
+            }
+            let notificationsToBeRemovedIdentifier = Array(
+                notificationsThatMayBeRemovedIdentifiers.prefix(upTo: max(0, numberOfTasksWithNotifications - prescheduleNotificationLimit))
+            )
+            
+            notificationCenter.removeDeliveredNotifications(withIdentifiers: notificationsToBeRemovedIdentifier)
         }
         
         let prescheduleNotificationLimitPerTask = prescheduleNotificationLimit / numberOfTasksWithNotifications
