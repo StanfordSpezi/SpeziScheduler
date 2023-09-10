@@ -206,7 +206,8 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     
     private func updateScheduleNotifications() async {
         // Get all tasks that have notifications enabled and that have events in the future that are not yet complete.
-        // Same as but there is a Swift compiler bug that is causing a crash using Swift 5.9. Check with newer Swift versions:
+        // Same as but there is a Swift compiler bug that is causing a crash using Swift 5.9 when archiving in a release build.
+        // Check with newer Swift versions:
         // ```swift
         // let numberOfTasksWithNotifications = max(
         //     1,
@@ -251,7 +252,8 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         if prescheduleNotificationLimit < numberOfTasksWithNotifications {
             os_log(.error, "Spezi.Scheduler: The number of available notification slots is smaller than the numer of tasks with active notifications: \(numberOfTasksWithNotifications), removing the oldest \(numberOfTasksWithNotifications - prescheduleNotificationLimit) notifications.")
             
-            // Same as but there is a Swift compiler bug that is causing a crash using Swift 5.9. Check with newer Swift versions:
+            // Same as but there is a Swift compiler bug that is causing a crash using Swift 5.9 when archiving in a release build.
+            // Check with newer Swift versions:
             // ```swift
             // let notificationsToBeRemoved = Array(deliveredNotifications
             //     .map(\.request.identifier)
