@@ -83,7 +83,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         )
         
         _Concurrency.Task {
-            guard let storedTasks = try? localStorage.read([Task<Context>].self) else {
+            guard let storedTasks = try? localStorage.read([Task<Context>].self, storageKey: Constants.taskStorageKey) else {
                 await schedule(tasks: initialTasks)
                 return
             }
@@ -161,7 +161,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     
     func persistChanges() {
         do {
-            try self.localStorage.store(self.tasks)
+            try self.localStorage.store(self.tasks, storageKey: Constants.taskStorageKey)
         } catch {
             os_log(.error, "Spezi.Scheduler: Could not persist the tasks of the scheduler module: \(error)")
         }
