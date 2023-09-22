@@ -163,18 +163,8 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     @MainActor
     public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse
-    ) async {
-        await sendObjectWillChange()
-    }
-    
-    @_documentation(visibility: internal)
-    @MainActor
-    public func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        await sendObjectWillChange()
         return [.badge, .banner, .sound, .list]
     }
     
