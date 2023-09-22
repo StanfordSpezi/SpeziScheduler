@@ -112,10 +112,19 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         }
     }
     
+    @_documentation(visibility: internal)
     public func willFinishLaunchingWithOptions(_ application: UIApplication, launchOptions: [UIApplication.LaunchOptionsKey: Any]) {
         UNUserNotificationCenter.current().delegate = self
     }
     
+    @_documentation(visibility: internal)
+    public func sceneWillEnterForeground(_ scene: UIScene) {
+        _Concurrency.Task {
+            await sendObjectWillChange()
+        }
+    }
+    
+    @_documentation(visibility: internal)
     public func applicationWillTerminate(_ application: UIApplication) {
         _Concurrency.Task {
             await persistChanges()
@@ -124,26 +133,29 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     
     // Unfortunately, the async overload of the `UNUserNotificationCenterDelegate` results in a runtime crash.
     // Reverify this in iOS versions after iOS 17.0
+    @_documentation(visibility: internal)
     public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse
-    ) async {
-        await sendObjectWillChange()
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        _Concurrency.Task {
+            await sendObjectWillChange()
+            completionHandler()
+        }
     }
     
     // Unfortunately, the async overload of the `UNUserNotificationCenterDelegate` results in a runtime crash.
     // Reverify this in iOS versions after iOS 17.0
+    @_documentation(visibility: internal)
     public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification
-    ) async -> UNNotificationPresentationOptions {
-        await sendObjectWillChange()
-        return [.badge, .banner, .sound, .list]
-    }
-    
-    public func sceneWillEnterForeground(_ scene: UIScene) {
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
         _Concurrency.Task {
             await sendObjectWillChange()
+            completionHandler([.badge, .banner, .sound, .list])
         }
     }
     
@@ -181,7 +193,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     }
     
     func sendObjectWillChange(skipInternalUpdates: Bool = false) async {
-        os_log(.debug, "Spezi.Scheduler: Object will change (skipInternalUpdates: \(skipInternalUpdates)")
+        os_log(.debug, "Spezi.Scheduler: Object will change (skipInternalUpdates: \(skipInternalUpdates))")
         if skipInternalUpdates {
             await MainActor.run {
                 self.objectWillChange.send()
