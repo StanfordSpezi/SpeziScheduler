@@ -165,7 +165,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        return [.badge, .banner, .sound, .list]
+        [.badge, .banner, .sound, .list]
     }
     
     
