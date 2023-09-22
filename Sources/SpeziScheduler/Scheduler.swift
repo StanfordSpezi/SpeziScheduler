@@ -41,12 +41,14 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     private let prescheduleNotificationLimit: Int
     private let localStorageLock = Lock()
     
+    
     /// Indicates whether the necessary authorization to deliver local notifications is already granted.
     public var localNotificationAuthorization: Bool {
         get async {
             await UNUserNotificationCenter.current().notificationSettings().authorizationStatus == .authorized
         }
     }
+    
     
     /// Creates a new ``Scheduler`` module.
     /// - Parameter prescheduleLimit: The number of prescheduled notifications that should be registerd.
@@ -112,54 +114,6 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         }
     }
     
-    @_documentation(visibility: internal)
-    public func willFinishLaunchingWithOptions(_ application: UIApplication, launchOptions: [UIApplication.LaunchOptionsKey: Any]) {
-        UNUserNotificationCenter.current().delegate = self
-    }
-    
-    @_documentation(visibility: internal)
-    public func sceneWillEnterForeground(_ scene: UIScene) {
-        _Concurrency.Task {
-            await sendObjectWillChange()
-        }
-    }
-    
-    @_documentation(visibility: internal)
-    public func applicationWillTerminate(_ application: UIApplication) {
-        _Concurrency.Task {
-            await persistChanges()
-        }
-    }
-    
-    // Unfortunately, the async overload of the `UNUserNotificationCenterDelegate` results in a runtime crash.
-    // Crashes on iOS 16.6.1. Reverify this in iOS versions after pushing the deployment target to iOS 17.0
-    @_documentation(visibility: internal)
-    public func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) {
-        _Concurrency.Task {
-            await sendObjectWillChange()
-            completionHandler()
-        }
-    }
-    
-    // Unfortunately, the async overload of the `UNUserNotificationCenterDelegate` results in a runtime crash.
-    // Crashes on iOS 16.6.1. Reverify this in iOS versions after pushing the deployment target to iOS 17.0
-    @_documentation(visibility: internal)
-    public func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-    ) {
-        _Concurrency.Task {
-            await sendObjectWillChange()
-            completionHandler([.badge, .banner, .sound, .list])
-        }
-    }
-    
-    
     /// Schedule a new ``Task`` in the ``Scheduler`` module.
     /// - Parameter task: The new ``Task`` instance that should be scheduled.
     public func schedule(task: Task<Context>) async {
@@ -182,7 +136,51 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         await sendObjectWillChange(skipInternalUpdates: true)
     }
     
-    func persistChanges() async {
+    
+    // MARK: - Lifecycle
+    @_documentation(visibility: internal)
+    public func willFinishLaunchingWithOptions(_ application: UIApplication, launchOptions: [UIApplication.LaunchOptionsKey: Any]) {
+        UNUserNotificationCenter.current().delegate = self
+    }
+    
+    @_documentation(visibility: internal)
+    public func sceneWillEnterForeground(_ scene: UIScene) {
+        _Concurrency.Task {
+            await sendObjectWillChange()
+        }
+    }
+    
+    @_documentation(visibility: internal)
+    public func applicationWillTerminate(_ application: UIApplication) {
+        _Concurrency.Task {
+            await persistChanges()
+        }
+    }
+    
+    
+    // MARK: - Notification Center
+    @_documentation(visibility: internal)
+    @MainActor
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        await sendObjectWillChange()
+    }
+    
+    @_documentation(visibility: internal)
+    @MainActor
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        await sendObjectWillChange()
+        return [.badge, .banner, .sound, .list]
+    }
+    
+    
+    // MARK: - Helper Methods
+    private func persistChanges() async {
         await localStorageLock.enter {
             do {
                 try self.localStorage.store(self.tasks, storageKey: Constants.taskStorageKey)
@@ -192,7 +190,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         }
     }
     
-    func sendObjectWillChange(skipInternalUpdates: Bool = false) async {
+    private func sendObjectWillChange(skipInternalUpdates: Bool = false) async {
         os_log(.debug, "Spezi.Scheduler: Object will change (skipInternalUpdates: \(skipInternalUpdates))")
         if skipInternalUpdates {
             await MainActor.run {
