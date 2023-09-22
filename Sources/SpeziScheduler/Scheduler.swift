@@ -132,7 +132,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     }
     
     // Unfortunately, the async overload of the `UNUserNotificationCenterDelegate` results in a runtime crash.
-    // Reverify this in iOS versions after iOS 17.0
+    // Crashes on iOS 16.6.1. Reverify this in iOS versions after pushing the deployment target to iOS 17.0
     @_documentation(visibility: internal)
     public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
@@ -146,7 +146,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     }
     
     // Unfortunately, the async overload of the `UNUserNotificationCenterDelegate` results in a runtime crash.
-    // Reverify this in iOS versions after iOS 17.0
+    // Crashes on iOS 16.6.1. Reverify this in iOS versions after pushing the deployment target to iOS 17.0
     @_documentation(visibility: internal)
     public func userNotificationCenter(
         _ center: UNUserNotificationCenter,
