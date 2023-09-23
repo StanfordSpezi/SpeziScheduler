@@ -11,11 +11,13 @@ import Foundation
 import SwiftData
 
 
+#warning("Make the types all structs again?")
+#warning("Rename to Job")
 /// A ``Task`` defines an instruction that is scheduled one to multiple times as defined by the ``Task/schedule`` property.
 ///
 /// A ``Task`` can have an additional ``Task/context`` associated with it that can be used to carry application-specific context.
 @Model
-public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Hashable, ObservableObject, @unchecked Sendable, TaskReference {
+public final class Task<Context: Codable & Sendable>: Identifiable, Hashable, @unchecked Sendable, TaskReference {
     enum CodingKeys: CodingKey {
         case id
         case title
@@ -29,6 +31,7 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     
     /// The unique identifier of the ``Task``.
     public let id: UUID
+    #warning("TODO: Remove the title and find a better way to customize notifications ...")
     /// The title of the ``Task``.
     public let title: String
     /// The description of the ``Task`` as defined by a ``Schedule`` instance.
@@ -38,9 +41,7 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
     /// The customized context of the ``Task``.
     public let context: Context
     
-    @Relationship(deleteRule: .cascade) private(set) var events: [Event]
-    
-    @Transient private var cancellables: Set<AnyCancellable> = []
+    @Relationship(deleteRule: .cascade, inverse: \Event.taskReference) private(set) var events: [Event]
     
     
     /// Creates a new ``Task`` instance.
@@ -65,28 +66,6 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
         self.context = context
         self.events = [] // We first need to fully initalize the type.
         self.events = schedule.dates().map { date in Event(scheduledAt: date, eventsContainer: self) }
-        
-        schedule.objectWillChange
-            .sink {
-                self.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-    }
-    
-    
-    public required init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try container.decode(UUID.self, forKey: .id)
-        self.title = try container.decode(String.self, forKey: .title)
-        self.schedule = try container.decode(Schedule.self, forKey: .schedule)
-        self.notifications = try container.decode(Bool.self, forKey: .notifications)
-        self.context = try container.decode(Context.self, forKey: .context)
-        self.events = []
-        // self.events = try container.decode([Event].self, forKey: .events)
-        
-//        for event in events {
-//            event.taskReference = self
-//        }
     }
     
     
@@ -136,10 +115,6 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
         }
     }
     
-    func sendObjectWillChange() {
-        self.objectWillChange.send()
-    }
-    
     
     /// Returns all ``Event``s corresponding to a ``Task`` withi the `start` and `end` parameters.
     /// - Parameters:
@@ -169,16 +144,6 @@ public final class Task<Context: Codable & Sendable>: Codable, Identifiable, Has
         }
         
         return filteredEvents
-    }
-    
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
-        try container.encode(title, forKey: .title)
-        try container.encode(schedule, forKey: .schedule)
-        try container.encode(notifications, forKey: .notifications)
-        try container.encode(context, forKey: .context)
-        // try container.encode(events, forKey: .events)
     }
     
     public func hash(into hasher: inout Hasher) {

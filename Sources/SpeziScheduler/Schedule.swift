@@ -7,12 +7,14 @@
 //
 
 import Foundation
+import SwiftData
 
 
 /// A ``Schedule`` describe how a ``Task`` should schedule ``Event``.
 /// Use the ``Schedule``.s ``Schedule/init(start:dateComponents:end:calendar:)`` initializer to define
 /// the start date, the repetition schedule (``Schedule/Repetition-swift.enum``), and the end time (``Schedule/End-swift.enum``) of the ``Schedule``
-public class Schedule: Codable, @unchecked Sendable, ObservableObject {
+@Model
+public class Schedule: Codable, @unchecked Sendable {
     /// The  ``Schedule/Repetition-swift.enum`` defines the repeating pattern of the ``Schedule``
     public enum Repetition: Codable, Sendable {
         /// The ``Schedule`` defines a ``Schedule/Repetition-swift.enum`` that occurs on any time matching the `DateComponents`.
@@ -94,10 +96,10 @@ public class Schedule: Codable, @unchecked Sendable, ObservableObject {
     public let calendar: Calendar
     
     private var _randomDisplacements: [Date: TimeInterval]
-    private let queue = DispatchQueue(label: "Scheduler")
+    @Transient private let queue = DispatchQueue(label: "Scheduler")
     
     
-    var randomDisplacements: [Date: TimeInterval] {
+    private var randomDisplacements: [Date: TimeInterval] {
         queue.sync {
             _randomDisplacements
         }
@@ -156,7 +158,7 @@ public class Schedule: Codable, @unchecked Sendable, ObservableObject {
     /// - Parameters:
     ///   - start: The start of the requested series of `Date`s. The start date of the ``Schedule`` is used if the start date is before the ``Schedule``'s start date.
     ///   - end: The end of the requested series of `Date`s. The end (number of events or date) of the ``Schedule`` is used if the start date is after the ``Schedule``'s end.
-    func dates(from searchStart: Date? = nil, to end: End? = nil) -> [Date] {
+    func dates(from searchStart: Date? = nil, to end: End? = nil) -> [Date] { // swiftlint:disable:this function_body_length
         let end = End.minimum(end ?? self.end, self.end)
         
         var dates: [Date] = []
@@ -210,7 +212,15 @@ public class Schedule: Codable, @unchecked Sendable, ObservableObject {
         }
         
         if randomDisplacementChanged {
-            self.objectWillChange.send()
+            #warning("Not sending updates, hope those are stored here ...")
+            _Concurrency.Task { @MainActor in
+                do {
+                    try self.modelContext?.container.mainContext.save()
+                } catch {
+                    print("ERROR: \(error)")
+                }
+            }
+            // self.objectWillChange.send()
         }
         
         return dates

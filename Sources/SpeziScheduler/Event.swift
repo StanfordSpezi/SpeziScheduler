@@ -12,68 +12,31 @@ import SwiftData
 import UserNotifications
 
 
+#warning("We do no longer have the task time zone in here ...")
 /// An  ``Event`` describes a unique point in time when a ``Task`` is scheduled. Use events to display the recurring nature of a ``Task`` to a user.
 ///
 /// Use the  ``Event/complete(_:)`` and ``Event/toggle()`` functions to mark an Event as complete. You can access the scheduled date of an
 /// event using ``Event/scheduledAt`` and the completed date using the ``Event/completedAt`` properties.
 @Model
 public final class Event: Identifiable, Hashable, @unchecked Sendable {
-    @Transient private let lock = Lock()
     @Transient private var timer: Timer?
-    private let _scheduledAt: Date
-    private(set) var notification: UUID?
-    /// The date when the ``Event`` was completed.
-    public private(set) var completedAt: Date? {
-        didSet {
-            guard completedAt != oldValue else {
-                return
-            }
-            
-            taskReference?.sendObjectWillChange()
-        }
-    }
-    /// Only used for test purposes to identify the current state of the log in the UI testing application.
-    internal private(set) var log: String?
-    @Transient weak var taskReference: (any TaskReference)?
-    
     
     /// The date when the ``Event`` is scheduled at.
-    public var scheduledAt: Date {
-        guard let taskReference = taskReference else {
-            return _scheduledAt
-        }
-        
-        let timeZoneDifference = TimeInterval(
-            taskReference.schedule.calendar.timeZone.secondsFromGMT(for: .now) - Calendar.current.timeZone.secondsFromGMT(for: .now)
-        )
-        return _scheduledAt.addingTimeInterval(timeZoneDifference)
-    }
+    public let scheduledAt: Date
+    private(set) var notification: UUID?
+    /// The date when the ``Event`` was completed.
+    public private(set) var completedAt: Date?
+    /// Only used for test purposes to identify the current state of the log in the UI testing application.
+    internal private(set) var log: String?
+    #warning("Does this work?")
+    @Transient weak var taskReference: (any TaskReference)?
     
     /// Indictes if the ``Event`` is complete.
     public var complete: Bool {
-        completedAt != nil
-    }
-    
-    public var id: String {
-        "\(taskReference?.id.uuidString ?? "").\(_scheduledAt.description)"
-    }
-    
-    
-    init(scheduledAt: Date, eventsContainer: any TaskReference) {
-        self._scheduledAt = scheduledAt
-        self.taskReference = eventsContainer
-    }
-    
-    
-    public static func == (lhs: Event, rhs: Event) -> Bool {
-        lhs.taskReference?.id == rhs.taskReference?.id && lhs.scheduledAt == rhs.scheduledAt
-    }
-    
-    
-    /// Use this function to mark an ``Event`` as complete or incomplete.
-    /// - Parameter newValue: The new state of the ``Event``.
-    public func complete(_ newValue: Bool) async {
-        await lock.enter {
+        get {
+            completedAt != nil
+        }
+        set {
             if newValue {
                 completedAt = Date()
                 if let notification {
@@ -87,6 +50,29 @@ public final class Event: Identifiable, Hashable, @unchecked Sendable {
         }
     }
     
+    public var id: String {
+        "\(taskReference?.id.uuidString ?? "").\(scheduledAt.description)"
+    }
+    
+    
+    init(scheduledAt: Date, eventsContainer: any TaskReference) {
+        self.scheduledAt = scheduledAt
+        self.taskReference = eventsContainer
+    }
+    
+    
+    public static func == (lhs: Event, rhs: Event) -> Bool {
+        lhs.taskReference?.id == rhs.taskReference?.id && lhs.scheduledAt == rhs.scheduledAt
+    }
+    
+    
+    /// Use this function to mark an ``Event`` as complete or incomplete.
+    /// - Parameter newValue: The new state of the ``Event``.
+    public func complete(_ newValue: Bool) async {
+        #warning("Remove ...")
+        complete = newValue
+    }
+    
     /// Toggle the ``Event``'s ``Event/complete`` state.
     public func toggle() async {
         await complete(!complete)
@@ -94,7 +80,7 @@ public final class Event: Identifiable, Hashable, @unchecked Sendable {
     
     public func hash(into hasher: inout Hasher) {
         hasher.combine(taskReference?.id)
-        hasher.combine(_scheduledAt)
+        hasher.combine(scheduledAt)
     }
     
     
@@ -128,7 +114,6 @@ public final class Event: Identifiable, Hashable, @unchecked Sendable {
                 repeats: false,
                 block: { timer in
                     timer.invalidate()
-                    taskReference.sendObjectWillChange()
                 }
             )
             
@@ -152,7 +137,6 @@ public final class Event: Identifiable, Hashable, @unchecked Sendable {
                 return
             default:
                 let content = UNMutableNotificationContent()
-                content.title = taskReference.title
                 
                 let trigger = UNTimeIntervalNotificationTrigger(
                     timeInterval: max(self.scheduledAt.timeIntervalSince(.now), TimeInterval.leastNonzeroMagnitude),

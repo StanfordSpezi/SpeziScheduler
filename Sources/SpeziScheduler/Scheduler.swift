@@ -91,7 +91,8 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
             var storedTasks: [Task<Context>]? // swiftlint:disable:this discouraged_optional_collection
             
             await localStorageLock.enter {
-                storedTasks = try? localStorage.read([Task<Context>].self, storageKey: Constants.taskStorageKey)
+                #warning("Storage is disabled ...")
+                // storedTasks = try? localStorage.read([Task<Context>].self, storageKey: Constants.taskStorageKey)
             }
             
             guard let storedTasks = storedTasks else {
@@ -117,14 +118,6 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     /// Schedule a new ``Task`` in the ``Scheduler`` module.
     /// - Parameter task: The new ``Task`` instance that should be scheduled.
     public func schedule(task: Task<Context>) async {
-        task.objectWillChange
-            .sink {
-                _Concurrency.Task {
-                    await self.sendObjectWillChange()
-                }
-            }
-            .store(in: &cancellables)
-        
         tasks.append(task)
         
         self.updateTasks()
@@ -173,7 +166,8 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     private func persistChanges() async {
         await localStorageLock.enter {
             do {
-                try self.localStorage.store(self.tasks, storageKey: Constants.taskStorageKey)
+                #warning("Storage is disabled ...")
+                // try self.localStorage.store(self.tasks, storageKey: Constants.taskStorageKey)
             } catch {
                 os_log(.error, "Spezi.Scheduler: Could not persist the tasks of the scheduler module: \(error)")
             }

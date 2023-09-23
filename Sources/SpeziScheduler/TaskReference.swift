@@ -11,10 +11,8 @@ import Foundation
 
 protocol TaskReference: AnyObject {
     var id: UUID { get }
-    var title: String { get }
-    var schedule: Schedule { get }
     var notifications: Bool { get }
     
     
-    func sendObjectWillChange()
+    // func sendObjectWillChange()
 }
