@@ -12,7 +12,6 @@ import Foundation
 protocol TaskReference: AnyObject {
     var id: UUID { get }
     var title: String { get }
-    var description: String { get }
     var schedule: Schedule { get }
     var notifications: Bool { get }
     

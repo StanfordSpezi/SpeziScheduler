@@ -8,6 +8,7 @@
 
 import Foundation
 import OSLog
+import SwiftData
 import UserNotifications
 
 
@@ -15,18 +16,10 @@ import UserNotifications
 ///
 /// Use the  ``Event/complete(_:)`` and ``Event/toggle()`` functions to mark an Event as complete. You can access the scheduled date of an
 /// event using ``Event/scheduledAt`` and the completed date using the ``Event/completedAt`` properties.
-public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
-    enum CodingKeys: String, CodingKey {
-        // We use the underscore as the corresponding property `_scheduledAt` uses an underscore as it is a private property.
-        // swiftlint:disable:next identifier_name
-        case _scheduledAt = "scheduledAt"
-        case notification
-        case completedAt
-    }
-    
-    
-    private let lock = Lock()
-    private var timer: Timer?
+@Model
+public final class Event: Identifiable, Hashable, @unchecked Sendable {
+    @Transient private let lock = Lock()
+    @Transient private var timer: Timer?
     private let _scheduledAt: Date
     private(set) var notification: UUID?
     /// The date when the ``Event`` was completed.
@@ -41,7 +34,7 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
     }
     /// Only used for test purposes to identify the current state of the log in the UI testing application.
     internal private(set) var log: String?
-    weak var taskReference: (any TaskReference)?
+    @Transient weak var taskReference: (any TaskReference)?
     
     
     /// The date when the ``Event`` is scheduled at.
@@ -160,7 +153,6 @@ public final class Event: Codable, Identifiable, Hashable, @unchecked Sendable {
             default:
                 let content = UNMutableNotificationContent()
                 content.title = taskReference.title
-                content.body = taskReference.description
                 
                 let trigger = UNTimeIntervalNotificationTrigger(
                     timeInterval: max(self.scheduledAt.timeIntervalSince(.now), TimeInterval.leastNonzeroMagnitude),

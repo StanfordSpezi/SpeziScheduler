@@ -85,7 +85,6 @@ struct ContentView: View {
                     await scheduler.schedule(
                         task: Task(
                             title: "New Task",
-                            description: "New Task",
                             schedule: Schedule(
                                 start: .now,
                                 repetition: .matching(.init(nanosecond: 0)), // Every full second
@@ -109,7 +108,6 @@ struct ContentView: View {
                     await scheduler.schedule(
                         task: Task(
                             title: "Notification Task",
-                            description: "Notification Task",
                             schedule: Schedule(
                                 start: .now,
                                 repetition: .matching(.init(hour: hour, minute: minute)),
