@@ -16,19 +16,20 @@ typealias TestAppScheduler = Scheduler<String>
 class TestAppDelegate: SpeziAppDelegate {
     override var configuration: Configuration {
         Configuration {
-            TestAppScheduler(
-                tasks: [
-                    Task(
-                        title: "Original Task",
-                        schedule: Schedule(
-                            start: .now,
-                            repetition: .matching(.init(nanosecond: 0)), // Every full second
-                            end: .numberOfEvents(1)
-                        ),
-                        context: "Original Task!"
-                    )
-                ]
-            )
+//            TestAppScheduler(
+//                tasks: [
+//                    Task(
+//                        title: "Original Task",
+//                        schedule: Schedule(
+//                            start: .now,
+//                            repetition: .matching(.init(nanosecond: 0)), // Every full second
+//                            end: .numberOfEvents(1)
+//                        ),
+//                        context: "Original Task!"
+//                    )
+//                ]
+//            )
+            TestAppScheduler()
         }
     }
 }

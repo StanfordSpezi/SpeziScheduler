@@ -50,6 +50,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     }
     
     
+    #warning("Make the initial tasks an autoclosure?")
     /// Creates a new ``Scheduler`` module.
     /// - Parameter prescheduleLimit: The number of prescheduled notifications that should be registerd.
     ///                               Must be bigger than 1 and smaller than the limit of 64 local notifications at a time.

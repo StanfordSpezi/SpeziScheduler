@@ -7,6 +7,7 @@
 //
 
 import SpeziScheduler
+import SwiftData
 import SwiftUI
 
 
@@ -19,6 +20,7 @@ struct UITestsApp: App {
         WindowGroup {
             ContentView()
                 .spezi(appDelegate)
+                .modelContainer(for: [Schedule.self])
         }
     }
 }
