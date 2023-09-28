@@ -30,13 +30,17 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
                 return
             }
             
-            persistChanges()
+            _Concurrency.Task {
+                await persistChanges()
+            }
         }
     }
     @AppStorage("Spezi.Scheduler.firstlaunch") private var firstLaunch = true
     private var initialTasks: [Task<Context>]
     private var cancellables: Set<AnyCancellable> = []
     private let prescheduleNotificationLimit: Int
+    private let localStorageLock = Lock()
+    
     
     /// Indicates whether the necessary authorization to deliver local notifications is already granted.
     public var localNotificationAuthorization: Bool {
@@ -44,6 +48,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
             await UNUserNotificationCenter.current().notificationSettings().authorizationStatus == .authorized
         }
     }
+    
     
     /// Creates a new ``Scheduler`` module.
     /// - Parameter prescheduleLimit: The number of prescheduled notifications that should be registerd.
@@ -83,7 +88,13 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         )
         
         _Concurrency.Task {
-            guard let storedTasks = try? localStorage.read([Task<Context>].self, storageKey: Constants.taskStorageKey) else {
+            var storedTasks: [Task<Context>]? // swiftlint:disable:this discouraged_optional_collection
+            
+            await localStorageLock.enter {
+                storedTasks = try? localStorage.read([Task<Context>].self, storageKey: Constants.taskStorageKey)
+            }
+            
+            guard let storedTasks = storedTasks else {
                 await schedule(tasks: initialTasks)
                 return
             }
@@ -103,40 +114,6 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         }
     }
     
-    public func willFinishLaunchingWithOptions(_ application: UIApplication, launchOptions: [UIApplication.LaunchOptionsKey: Any]) {
-        UNUserNotificationCenter.current().delegate = self
-    }
-    
-    public func applicationWillTerminate(_ application: UIApplication) {
-        persistChanges()
-    }
-    
-    // Unfortunately, the async overload of the `UNUserNotificationCenterDelegate` results in a runtime crash.
-    // Reverify this in iOS versions after iOS 17.0
-    public func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse
-    ) async {
-        await sendObjectWillChange()
-    }
-    
-    // Unfortunately, the async overload of the `UNUserNotificationCenterDelegate` results in a runtime crash.
-    // Reverify this in iOS versions after iOS 17.0
-    public func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification
-    ) async -> UNNotificationPresentationOptions {
-        await sendObjectWillChange()
-        return [.badge, .banner, .sound, .list]
-    }
-    
-    public func sceneWillEnterForeground(_ scene: UIScene) {
-        _Concurrency.Task {
-            await sendObjectWillChange()
-        }
-    }
-    
-    
     /// Schedule a new ``Task`` in the ``Scheduler`` module.
     /// - Parameter task: The new ``Task`` instance that should be scheduled.
     public func schedule(task: Task<Context>) async {
@@ -154,29 +131,65 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         if task.notifications {
             await self.updateScheduleNotifications()
         }
-        persistChanges()
+        await persistChanges()
         
         await sendObjectWillChange(skipInternalUpdates: true)
     }
     
-    func persistChanges() {
-        do {
-            try self.localStorage.store(self.tasks, storageKey: Constants.taskStorageKey)
-        } catch {
-            os_log(.error, "Spezi.Scheduler: Could not persist the tasks of the scheduler module: \(error)")
+    
+    // MARK: - Lifecycle
+    @_documentation(visibility: internal)
+    public func willFinishLaunchingWithOptions(_ application: UIApplication, launchOptions: [UIApplication.LaunchOptionsKey: Any]) {
+        UNUserNotificationCenter.current().delegate = self
+    }
+    
+    @_documentation(visibility: internal)
+    public func sceneWillEnterForeground(_ scene: UIScene) {
+        _Concurrency.Task {
+            await sendObjectWillChange()
         }
     }
     
-    func sendObjectWillChange(skipInternalUpdates: Bool = false) async {
-        os_log(.debug, "Spezi.Scheduler: Object will change (skipInternalUpdates: \(skipInternalUpdates)")
+    @_documentation(visibility: internal)
+    public func applicationWillTerminate(_ application: UIApplication) {
+        _Concurrency.Task {
+            await persistChanges()
+        }
+    }
+    
+    
+    // MARK: - Notification Center
+    @_documentation(visibility: internal)
+    @MainActor
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.badge, .banner, .sound, .list]
+    }
+    
+    
+    // MARK: - Helper Methods
+    private func persistChanges() async {
+        await localStorageLock.enter {
+            do {
+                try self.localStorage.store(self.tasks, storageKey: Constants.taskStorageKey)
+            } catch {
+                os_log(.error, "Spezi.Scheduler: Could not persist the tasks of the scheduler module: \(error)")
+            }
+        }
+    }
+    
+    private func sendObjectWillChange(skipInternalUpdates: Bool = false) async {
+        os_log(.debug, "Spezi.Scheduler: Object will change (skipInternalUpdates: \(skipInternalUpdates))")
         if skipInternalUpdates {
             await MainActor.run {
                 self.objectWillChange.send()
             }
         } else {
             self.updateTasks()
-            await self.updateScheduleNotifications()
-            self.persistChanges()
+            await updateScheduleNotifications()
+            await persistChanges()
             await MainActor.run {
                 self.objectWillChange.send()
             }
@@ -286,6 +299,6 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
             await task.scheduleNotification(prescheduleNotificationLimitPerTask)
         }
         
-        persistChanges()
+        await persistChanges()
     }
 }
