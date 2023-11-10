@@ -12,7 +12,7 @@ import Foundation
 /// A ``Schedule`` describe how a ``Task`` should schedule ``Event``.
 /// Use the ``Schedule``.s ``Schedule/init(start:dateComponents:end:calendar:)`` initializer to define
 /// the start date, the repetition schedule (``Schedule/Repetition-swift.enum``), and the end time (``Schedule/End-swift.enum``) of the ``Schedule``
-public class Schedule: Codable, @unchecked Sendable, ObservableObject {
+public struct Schedule: Sendable {
     /// The  ``Schedule/Repetition-swift.enum`` defines the repeating pattern of the ``Schedule``
     public enum Repetition: Codable, Sendable {
         /// The ``Schedule`` defines a ``Schedule/Repetition-swift.enum`` that occurs on any time matching the `DateComponents`.
@@ -75,14 +75,6 @@ public class Schedule: Codable, @unchecked Sendable, ObservableObject {
         }
     }
     
-    enum CodingKeys: CodingKey {
-        case start
-        case repetition
-        case end
-        case calendar
-        case randomDisplacements
-    }
-    
     
     /// The start of the ``Schedule``
     public let start: Date
@@ -93,17 +85,17 @@ public class Schedule: Codable, @unchecked Sendable, ObservableObject {
     /// The `Calendar` used to schedule the ``Schedule`` including the time zone and locale.
     public let calendar: Calendar
     
-    private var _randomDisplacements: [Date: TimeInterval]
-    private let queue = DispatchQueue(label: "Scheduler")
-    
-    
-    var randomDisplacements: [Date: TimeInterval] {
-        queue.sync {
-            _randomDisplacements
-        }
+    private var randomDisplacements: [Date: TimeInterval]
+
+
+    fileprivate init(start: Date, repetition: Repetition, end: End, calendar: Calendar, randomDisplacements: [Date: TimeInterval]) {
+        self.start = start
+        self.repetition = repetition
+        self.end = end
+        self.calendar = calendar
+        self.randomDisplacements = randomDisplacements
     }
-    
-    
+
     /// Creates a new ``Schedule``
     /// - Parameters:
     ///   - start: The start of the ``Schedule``
@@ -116,47 +108,15 @@ public class Schedule: Codable, @unchecked Sendable, ObservableObject {
         end: End,
         calendar: Calendar = .current
     ) {
-        self.start = start
-        self.repetition = repetition
-        self.end = end
-        self.calendar = calendar
-        self._randomDisplacements = [:]
-    }
-    
-    public required init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.start = try container.decode(Date.self, forKey: .start)
-        self.repetition = try container.decode(Repetition.self, forKey: .repetition)
-        self.end = try container.decode(Schedule.End.self, forKey: .end)
-        
-        // We allow a remote instance of default configuration to use "current" as a valid string value for a calendar and
-        // set it to the `.current` calendar value.
-        if let calendarString = try? container.decodeIfPresent(String.self, forKey: .calendar), calendarString == "current" {
-            self.calendar = .current
-        } else {
-            self.calendar = try container.decode(Calendar.self, forKey: .calendar)
-        }
-        
-        self._randomDisplacements = try container.decodeIfPresent([Date: TimeInterval].self, forKey: .randomDisplacements) ?? [:]
-    }
-    
-    
-    public func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        
-        try container.encode(start, forKey: .start)
-        try container.encode(repetition, forKey: .repetition)
-        try container.encode(end, forKey: .end)
-        try container.encode(calendar, forKey: .calendar)
-        try container.encode(_randomDisplacements, forKey: .randomDisplacements)
+        self.init(start: start, repetition: repetition, end: end, calendar: calendar, randomDisplacements: [:])
     }
     
     
     /// Returns all `Date`s between the provided `start` and `end` of the ``Schedule`` instance.
     /// - Parameters:
-    ///   - start: The start of the requested series of `Date`s. The start date of the ``Schedule`` is used if the start date is before the ``Schedule``'s start date.
+    ///   - searchStart: The start of the requested series of `Date`s. The start date of the ``Schedule`` is used if the start date is before the ``Schedule``'s start date.
     ///   - end: The end of the requested series of `Date`s. The end (number of events or date) of the ``Schedule`` is used if the start date is after the ``Schedule``'s end.
-    func dates(from searchStart: Date? = nil, to end: End? = nil) -> [Date] {
+    mutating func dates(from searchStart: Date? = nil, to end: End? = nil) -> [Date] {
         let end = End.minimum(end ?? self.end, self.end)
         
         var dates: [Date] = []
@@ -169,9 +129,8 @@ public class Schedule: Codable, @unchecked Sendable, ObservableObject {
         case let .randomBetween(randomBetweenStartDateComponents, _):
             startDateComponents = randomBetweenStartDateComponents
         }
-        
-        var randomDisplacementChanged = false
-        
+
+
         calendar.enumerateDates(startingAfter: self.start, matching: startDateComponents, matchingPolicy: .nextTime) { result, _, stop in
             guard let result else {
                 stop = true
@@ -202,15 +161,10 @@ public class Schedule: Codable, @unchecked Sendable, ObservableObject {
                 } else {
                     randomDisplacement = newRandomDisplacementFor(date: result, randomBetweenEndDateComponents: randomBetweenEndDateComponents)
                     insertRandomDisplacement(for: result, randomDisplacement)
-                    randomDisplacementChanged = true
                 }
                 
                 dates.append(result.addingTimeInterval(randomDisplacement))
             }
-        }
-        
-        if randomDisplacementChanged {
-            self.objectWillChange.send()
         }
         
         return dates
@@ -229,9 +183,48 @@ public class Schedule: Codable, @unchecked Sendable, ObservableObject {
         return Double.random(in: 0...timeInterval)
     }
     
-    private func insertRandomDisplacement(for date: Date, _ timeInverval: TimeInterval?) {
-        queue.sync {
-            _randomDisplacements[date] = timeInverval
+    private mutating func insertRandomDisplacement(for date: Date, _ timeInverval: TimeInterval?) {
+        randomDisplacements[date] = timeInverval
+    }
+}
+
+
+extension Schedule: Codable {
+    enum CodingKeys: CodingKey {
+        case start
+        case repetition
+        case end
+        case calendar
+        case randomDisplacements
+    }
+
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        self.start = try container.decode(Date.self, forKey: .start)
+        self.repetition = try container.decode(Repetition.self, forKey: .repetition)
+        self.end = try container.decode(Schedule.End.self, forKey: .end)
+
+        // We allow a remote instance of default configuration to use "current" as a valid string value for a calendar and
+        // set it to the `.current` calendar value.
+        if let calendarString = try? container.decodeIfPresent(String.self, forKey: .calendar), calendarString == "current" {
+            self.calendar = .current
+        } else {
+            self.calendar = try container.decode(Calendar.self, forKey: .calendar)
         }
+
+        self.randomDisplacements = try container.decodeIfPresent([Date: TimeInterval].self, forKey: .randomDisplacements) ?? [:]
+    }
+
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(start, forKey: .start)
+        try container.encode(repetition, forKey: .repetition)
+        try container.encode(end, forKey: .end)
+        try container.encode(calendar, forKey: .calendar)
+        try container.encode(randomDisplacements, forKey: .randomDisplacements)
     }
 }

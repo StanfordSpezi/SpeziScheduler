@@ -6,11 +6,9 @@
 // SPDX-License-Identifier: MIT
 //
 
-import Combine
 import Foundation
 import OSLog
 import Spezi
-import SpeziLocalStorage
 import SwiftUI
 import UIKit
 import UserNotifications
@@ -21,27 +19,22 @@ import UserNotifications
 /// Use the ``Scheduler/Scheduler/init(tasks:)`` initializer or the ``Scheduler/Scheduler/schedule(task:)`` function
 /// to schedule tasks that you can obtain using the ``Scheduler/Scheduler/tasks`` property.
 /// You can use the ``Scheduler/Scheduler`` as an `ObservableObject` to automatically update your SwiftUI views when new events are emitted or events change.
-public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDelegate, Module {
-    @Dependency private var localStorage: LocalStorage
-    
-    public private(set) var tasks: [Task<Context>] = [] {
-        didSet {
-            guard oldValue != tasks else {
-                return
-            }
-            
-            _Concurrency.Task {
-                await persistChanges()
-            }
-        }
-    }
+public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDelegate, Module, LifecycleHandler, EnvironmentAccessible {
+    private let logger = Logger(subsystem: "edu.stanford.spezi.scheduler", category: "Scheduler")
+
+    @Dependency private var storage: SchedulerStorage<Context>
+
     @AppStorage("Spezi.Scheduler.firstlaunch") private var firstLaunch = true
-    private var initialTasks: [Task<Context>]
-    private var cancellables: Set<AnyCancellable> = []
+    private let initialTasks: [Task<Context>]
     private let prescheduleNotificationLimit: Int
-    private let localStorageLock = Lock()
-    
-    
+
+    private let taskList: TaskList<Context>
+
+    public var tasks: [Task<Context>] {
+        taskList.tasks
+    }
+
+
     /// Indicates whether the necessary authorization to deliver local notifications is already granted.
     public var localNotificationAuthorization: Bool {
         get async {
@@ -51,20 +44,25 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     
     
     /// Creates a new ``Scheduler`` module.
-    /// - Parameter prescheduleLimit: The number of prescheduled notifications that should be registerd.
+    /// - Parameter prescheduleNotificationLimit: The number of prescheduled notifications that should be registered.
     ///                               Must be bigger than 1 and smaller than the limit of 64 local notifications at a time.
     ///                               We recommend setting the limit to a value lower than 64, e.g., 56, to ensure room inaccuracies in the iOS scheduling APIs.
     ///                               The default value is `56`.
-    /// - Parameter tasks: The initial set of ``Task``s.
+    /// - Parameter initialTasks: The initial set of ``Task``s.
     public init(prescheduleNotificationLimit: Int = 56, tasks initialTasks: [Task<Context>] = []) {
         assert(
             prescheduleNotificationLimit >= 1 && prescheduleNotificationLimit <= 64,
             "The prescheduleLimit must be bigger than 1 and smaller than the limit of 64 local notifications at a time"
         )
-        
+
+        let list = TaskList<Context>()
+
         self.prescheduleNotificationLimit = prescheduleNotificationLimit
         self.initialTasks = initialTasks
-        
+        self.taskList = list
+
+        self._storage = Dependency(wrappedValue: SchedulerStorage(taskList: list))
+
         super.init()
         
         // Only run the notification setup when not running unit tests:
@@ -88,13 +86,9 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         )
         
         _Concurrency.Task {
-            var storedTasks: [Task<Context>]? // swiftlint:disable:this discouraged_optional_collection
-            
-            await localStorageLock.enter {
-                storedTasks = try? localStorage.read([Task<Context>].self, storageKey: Constants.taskStorageKey)
-            }
-            
-            guard let storedTasks = storedTasks else {
+            let storedTasks = await storage.loadTasks()
+
+            guard let storedTasks else {
                 await schedule(tasks: initialTasks)
                 return
             }
@@ -109,31 +103,26 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         if await !localNotificationAuthorization {
             try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
             
-            // Triggers an update of the UI in case the notification permissions are changed
-            await sendObjectWillChange()
+            // now we have permissions, schedule all notifications now
+            await updateScheduleNotifications()
         }
     }
     
     /// Schedule a new ``Task`` in the ``Scheduler`` module.
     /// - Parameter task: The new ``Task`` instance that should be scheduled.
+    @MainActor
     public func schedule(task: Task<Context>) async {
-        task.objectWillChange
-            .sink {
-                _Concurrency.Task {
-                    await self.sendObjectWillChange()
-                }
-            }
-            .store(in: &cancellables)
-        
-        tasks.append(task)
-        
-        self.updateTasks()
+        taskList.append(task)
+
+        for event in task.events { // make sure
+            event.storage = storage
+        }
+
+        self.scheduleTasks()
         if task.notifications {
             await self.updateScheduleNotifications()
         }
-        await persistChanges()
-        
-        await sendObjectWillChange(skipInternalUpdates: true)
+        await storage.storeTasks() // we store the added tasks
     }
     
     
@@ -145,15 +134,18 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     
     @_documentation(visibility: internal)
     public func sceneWillEnterForeground(_ scene: UIScene) {
-        _Concurrency.Task {
-            await sendObjectWillChange()
+        _Concurrency.Task { @MainActor in
+            logger.debug("Scene entered foreground. Scheduling Tasks...")
+            self.scheduleTasks()
+            await updateScheduleNotifications()
         }
     }
-    
+
+
     @_documentation(visibility: internal)
     public func applicationWillTerminate(_ application: UIApplication) {
         _Concurrency.Task {
-            await persistChanges()
+            await storage.storeTasks()
         }
     }
     
@@ -170,37 +162,12 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     
     
     // MARK: - Helper Methods
-    private func persistChanges() async {
-        await localStorageLock.enter {
-            do {
-                try self.localStorage.store(self.tasks, storageKey: Constants.taskStorageKey)
-            } catch {
-                os_log(.error, "Spezi.Scheduler: Could not persist the tasks of the scheduler module: \(error)")
-            }
-        }
-    }
-    
-    private func sendObjectWillChange(skipInternalUpdates: Bool = false) async {
-        os_log(.debug, "Spezi.Scheduler: Object will change (skipInternalUpdates: \(skipInternalUpdates))")
-        if skipInternalUpdates {
-            await MainActor.run {
-                self.objectWillChange.send()
-            }
-        } else {
-            self.updateTasks()
-            await updateScheduleNotifications()
-            await persistChanges()
-            await MainActor.run {
-                self.objectWillChange.send()
-            }
-        }
-    }
-    
-    
     @objc
     private func timeZoneChanged() {
-        _Concurrency.Task {
-            await sendObjectWillChange()
+        _Concurrency.Task { @MainActor in
+            logger.debug("TimeZone changed!")
+            self.scheduleTasks()
+            await updateScheduleNotifications()
         }
     }
     
@@ -210,16 +177,28 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         }
     }
     
-    
-    private func updateTasks() {
-        for task in self.tasks {
-            task.scheduleTask()
+
+    /// Schedules all tasks.
+    ///
+    /// This method triggers the due timer. This ensures that all events are marked
+    /// due once they pass their scheduled date.
+    @MainActor
+    private func scheduleTasks() {
+        for task in taskList {
+            task.scheduleTasks()
         }
     }
     
+
+    @MainActor
     private func updateScheduleNotifications() async {
+        // Disable notification center interaction when running unit tests:
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else {
+            return
+        }
+
         // Get all tasks that have notifications enabled and that have events in the future that are not yet complete.
-        // Same as but there is a Swift compiler bug that is causing a crash using Swift 5.9 when archiving in a release build.
+        // Same as below, but there is a Swift compiler bug that is causing a crash using Swift 5.9 when archiving in a release build.
         // Check with newer Swift versions:
         // ```swift
         // let numberOfTasksWithNotifications = max(
@@ -228,43 +207,48 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         // )
         // ```
         var numberOfTasksWithNotificationsCounter: Int = 0
-        for task in tasks where task.notifications {
+        for task in taskList where task.notifications {
             let events = task.events(from: .now)
-            
+
             guard events.contains(where: { !$0.complete }) else {
                 continue
             }
-            
+
             numberOfTasksWithNotificationsCounter += 1
         }
-        let numberOfTasksWithNotifications = max(1, numberOfTasksWithNotificationsCounter)
-        
-        
-        // Disable notification center interaction when running unit tests:
-        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else {
-            return
-        }
-        
+
         // First, remove all notifications from past events that are be complete.
-        for task in self.tasks {
+        for task in self.taskList {
             for event in task.events {
                 event.cancelNotification()
             }
         }
-        
-        let notificationCenter = UNUserNotificationCenter.current()
-        
-        if self.prescheduleNotificationLimit < numberOfTasksWithNotifications {
-            os_log(.error, "Spezi.Scheduler: The preschedule notification limit \(self.prescheduleNotificationLimit) is smaller than the numer of tasks with active notifications: \(numberOfTasksWithNotifications)")
-            assertionFailure("Please ensure that your preschedule notification limit is bigger than the teasks with active notifications")
+
+
+        let limit = await currentPerTaskNotificationLimit(numberOfTasksWithNotificationsCount: numberOfTasksWithNotificationsCounter)
+
+        for task in taskList {
+            await task.scheduleNotifications(limit)
         }
-        
+    }
+
+
+    private func currentPerTaskNotificationLimit(numberOfTasksWithNotificationsCount: Int) async -> Int {
+        let numberOfTasksWithNotifications = max(1, numberOfTasksWithNotificationsCount)
+
+        let notificationCenter = UNUserNotificationCenter.current()
+
+        if self.prescheduleNotificationLimit < numberOfTasksWithNotifications {
+            logger.error("The preschedule notification limit \(self.prescheduleNotificationLimit) is smaller than the number of tasks with active notifications: \(numberOfTasksWithNotifications).")
+            assertionFailure("Please ensure that your preschedule notification limit is bigger than the tasks with active notifications")
+        }
+
         let deliveredNotifications = await notificationCenter.deliveredNotifications().sorted(by: { $0.date < $1.date })
         let prescheduleNotificationLimit = max(self.prescheduleNotificationLimit - deliveredNotifications.count, 1)
-        
+
         if prescheduleNotificationLimit < numberOfTasksWithNotifications {
-            os_log(.error, "Spezi.Scheduler: The number of available notification slots is smaller than the numer of tasks with active notifications: \(numberOfTasksWithNotifications), removing the oldest \(numberOfTasksWithNotifications - prescheduleNotificationLimit) notifications.")
-            
+            logger.error("The number of available notification slots is smaller than the number of tasks with active notifications: \(numberOfTasksWithNotifications), removing the oldest \(numberOfTasksWithNotifications - prescheduleNotificationLimit) notifications.")
+
             // Same as but there is a Swift compiler bug that is causing a crash using Swift 5.9 when archiving in a release build.
             // Check with newer Swift versions:
             // ```swift
@@ -276,12 +260,13 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
             //         }
             //     }
             //     .prefix(max(0, numberOfTasksWithNotifications - prescheduleNotificationLimit)))
-            
+
             var notificationsThatMayBeRemovedIdentifiers: [String] = []
             for deliveredNotification in deliveredNotifications {
                 let identifier = deliveredNotification.request.identifier
+
                 // Only remove notifications that have been scheduled by a task in the Scheduler module:
-                for task in tasks where task.contains(scheduledNotificationWithId: identifier) {
+                for task in taskList where task.contains(scheduledNotificationWithId: identifier) {
                     notificationsThatMayBeRemovedIdentifiers.append(identifier)
                     break // Continue to the next deliveredNotification.
                 }
@@ -289,16 +274,10 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
             let notificationsToBeRemovedIdentifier = Array(
                 notificationsThatMayBeRemovedIdentifiers.prefix(upTo: max(0, numberOfTasksWithNotifications - prescheduleNotificationLimit))
             )
-            
+
             notificationCenter.removeDeliveredNotifications(withIdentifiers: notificationsToBeRemovedIdentifier)
         }
-        
-        let prescheduleNotificationLimitPerTask = prescheduleNotificationLimit / numberOfTasksWithNotifications
-        
-        for task in self.tasks {
-            await task.scheduleNotification(prescheduleNotificationLimitPerTask)
-        }
-        
-        await persistChanges()
+
+        return prescheduleNotificationLimit / numberOfTasksWithNotifications
     }
 }
