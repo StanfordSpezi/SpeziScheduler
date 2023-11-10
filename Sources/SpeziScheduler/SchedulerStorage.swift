@@ -44,7 +44,7 @@ actor SchedulerStorage<Context: Codable>: Module, DefaultInitializable, AnyStora
     func loadTasks() -> [Task<Context>]? {
         // swiftlint:disable:previous discouraged_optional_collection
         do {
-            return try localStorage.read(storageKey: Constants.taskStorageKey)
+            return try localStorage.read([Task<Context>].self, storageKey: Constants.taskStorageKey)
         } catch {
             logger.error("Could not retrieve tasks from storage for the scheduler module: \(error)")
         }

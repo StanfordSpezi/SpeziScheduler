@@ -14,11 +14,11 @@ import UIKit
 import UserNotifications
 
 
-/// The ``Scheduler/Scheduler`` module allows the scheduling and observation of ``Task``s adhering to a specific ``Schedule``.
+/// The ``Scheduler`` module allows the scheduling and observation of ``Task``s adhering to a specific ``Schedule``.
 ///
-/// Use the ``Scheduler/Scheduler/init(tasks:)`` initializer or the ``Scheduler/Scheduler/schedule(task:)`` function
-/// to schedule tasks that you can obtain using the ``Scheduler/Scheduler/tasks`` property.
-/// You can use the ``Scheduler/Scheduler`` as an `ObservableObject` to automatically update your SwiftUI views when new events are emitted or events change.
+/// Use the ``Scheduler/init(prescheduleNotificationLimit:tasks:)`` initializer or the ``Scheduler/schedule(task:)`` function
+/// to schedule tasks that you can obtain using the ``Scheduler/tasks`` property.
+/// You can use the ``Scheduler`` as an `ObservableObject` to automatically update your SwiftUI views when new events are emitted or events change.
 public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDelegate, Module, LifecycleHandler, EnvironmentAccessible {
     private let logger = Logger(subsystem: "edu.stanford.spezi.scheduler", category: "Scheduler")
 
@@ -88,12 +88,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         _Concurrency.Task {
             let storedTasks = await storage.loadTasks()
 
-            guard let storedTasks else {
-                await schedule(tasks: initialTasks)
-                return
-            }
-            
-            await schedule(tasks: storedTasks)
+            await schedule(tasks: storedTasks ?? initialTasks)
         }
     }
     

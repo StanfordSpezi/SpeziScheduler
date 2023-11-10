@@ -16,7 +16,7 @@ Allows you to schedule and observe tasks for your users to complete, such as tak
 
 The Scheduler module allows the scheduling and observation of ``Task``s adhering to a specific ``Schedule``. 
 
-You can use the ``Scheduler/Scheduler`` as an `ObservableObject` to automatically update your SwiftUI views when any new events are emitted or events change.
+You can use the ``Scheduler`` as an `ObservableObject` to automatically update your SwiftUI views when any new events are emitted or events change.
 
 ## Topics
 

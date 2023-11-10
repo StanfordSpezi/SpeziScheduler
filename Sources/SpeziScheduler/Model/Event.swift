@@ -21,14 +21,7 @@ public final class Event: Identifiable, @unchecked Sendable {
     var storage: AnyStorage?
 
 
-    public private(set) var state: EventState {
-        willSet {
-            if timeZone != Calendar.current.timeZone {
-                state = newValue.timeZoneAdjusted(from: timeZone)
-                timeZone = Calendar.current.timeZone
-            }
-        }
-    }
+    public private(set) var state: EventState
 
     /// The timezone this Event was created with.
     private var timeZone: TimeZone
@@ -47,6 +40,13 @@ public final class Event: Identifiable, @unchecked Sendable {
         state.scheduledAt
     }
 
+    public var due: Bool { // TODO: docs
+        if case .overdue = state {
+            return true
+        }
+        return false
+    }
+
     /// Indicates if the ``Event`` is complete.
     public var complete: Bool {
         if case .completed = state {
@@ -55,6 +55,8 @@ public final class Event: Identifiable, @unchecked Sendable {
         return false
     }
 
+    // TODO var completedAt: Date? { get set }
+
 
     // swiftlint:disable:next function_default_parameter_at_end
     fileprivate init(state: EventState, taskId: UUID? = nil, timeZone: TimeZone, notification: UUID? = nil) {
@@ -62,6 +64,11 @@ public final class Event: Identifiable, @unchecked Sendable {
         self.state = state
         self.notification = notification
         self.timeZone = timeZone
+
+        if timeZone != Calendar.current.timeZone {
+            self.state = state.timeZoneAdjusted(from: timeZone)
+            self.timeZone = Calendar.current.timeZone
+        }
     }
 
     convenience init(taskId: UUID, scheduledAt: Date, timeZone: TimeZone) {
