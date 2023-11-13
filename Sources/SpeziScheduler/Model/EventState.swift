@@ -39,22 +39,4 @@ public enum EventState: Equatable, Hashable, CustomStringConvertible, Codable {
             return "completed(at: \(at.description), scheduled: \(scheduled.description))"
         }
     }
-
-
-    func timeZoneAdjusted(from timeZone: TimeZone) -> EventState {
-        if timeZone == Calendar.current.timeZone {
-            return self
-        }
-
-        let difference = TimeInterval(timeZone.secondsFromGMT(for: .now) - Calendar.current.timeZone.secondsFromGMT(for: .now))
-
-        switch self {
-        case let .scheduled(at):
-            return .scheduled(at: at.addingTimeInterval(difference))
-        case let .overdue(since):
-            return .overdue(since: since.addingTimeInterval(difference))
-        case let .completed(at, scheduled):
-            return .completed(at: at.addingTimeInterval(difference), scheduled: scheduled.addingTimeInterval(difference))
-        }
-    }
 }

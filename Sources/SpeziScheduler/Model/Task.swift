@@ -75,7 +75,7 @@ public final class Task<Context: Codable & Sendable>: Identifiable, Sendable {
             notifications: notifications,
             context: context,
             events: dates.map { date in
-                Event(taskId: id, scheduledAt: date, timeZone: schedule.calendar.timeZone)
+                Event(taskId: id, scheduledAt: date)
             }
         )
     }

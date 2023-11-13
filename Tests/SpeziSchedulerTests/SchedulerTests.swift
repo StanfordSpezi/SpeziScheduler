@@ -15,13 +15,10 @@ import XCTest
 
 private actor TestStandard: Standard {}
 
-// swiftlint:disable function_body_length
-final class SchedulerTests: XCTestCase {
-    private let expectationQueue = DispatchQueue(label: "SchedulerTests.expectationQueue") // TODO remove?
 
-    
+final class SchedulerTests: XCTestCase {
     private func createScheduler(withInitialTasks initialTasks: Task<String>) async throws -> Scheduler<String> {
-        let scheduler =  Scheduler<String>(tasks: [initialTasks])
+        let scheduler = Scheduler<String>(tasks: [initialTasks])
 
         _ = Spezi(standard: TestStandard(), modules: [scheduler])
 
@@ -119,7 +116,7 @@ final class SchedulerTests: XCTestCase {
         )
         await scheduler.schedule(task: testTask2)
 
-        XCTAssertEqual(scheduler.tasks.count, 2) // TODO verify anything?
+        XCTAssertEqual(scheduler.tasks.count, 2)
 
         try await _Concurrency.Task.sleep(for: .seconds(1))
 
@@ -220,7 +217,6 @@ final class SchedulerTests: XCTestCase {
     }
 
     func testDueDecoding() throws {
-        let uuid = UUID()
         let date = Date().addingTimeInterval(-100)
 
         let json =
@@ -238,7 +234,6 @@ final class SchedulerTests: XCTestCase {
     }
 
     func testCompletedDecoding() throws {
-        let uuid = UUID()
         let date = Date().addingTimeInterval(-100)
         let completed = Date().addingTimeInterval(-5)
 
@@ -255,28 +250,7 @@ final class SchedulerTests: XCTestCase {
         XCTAssertFalse(event.due)
         XCTAssertTrue(event.complete)
         XCTAssertEqual(event.scheduledAt, date)
-        // TODO: XCTAssertEqual(event.complete, date)
-    }
-
-    func testTimeZoneConversion() throws {
-        let seoul = try XCTUnwrap(TimeZone(identifier: "Asia/Seoul"))
-
-        let difference = TimeInterval(seoul.secondsFromGMT() - Calendar.current.timeZone.secondsFromGMT())
-        let expected: Date = .now
-        let scheduled = expected.addingTimeInterval(-difference)
-
-        let json =
-        """
-        {
-            "scheduledAt": \(scheduled.timeIntervalSinceReferenceDate),
-            "timeZone": {
-                "identifier": "\(seoul.identifier)"
-            }
-        }
-        """
-
-        let event = try JSONDecoder().decode(Event.self, from: Data(json.utf8))
-        XCTAssertEqual(event.scheduledAt, expected)
+        XCTAssertEqual(event.completedAt, completed)
     }
 
     func testCurrentCalendarEncoding() throws {

@@ -10,7 +10,9 @@ import Foundation
 import UserNotifications
 
 
-/// An  ``Event`` describes a unique point in time when a ``Task`` is scheduled. Use events to display the recurring nature of a ``Task`` to a user.
+/// An unique point in time when a task is scheduled.
+///
+/// Use events to display the recurring nature of a ``Task`` to a user.
 ///
 /// Use the  ``Event/complete(_:)`` and ``Event/toggle()`` functions to mark an Event as complete. You can access the scheduled date of an
 /// event using ``Event/scheduledAt`` and the completed date using the ``Event/completedAt`` properties.
@@ -22,9 +24,6 @@ public final class Event: Identifiable, @unchecked Sendable {
 
 
     public private(set) var state: EventState
-
-    /// The timezone this Event was created with.
-    private var timeZone: TimeZone
     internal private(set) var notification: UUID?
 
     private var dueTimer: Timer?
@@ -35,19 +34,20 @@ public final class Event: Identifiable, @unchecked Sendable {
         "\(taskId?.uuidString ?? "").\(state.description)"
     }
 
-    /// The date when the ``Event`` is scheduled at.
+    /// The date when the event is scheduled at.
     public var scheduledAt: Date {
         state.scheduledAt
     }
 
-    public var due: Bool { // TODO: docs
+    /// Flag indicating if the event is due.
+    public var due: Bool {
         if case .overdue = state {
             return true
         }
         return false
     }
 
-    /// Indicates if the ``Event`` is complete.
+    /// Indicates if the event is complete.
     public var complete: Bool {
         if case .completed = state {
             return true
@@ -55,24 +55,23 @@ public final class Event: Identifiable, @unchecked Sendable {
         return false
     }
 
-    // TODO var completedAt: Date? { get set }
+    /// The completion `Date` if the event has been completed.
+    public var completedAt: Date? {
+        if case let .completed(at, _) = state {
+            return at
+        }
+        return nil
+    }
 
 
-    // swiftlint:disable:next function_default_parameter_at_end
-    fileprivate init(state: EventState, taskId: UUID? = nil, timeZone: TimeZone, notification: UUID? = nil) {
+    fileprivate init(state: EventState, taskId: UUID? = nil, notification: UUID? = nil) {
         self.taskId = taskId
         self.state = state
         self.notification = notification
-        self.timeZone = timeZone
-
-        if timeZone != Calendar.current.timeZone {
-            self.state = state.timeZoneAdjusted(from: timeZone)
-            self.timeZone = Calendar.current.timeZone
-        }
     }
 
-    convenience init(taskId: UUID, scheduledAt: Date, timeZone: TimeZone) {
-        self.init(state: .scheduled(at: scheduledAt), taskId: taskId, timeZone: timeZone)
+    convenience init(taskId: UUID, scheduledAt: Date) {
+        self.init(state: .scheduled(at: scheduledAt), taskId: taskId)
     }
 
 
@@ -176,7 +175,6 @@ extension Event: Codable {
         case notification
         case scheduledAt
         case completedAt
-        case timeZone
     }
 
 
@@ -184,8 +182,6 @@ extension Event: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         let notification = try container.decodeIfPresent(UUID.self, forKey: .notification)
-        let timeZone = try container.decodeIfPresent(TimeZone.self, forKey: .timeZone)
-            ?? Calendar.current.timeZone // TODO: can we retrieve the timeZone from the Schedule?
         let state: EventState
 
         let scheduledAtDate = try container.decode(Date.self, forKey: .scheduledAt)
@@ -197,7 +193,7 @@ extension Event: Codable {
             state = .scheduled(at: scheduledAtDate)
         }
 
-        self.init(state: state, timeZone: timeZone, notification: notification)
+        self.init(state: state, notification: notification)
     }
 
 
@@ -205,7 +201,6 @@ extension Event: Codable {
         var container = encoder.container(keyedBy: CodingKeys.self)
 
         try container.encode(self.notification, forKey: .notification)
-        try container.encode(self.timeZone, forKey: .timeZone)
 
         switch self.state {
         case let .scheduled(at):
