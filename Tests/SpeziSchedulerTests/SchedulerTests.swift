@@ -194,8 +194,6 @@ final class SchedulerTests: XCTestCase {
         XCTAssertEqual(tasks, decodedTasks)
     }
 
-    // func testLegacyDecoding
-
     func testLegacyEventDecoding() throws {
         let uuid = UUID()
         let date = Date().addingTimeInterval(100)

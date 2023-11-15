@@ -18,7 +18,7 @@ public enum EventState: Equatable, Hashable, CustomStringConvertible, Codable {
     /// The event was completed and originally scheduled at the given `Date`s.
     case completed(at: Date, scheduled: Date)
 
-    var scheduledAt: Date { // this is the non-corrected date
+    var scheduledAt: Date {
         switch self {
         case let .scheduled(at):
             return at

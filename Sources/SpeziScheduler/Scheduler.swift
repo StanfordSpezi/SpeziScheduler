@@ -78,13 +78,6 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     
     
     public func configure() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(timeZoneChanged),
-            name: Notification.Name.NSSystemTimeZoneDidChange,
-            object: nil
-        )
-        
         _Concurrency.Task {
             let storedTasks = await storage.loadTasks()
 
@@ -109,7 +102,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     public func schedule(task: Task<Context>) async {
         taskList.append(task)
 
-        for event in task.events { // make sure
+        for event in task.events { // make sure all events have a reference to the storage
             event.storage = storage
         }
 
@@ -157,15 +150,6 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     
     
     // MARK: - Helper Methods
-    @objc
-    private func timeZoneChanged() {
-        _Concurrency.Task { @MainActor in
-            logger.debug("TimeZone changed!")
-            self.scheduleTasks()
-            await updateScheduleNotifications()
-        }
-    }
-    
     private func schedule(tasks: [Task<Context>]) async {
         for task in tasks {
             await schedule(task: task)

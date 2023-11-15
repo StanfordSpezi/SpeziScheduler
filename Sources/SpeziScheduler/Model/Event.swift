@@ -31,7 +31,7 @@ public final class Event: Identifiable, @unchecked Sendable {
     var log: String?
 
     public var id: String {
-        "\(taskId?.uuidString ?? "").\(state.description)"
+        "\(taskId?.uuidString ?? "").\(state.scheduledAt.description)"
     }
 
     /// The date when the event is scheduled at.
