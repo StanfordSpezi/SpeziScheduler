@@ -31,7 +31,7 @@ class TestAppUITests: XCTestCase {
         app.buttons["Fulfill Event"].tap()
         app.assert(tasks: 1, events: 1, pastEvents: 1, fulfilledEvents: 1)
         
-        app.buttons["Unfulfull Event"].tap()
+        app.buttons["Unfulfill Event"].tap()
         app.assert(tasks: 1, events: 1, pastEvents: 1, fulfilledEvents: 0)
         
         app.buttons["Add Task"].tap()
@@ -48,8 +48,8 @@ class TestAppUITests: XCTestCase {
         app.launch()
         
         app.assert(tasks: 2, events: 3, pastEvents: 3, fulfilledEvents: 3)
-        
-        app.buttons["Unfulfull Event"].tap()
+
+        app.buttons["Unfulfill Event"].tap()
         app.assert(tasks: 2, events: 3, pastEvents: 3, fulfilledEvents: 2)
         
         
@@ -59,7 +59,7 @@ class TestAppUITests: XCTestCase {
         app.assert(tasks: 2, events: 3, pastEvents: 3, fulfilledEvents: 2)
         
         app.buttons["Fulfill Event"].tap()
-        app.buttons["Unfulfull Event"].tap()
+        app.buttons["Unfulfill Event"].tap()
         app.assert(tasks: 2, events: 3, pastEvents: 3, fulfilledEvents: 2)
         
         app.buttons["Fulfill Event"].tap()
@@ -74,18 +74,18 @@ class TestAppUITests: XCTestCase {
     
     
     func testSchedulerBackgroundNotifications() throws {
-        conductSchedulerNoficationsTest(exitApp: true, askForPermissionsBeforeTaskSchedule: true)
+        conductSchedulerNotificationTest(exitApp: true, askForPermissionsBeforeTaskSchedule: true)
     }
     
     func testSchedulerNotificationsBeforePermissions() throws {
-        conductSchedulerNoficationsTest(exitApp: true, askForPermissionsBeforeTaskSchedule: false)
+        conductSchedulerNotificationTest(exitApp: true, askForPermissionsBeforeTaskSchedule: false)
     }
     
     func testSchedulerNotifications() throws {
-        conductSchedulerNoficationsTest(exitApp: false, askForPermissionsBeforeTaskSchedule: true)
+        conductSchedulerNotificationTest(exitApp: false, askForPermissionsBeforeTaskSchedule: true)
     }
     
-    private func conductSchedulerNoficationsTest(exitApp: Bool, askForPermissionsBeforeTaskSchedule: Bool = true) {
+    private func conductSchedulerNotificationTest(exitApp: Bool, askForPermissionsBeforeTaskSchedule: Bool = true) {
         let app = XCUIApplication()
         
         XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))

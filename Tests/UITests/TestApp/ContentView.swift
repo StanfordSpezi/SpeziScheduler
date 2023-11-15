@@ -22,7 +22,7 @@ struct ContentView: View {
     }
     
     
-    @EnvironmentObject private var scheduler: TestAppScheduler
+    @Environment(TestAppScheduler.self) private var scheduler
     @State private var notificationAuthorizationGranted = false
     
     
@@ -100,7 +100,7 @@ struct ContentView: View {
                 _Concurrency.Task {
                     let currentDate = Date.now
                     let hour = Calendar.current.component(.hour, from: currentDate)
-                    // We expect the UI test to take at least 20 seconds to mavigate out of the app and to the home screen.
+                    // We expect the UI test to take at least 20 seconds to navigate out of the app and to the home screen.
                     // We then trigger the task in the minute after that, the UI test needs to wait at least one minute.
                     let minute = Calendar.current.component(.minute, from: currentDate.addingTimeInterval(20)) + 1
                     
@@ -128,17 +128,17 @@ struct ContentView: View {
                     return
                 }
                 _Concurrency.Task {
-                    await uncompletedEvent.complete(true)
+                    uncompletedEvent.complete(true)
                 }
             }
-            Button("Unfulfull Event") {
+            Button("Unfulfill Event") {
                 guard let completedEvent = scheduler.tasks
                     .flatMap({ $0.events() })
                     .first(where: { $0.complete }) else {
                     return
                 }
                 _Concurrency.Task {
-                    await completedEvent.complete(false)
+                    completedEvent.complete(false)
                 }
             }
         }
