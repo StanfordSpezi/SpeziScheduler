@@ -71,7 +71,14 @@ public final class Event: Identifiable, @unchecked Sendable {
     }
 
     convenience init(taskId: UUID, scheduledAt: Date) {
-        self.init(state: .scheduled(at: scheduledAt), taskId: taskId)
+        let state: EventState
+        if scheduledAt < .now {
+            state = .overdue(since: scheduledAt)
+        } else {
+            state = .scheduled(at: scheduledAt)
+        }
+        
+        self.init(state: state, taskId: taskId)
     }
 
 
