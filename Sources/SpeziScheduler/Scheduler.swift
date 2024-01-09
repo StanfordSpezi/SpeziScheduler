@@ -29,7 +29,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     private let initialTasks: [Task<Context>]
     private let prescheduleNotificationLimit: Int
 
-    private var taskList: TaskList<Context> = TaskList<Context>()
+    private let taskList: TaskList<Context> = TaskList<Context>()
 
     public var tasks: [Task<Context>] {
         taskList.tasks
