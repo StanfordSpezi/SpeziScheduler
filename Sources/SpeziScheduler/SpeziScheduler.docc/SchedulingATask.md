@@ -31,7 +31,7 @@ let surveyTask = Task(
 )
 ```
 
-The ``Schedule`` type also allows the customization of the repeition using the ``Schedule/Repetition-swift.enum`` type including the randomization between two date components, and the definition of the end of the schedule using the ``Schedule/End-swift.enum`` type.
+The ``Schedule`` type also allows the customization of the repetition using the ``Schedule/Repetition-swift.enum`` type including the randomization between two date components, and the definition of the end of the schedule using the ``Schedule/End-swift.enum`` type.
 
 ## Topics
 
