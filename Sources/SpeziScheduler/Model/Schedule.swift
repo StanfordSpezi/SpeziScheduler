@@ -9,7 +9,8 @@
 import Foundation
 
 
-/// A ``Schedule`` describe how a ``Task`` should schedule ``Event``.
+/// Describes how a ``Task`` should schedule ``Event``s.
+///
 /// Use the ``Schedule``.s ``Schedule/init(start:repetition:end:calendar:)`` initializer to define
 /// the start date, the repetition schedule (``Schedule/Repetition-swift.enum``), and the end time (``Schedule/End-swift.enum``) of the ``Schedule``
 public struct Schedule: Sendable {

@@ -14,7 +14,7 @@ import UIKit
 import UserNotifications
 
 
-/// The ``Scheduler`` module allows the scheduling and observation of ``Task``s adhering to a specific ``Schedule``.
+/// Scheduling and observation of ``Task``s adhering to a specific ``Schedule``.
 ///
 /// Use the ``Scheduler/init(prescheduleNotificationLimit:tasks:)`` initializer or the ``Scheduler/schedule(task:)`` function
 /// to schedule tasks that you can obtain using the ``Scheduler/tasks`` property.

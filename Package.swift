@@ -20,8 +20,8 @@ let package = Package(
         .library(name: "SpeziScheduler", targets: ["SpeziScheduler"])
     ],
     dependencies: [
-        .package(url: "https://github.com/StanfordSpezi/Spezi", .upToNextMinor(from: "0.8.0")),
-        .package(url: "https://github.com/StanfordSpezi/SpeziStorage", .upToNextMinor(from: "0.5.0"))
+        .package(url: "https://github.com/StanfordSpezi/Spezi", from: "1.0.0"),
+        .package(url: "https://github.com/StanfordSpezi/SpeziStorage", from: "1.0.0")
     ],
     targets: [
         .target(
@@ -35,6 +35,7 @@ let package = Package(
             name: "SpeziSchedulerTests",
             dependencies: [
                 .target(name: "SpeziScheduler"),
+                .product(name: "XCTSpezi", package: "Spezi"),
                 .product(name: "SpeziLocalStorage", package: "SpeziStorage")
             ]
         )
