@@ -14,9 +14,11 @@ import UserNotifications
 private let logger = Logger(subsystem: "edu.stanford.spezi.scheduler", category: "Task")
 
 
-/// A ``Task`` defines an instruction that is scheduled one to multiple times as defined by the ``Task/schedule`` property.
+/// Defines an instruction that is scheduled one to multiple times.
 ///
-/// A ``Task`` can have an additional ``Task/context`` associated with it that can be used to carry application-specific context.
+/// A `Task` defines an instruction that is scheduled one to multiple times as defined by the ``Task/schedule`` property.
+///
+/// A `Task` can have an additional ``Task/context`` associated with it that can be used to carry application-specific context.
 public final class Task<Context: Codable & Sendable>: Identifiable, Sendable {
     /// The unique identifier of the ``Task``.
     public let id: UUID

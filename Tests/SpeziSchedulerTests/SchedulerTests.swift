@@ -11,16 +11,16 @@ import SpeziLocalStorage
 @testable import SpeziScheduler
 import SpeziSecureStorage
 import XCTest
-
-
-private actor TestStandard: Standard {}
+import XCTSpezi
 
 
 final class SchedulerTests: XCTestCase {
     private func createScheduler(withInitialTasks initialTasks: Task<String>) async throws -> Scheduler<String> {
         let scheduler = Scheduler<String>(tasks: [initialTasks])
 
-        _ = Spezi(standard: TestStandard(), modules: [scheduler])
+        withDependencyResolution {
+            scheduler
+        }
 
         try? await _Concurrency.Task.sleep(for: .seconds(0.1)) // allow for configuration
 
