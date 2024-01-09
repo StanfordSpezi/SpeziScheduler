@@ -184,8 +184,8 @@ public struct Schedule: Sendable {
         return Double.random(in: 0...timeInterval)
     }
     
-    private mutating func insertRandomDisplacement(for date: Date, _ timeInverval: TimeInterval?) {
-        randomDisplacements[date] = timeInverval
+    private mutating func insertRandomDisplacement(for date: Date, _ timeInterval: TimeInterval?) {
+        randomDisplacements[date] = timeInterval
     }
 }
 

@@ -10,8 +10,8 @@
 import SpeziLocalStorage
 @testable import SpeziScheduler
 import SpeziSecureStorage
-import XCTSpezi
 import XCTest
+import XCTSpezi
 
 
 final class SchedulerTests: XCTestCase {
