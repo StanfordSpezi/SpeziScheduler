@@ -19,7 +19,8 @@ import UserNotifications
 /// Use the ``Scheduler/init(prescheduleNotificationLimit:tasks:)`` initializer or the ``Scheduler/schedule(task:)`` function
 /// to schedule tasks that you can obtain using the ``Scheduler/tasks`` property.
 /// You can use the ``Scheduler`` as an `ObservableObject` to automatically update your SwiftUI views when new events are emitted or events change.
-public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDelegate, Module, LifecycleHandler, EnvironmentAccessible {
+public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDelegate,
+                                          Module, LifecycleHandler, EnvironmentAccessible, DefaultInitializable {
     private let logger = Logger(subsystem: "edu.stanford.spezi.scheduler", category: "Scheduler")
 
     @Dependency private var storage: SchedulerStorage<Context>
@@ -28,7 +29,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     private let initialTasks: [Task<Context>]
     private let prescheduleNotificationLimit: Int
 
-    private let taskList: TaskList<Context>
+    private let taskList: TaskList<Context> = TaskList<Context>()
 
     public var tasks: [Task<Context>] {
         taskList.tasks
@@ -54,15 +55,11 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
             prescheduleNotificationLimit >= 1 && prescheduleNotificationLimit <= 64,
             "The prescheduleLimit must be bigger than 1 and smaller than the limit of 64 local notifications at a time"
         )
-
-        let list = TaskList<Context>()
-
+        
         self.prescheduleNotificationLimit = prescheduleNotificationLimit
         self.initialTasks = initialTasks
-        self.taskList = list
-
-        self._storage = Dependency(wrappedValue: SchedulerStorage(taskList: list))
-
+        self._storage = Dependency(wrappedValue: SchedulerStorage(taskList: self.taskList))
+        
         super.init()
         
         // Only run the notification setup when not running unit tests:
@@ -74,6 +71,10 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
                 firstLaunch = false
             }
         }
+    }
+    
+    override public required convenience init() {
+        self.init(tasks: [])
     }
     
     
