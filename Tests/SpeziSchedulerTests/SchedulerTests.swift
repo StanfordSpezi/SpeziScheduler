@@ -281,23 +281,23 @@ final class SchedulerTests: XCTestCase {
         let task = try JSONDecoder().decode(Task<String>.self, from: Data(json.utf8))
         XCTAssertEqual(task.schedule.calendar, .current)
     }
-    @MainActor 
+    @MainActor
     func testEventHashEqualityForScheduledVsCompleted() throws {
         let taskId = UUID()
         let scheduledDate = Date()
         let scheduledEvent = Event(taskId: taskId, scheduledAt: scheduledDate)
-
+        
         let completedEvent = Event(taskId: taskId, scheduledAt: scheduledDate)
         completedEvent.complete(true)
-
+        
         var scheduledEventHasher = Hasher()
         scheduledEvent.hash(into: &scheduledEventHasher)
         let scheduledEventHash = scheduledEventHasher.finalize()
-
+        
         var completedEventHasher = Hasher()
         completedEvent.hash(into: &completedEventHasher)
         let completedEventHash = completedEventHasher.finalize()
-
+        
         XCTAssertEqual(scheduledEventHash, completedEventHash)
     }
 }
