@@ -281,21 +281,14 @@ final class SchedulerTests: XCTestCase {
         let task = try JSONDecoder().decode(Task<String>.self, from: Data(json.utf8))
         XCTAssertEqual(task.schedule.calendar, .current)
     }
-    func testEventHashScheduledVsCompleted() throws {
+    @MainActor 
+    func testEventHashEqualityForScheduledVsCompleted() throws {
         let taskId = UUID()
         let scheduledDate = Date()
         let scheduledEvent = Event(taskId: taskId, scheduledAt: scheduledDate)
 
         let completedEvent = Event(taskId: taskId, scheduledAt: scheduledDate)
-
-        let expectation = XCTestExpectation(description: "Complete event on main actor")
-
-        DispatchQueue.main.async {
-            completedEvent.complete(true)
-            expectation.fulfill()
-        }
-        
-        wait(for: [expectation], timeout: 1.0)
+        completedEvent.complete(true)
 
         var scheduledEventHasher = Hasher()
         scheduledEvent.hash(into: &scheduledEventHasher)
