@@ -10,20 +10,21 @@ import Foundation
 import OSLog
 import Spezi
 import SwiftUI
-import UIKit
 import UserNotifications
 
 
-/// Scheduling and observation of ``Task``s adhering to a specific ``Schedule``.
+/// Schedule and observe `Task` according to a specified `Schedule`.
+///
+/// The `Scheduler` module helps with scheduling and observation ``Task``s according to the specified ``Schedule``.
 ///
 /// Use the ``Scheduler/init(prescheduleNotificationLimit:tasks:)`` initializer or the ``Scheduler/schedule(task:)`` function
 /// to schedule tasks that you can obtain using the ``Scheduler/tasks`` property.
 /// You can use the ``Scheduler`` as an `ObservableObject` to automatically update your SwiftUI views when new events are emitted or events change.
-public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDelegate,
-                                          Module, LifecycleHandler, EnvironmentAccessible, DefaultInitializable {
+public class Scheduler<Context: Codable>: Module, EnvironmentAccessible, DefaultInitializable, NotificationHandler {
     private let logger = Logger(subsystem: "edu.stanford.spezi.scheduler", category: "Scheduler")
 
     @Dependency private var storage: SchedulerStorage<Context>
+    @Modifier private var modifier = SchedulerLifecycle<Context>()
 
     @AppStorage("Spezi.Scheduler.firstlaunch") private var firstLaunch = true
     private let initialTasks: [Task<Context>]
@@ -60,8 +61,6 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         self.initialTasks = initialTasks
         self._storage = Dependency(wrappedValue: SchedulerStorage(taskList: self.taskList))
         
-        super.init()
-        
         // Only run the notification setup when not running unit tests:
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
             let notificationCenter = UNUserNotificationCenter.current()
@@ -73,7 +72,7 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         }
     }
     
-    override public required convenience init() {
+    public required convenience init() {
         self.init(tasks: [])
     }
     
@@ -115,24 +114,18 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     }
     
     
-    // MARK: - Lifecycle
-    @_documentation(visibility: internal)
-    public func willFinishLaunchingWithOptions(_ application: UIApplication, launchOptions: [UIApplication.LaunchOptionsKey: Any]) {
-        UNUserNotificationCenter.current().delegate = self
-    }
-    
-    @_documentation(visibility: internal)
-    public func sceneWillEnterForeground(_ scene: UIScene) {
-        _Concurrency.Task { @MainActor in
-            logger.debug("Scene entered foreground. Scheduling Tasks...")
-            self.scheduleTasks()
+    @MainActor
+    func handleActiveScenePhase() {
+        logger.debug("Scene entered foreground. Scheduling Tasks...")
+        self.scheduleTasks()
+        _Concurrency.Task {
             await updateScheduleNotifications()
         }
     }
 
 
-    @_documentation(visibility: internal)
-    public func applicationWillTerminate(_ application: UIApplication) {
+    @MainActor
+    func handleApplicationWillTerminate() {
         _Concurrency.Task {
             await storage.storeTasks()
         }
@@ -140,15 +133,32 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
     
     
     // MARK: - Notification Center
-    @_documentation(visibility: internal)
-    @MainActor
-    public func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification
-    ) async -> UNNotificationPresentationOptions {
-        [.badge, .banner, .sound, .list]
+    public func receiveIncomingNotification(_ notification: UNNotification) async -> UNNotificationPresentationOptions? {
+        let id = notification.request.identifier
+        let isSchedulerNotification = taskList.contains { task in
+            task.events.contains { event in
+                event.notification?.uuidString == id
+            }
+        }
+
+        guard isSchedulerNotification else {
+            return nil // we don't decide for notifications we didn't schedule
+        }
+
+        return [.badge, .banner, .sound, .list]
     }
-    
+
+    public func handleNotificationAction(_ response: UNNotificationResponse) async {} // TODO: removew
+    #if !os(macOS)
+    public func receiveRemoteNotification(_ remoteNotification: [AnyHashable : Any]) async -> BackgroundFetchResult { // TODO: remove
+        .noData
+    }
+    #else
+    public func receiveRemoteNotification(_ remoteNotification: [AnyHashable : Any]) { // TODO: remove
+
+    }
+    #endif
+
     
     // MARK: - Helper Methods
     private func schedule(tasks: [Task<Context>]) async {
@@ -259,5 +269,16 @@ public class Scheduler<Context: Codable>: NSObject, UNUserNotificationCenterDele
         }
 
         return prescheduleNotificationLimit / numberOfTasksWithNotifications
+    }
+}
+
+
+extension Scheduler: Hashable {
+    public static func == (lhs: Scheduler<Context>, rhs: Scheduler<Context>) -> Bool {
+        lhs.taskList == rhs.taskList
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(taskList)
     }
 }

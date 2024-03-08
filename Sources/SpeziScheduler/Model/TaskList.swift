@@ -24,6 +24,17 @@ final class TaskList<Context: Codable> {
 }
 
 
+extension TaskList: Hashable {
+    static func == (lhs: TaskList<Context>, rhs: TaskList<Context>) -> Bool {
+        lhs.tasks == rhs.tasks
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(tasks)
+    }
+}
+
+
 extension TaskList: MutableCollection {
     public var startIndex: Int {
         tasks.startIndex
