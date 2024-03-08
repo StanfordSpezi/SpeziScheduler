@@ -17,50 +17,64 @@ protocol AnyStorage {
 }
 
 
-actor SchedulerStorage<Context: Codable>: Module, DefaultInitializable, AnyStorage {
+@_spi(Spezi)
+/// Underlying Storage module for the `Scheduler`.
+public actor SchedulerStorage<Context: Codable>: Module, DefaultInitializable, AnyStorage {
     private let logger = Logger(subsystem: "edu.stanford.spezi.scheduler", category: "Storage")
 
     @Dependency private var localStorage: LocalStorage
 
-    private let taskList: TaskList<Context>
+    private let storageIsMocked: Bool
+    let taskList: TaskList<Context>
 
     private var debounceTask: _Concurrency.Task<Void, Never>? {
         willSet {
             debounceTask?.cancel()
         }
     }
-
-
-    init() {
-        self.taskList = TaskList()
-    }
     
 
-    init(taskList: TaskList<Context>) {
-        self.taskList = taskList
+    public init() {
+        #if targetEnvironment(simulator)
+        self.init(mockedStorage: true)
+        #else
+        self.init(mockedStorage: false)
+        #endif
+    }
+
+    public init(for scheduler: Scheduler<Context>.Type = Scheduler<Context>.self, mockedStorage: Bool) {
+        // swiftlint:disable:previous function_default_parameter_at_end
+        self.taskList = TaskList()
+        self.storageIsMocked = mockedStorage
     }
 
 
     func loadTasks() -> [Task<Context>]? {
         // swiftlint:disable:previous discouraged_optional_collection
-        #if !targetEnvironment(simulator)
+        if storageIsMocked {
+            logger.info("Storage is disabled as we are running int the simulator. No tasks were loaded.")
+            return nil
+        }
+
         do {
             return try localStorage.read([Task<Context>].self, storageKey: Constants.taskStorageKey)
         } catch {
             logger.error("Could not retrieve tasks from storage for the scheduler module: \(error)")
         }
-        #endif
         return nil
     }
 
     func storeTasks() {
-        #if !targetEnvironment(simulator)
+        if storageIsMocked {
+            logger.info("Storage is disabled as we are running int the simulator. No tasks were saved.")
+            return
+        }
+
         do {
             try localStorage.store(taskList.tasks, storageKey: Constants.taskStorageKey)
         } catch {
             logger.error("Could not persist the tasks of the scheduler module: \(error)")
         }
-        #endif
     }
 
     nonisolated func signalChange() {

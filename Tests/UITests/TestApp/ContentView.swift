@@ -22,7 +22,8 @@ struct ContentView: View {
     }
     
     
-    @Environment(TestAppScheduler.self) private var scheduler
+    @Environment(TestAppScheduler.self)
+    private var scheduler
     @State private var notificationAuthorizationGranted = false
     
     

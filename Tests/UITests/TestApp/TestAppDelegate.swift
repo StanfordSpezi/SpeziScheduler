@@ -7,7 +7,7 @@
 //
 
 import Spezi
-import SpeziScheduler
+@_spi(Spezi) import SpeziScheduler // swiftlint:disable:this attributes
 
 
 typealias TestAppScheduler = Scheduler<String>
@@ -16,6 +16,8 @@ typealias TestAppScheduler = Scheduler<String>
 class TestAppDelegate: SpeziAppDelegate {
     override var configuration: Configuration {
         Configuration {
+            // ensure storage is not mocked even though we are running within the simulator
+            SchedulerStorage(for: TestAppScheduler.self, mockedStorage: false)
             TestAppScheduler(
                 tasks: [
                     Task(

@@ -14,16 +14,6 @@ import XCTest
 import XCTSpezi
 
 
-struct ExampleView: View {
-    @State private var viewModel: FoodEntryViewModel
-
-
-    init(foodEntry: FoodEntry, day: String, meal: String) {
-        viewModel = FoodEntryViewModel(foodEntry: foodEntry, day: day, meal: meal)
-    }
-}
-
-
 final class SchedulerTests: XCTestCase {
     private func createScheduler(withInitialTasks initialTasks: Task<String>) async throws -> Scheduler<String> {
         let scheduler = Scheduler<String>(tasks: [initialTasks])

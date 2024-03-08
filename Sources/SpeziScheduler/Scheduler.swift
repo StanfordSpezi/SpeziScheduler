@@ -26,11 +26,14 @@ public class Scheduler<Context: Codable>: Module, EnvironmentAccessible, Default
     @Dependency private var storage: SchedulerStorage<Context>
     @Modifier private var modifier = SchedulerLifecycle<Context>()
 
-    @AppStorage("Spezi.Scheduler.firstlaunch") private var firstLaunch = true
+    @AppStorage("Spezi.Scheduler.firstlaunch")
+    private var firstLaunch = true
     private let initialTasks: [Task<Context>]
     private let prescheduleNotificationLimit: Int
 
-    private let taskList: TaskList<Context> = TaskList<Context>()
+    private var taskList: TaskList<Context> {
+        storage.taskList
+    }
 
     public var tasks: [Task<Context>] {
         taskList.tasks
@@ -59,7 +62,6 @@ public class Scheduler<Context: Codable>: Module, EnvironmentAccessible, Default
         
         self.prescheduleNotificationLimit = prescheduleNotificationLimit
         self.initialTasks = initialTasks
-        self._storage = Dependency(wrappedValue: SchedulerStorage(taskList: self.taskList))
         
         // Only run the notification setup when not running unit tests:
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
@@ -147,17 +149,6 @@ public class Scheduler<Context: Codable>: Module, EnvironmentAccessible, Default
 
         return [.badge, .banner, .sound, .list]
     }
-
-    public func handleNotificationAction(_ response: UNNotificationResponse) async {} // TODO: removew
-    #if !os(macOS)
-    public func receiveRemoteNotification(_ remoteNotification: [AnyHashable : Any]) async -> BackgroundFetchResult { // TODO: remove
-        .noData
-    }
-    #else
-    public func receiveRemoteNotification(_ remoteNotification: [AnyHashable : Any]) { // TODO: remove
-
-    }
-    #endif
 
     
     // MARK: - Helper Methods
