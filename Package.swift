@@ -14,14 +14,17 @@ import PackageDescription
 let package = Package(
     name: "SpeziScheduler",
     platforms: [
-        .iOS(.v17)
+        .iOS(.v17),
+        .macOS(.v14),
+        .visionOS(.v1),
+        .watchOS(.v10)
     ],
     products: [
         .library(name: "SpeziScheduler", targets: ["SpeziScheduler"])
     ],
     dependencies: [
-        .package(url: "https://github.com/StanfordSpezi/Spezi", from: "1.0.0"),
-        .package(url: "https://github.com/StanfordSpezi/SpeziStorage", from: "1.0.0")
+        .package(url: "https://github.com/StanfordSpezi/Spezi", from: "1.2.3"),
+        .package(url: "https://github.com/StanfordSpezi/SpeziStorage", from: "1.0.2")
     ],
     targets: [
         .target(

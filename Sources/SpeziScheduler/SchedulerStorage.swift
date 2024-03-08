@@ -17,32 +17,50 @@ protocol AnyStorage {
 }
 
 
-actor SchedulerStorage<Context: Codable>: Module, DefaultInitializable, AnyStorage {
+@_spi(Spezi)
+/// Underlying Storage module for the `Scheduler`.
+public actor SchedulerStorage<Context: Codable>: Module, DefaultInitializable, AnyStorage {
     private let logger = Logger(subsystem: "edu.stanford.spezi.scheduler", category: "Storage")
 
     @Dependency private var localStorage: LocalStorage
 
-    private let taskList: TaskList<Context>
+    private let storageIsMocked: Bool
+    let taskList: TaskList<Context>
 
     private var debounceTask: _Concurrency.Task<Void, Never>? {
         willSet {
             debounceTask?.cancel()
         }
     }
-
-
-    init() {
-        self.taskList = TaskList()
-    }
     
 
-    init(taskList: TaskList<Context>) {
-        self.taskList = taskList
+    public init() {
+        #if targetEnvironment(simulator)
+        self.init(mockedStorage: true)
+        #else
+        self.init(mockedStorage: false)
+        #endif
+    }
+
+    public init(for scheduler: Scheduler<Context>.Type = Scheduler<Context>.self, mockedStorage: Bool) {
+        // swiftlint:disable:previous function_default_parameter_at_end
+        self.taskList = TaskList()
+        self.storageIsMocked = mockedStorage
     }
 
 
     func loadTasks() -> [Task<Context>]? {
         // swiftlint:disable:previous discouraged_optional_collection
+        if storageIsMocked {
+            logger.debug("""
+                         Storage is disabled as we are running int the simulator. No tasks were loaded.
+
+                         To enable storage even if running within the simulator you can add the following module to your Spezi configuration:
+                         SchedulerStorage(for: Scheduler<\(Context.self)>.self, mockedStorage=false)
+                         """)
+            return nil
+        }
+
         do {
             return try localStorage.read([Task<Context>].self, storageKey: Constants.taskStorageKey)
         } catch {
@@ -52,6 +70,16 @@ actor SchedulerStorage<Context: Codable>: Module, DefaultInitializable, AnyStora
     }
 
     func storeTasks() {
+        if storageIsMocked {
+            logger.debug("""
+                         Storage is disabled as we are running int the simulator. No tasks were saved.
+
+                         To enable storage even if running within the simulator you can add the following module to your Spezi configuration:
+                         SchedulerStorage(for: Scheduler<\(Context.self)>.self, mockedStorage=false)
+                         """)
+            return
+        }
+
         do {
             try localStorage.store(taskList.tasks, storageKey: Constants.taskStorageKey)
         } catch {
