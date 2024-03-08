@@ -52,7 +52,12 @@ public actor SchedulerStorage<Context: Codable>: Module, DefaultInitializable, A
     func loadTasks() -> [Task<Context>]? {
         // swiftlint:disable:previous discouraged_optional_collection
         if storageIsMocked {
-            logger.info("Storage is disabled as we are running int the simulator. No tasks were loaded.")
+            logger.debug("""
+                         Storage is disabled as we are running int the simulator. No tasks were loaded.
+
+                         To enable storage even if running within the simulator you can add the following module to your Spezi configuration:
+                         SchedulerStorage(for: Scheduler<\(Context.self)>.self, mockedStorage=false)
+                         """)
             return nil
         }
 
@@ -66,7 +71,12 @@ public actor SchedulerStorage<Context: Codable>: Module, DefaultInitializable, A
 
     func storeTasks() {
         if storageIsMocked {
-            logger.info("Storage is disabled as we are running int the simulator. No tasks were saved.")
+            logger.debug("""
+                         Storage is disabled as we are running int the simulator. No tasks were saved.
+
+                         To enable storage even if running within the simulator you can add the following module to your Spezi configuration:
+                         SchedulerStorage(for: Scheduler<\(Context.self)>.self, mockedStorage=false)
+                         """)
             return
         }
 
