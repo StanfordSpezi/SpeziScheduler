@@ -106,7 +106,7 @@ public final class Task<Context: Codable & Sendable>: Identifiable, Sendable {
     }
     
     @MainActor
-    func scheduleNotifications(_ prescheduleLimit: Int) async {
+    func scheduleNotifications(_ prescheduleLimit: Int, using contentClosure: ((Task<Context>, Event) -> UNNotificationContent)?) async {
         // iOS only allows up to 64 notifications to be scheduled per one app, this is why we have to do the following logic with the prescheduleLimit:
         // We don't check notifications here in case notifications might becomes mutable in the future.
         
@@ -140,9 +140,15 @@ public final class Task<Context: Codable & Sendable>: Identifiable, Sendable {
         }
 
         for event in futureEvents where event.notification == nil {
-            let content = UNMutableNotificationContent()
-            content.title = title
-            content.body = description
+            let content: UNMutableNotificationContent
+            if let contentClosure = contentClosure {
+                content = contentClosure(self, event) as! UNMutableNotificationContent
+            } else {
+                content = UNMutableNotificationContent()
+                content.title = title
+                content.body = description
+
+            }
 
             let trigger = UNTimeIntervalNotificationTrigger(
                 timeInterval: max(event.scheduledAt.timeIntervalSince(Date.now), TimeInterval.leastNonzeroMagnitude),

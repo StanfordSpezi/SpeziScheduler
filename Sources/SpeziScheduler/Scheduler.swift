@@ -39,6 +39,7 @@ public class Scheduler<Context: Codable>: Module, EnvironmentAccessible, Default
         taskList.tasks
     }
 
+    public var notificationContentClosure: ((Task<Context>, Event) -> UNNotificationContent)?
 
     /// Indicates whether the necessary authorization to deliver local notifications is already granted.
     public var localNotificationAuthorization: Bool {
@@ -54,7 +55,7 @@ public class Scheduler<Context: Codable>: Module, EnvironmentAccessible, Default
     ///                               We recommend setting the limit to a value lower than 64, e.g., 56, to ensure room inaccuracies in the iOS scheduling APIs.
     ///                               The default value is `56`.
     /// - Parameter initialTasks: The initial set of ``Task``s.
-    public init(prescheduleNotificationLimit: Int = 56, tasks initialTasks: [Task<Context>] = []) {
+    public init(prescheduleNotificationLimit: Int = 56, tasks initialTasks: [Task<Context>] = [],  notificationContentClosure: ((Task<Context>, Event) -> UNNotificationContent)? = nil) {
         assert(
             prescheduleNotificationLimit >= 1 && prescheduleNotificationLimit <= 64,
             "The prescheduleLimit must be bigger than 1 and smaller than the limit of 64 local notifications at a time"
@@ -62,7 +63,8 @@ public class Scheduler<Context: Codable>: Module, EnvironmentAccessible, Default
         
         self.prescheduleNotificationLimit = prescheduleNotificationLimit
         self.initialTasks = initialTasks
-        
+        self.notificationContentClosure = notificationContentClosure
+
         // Only run the notification setup when not running unit tests:
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
             let notificationCenter = UNUserNotificationCenter.current()
@@ -209,7 +211,7 @@ public class Scheduler<Context: Codable>: Module, EnvironmentAccessible, Default
         let limit = await currentPerTaskNotificationLimit(numberOfTasksWithNotificationsCount: numberOfTasksWithNotificationsCounter)
 
         for task in taskList {
-            await task.scheduleNotifications(limit)
+            await task.scheduleNotifications(limit, using: notificationContentClosure)
         }
     }
 
