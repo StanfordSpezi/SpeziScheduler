@@ -15,6 +15,7 @@ import XCTSpezi
 
 
 final class SchedulerTests: XCTestCase {
+    @MainActor
     private func createScheduler(withInitialTasks initialTasks: Task<String>) async throws -> Scheduler<String> {
         let scheduler = Scheduler<String>(tasks: [initialTasks])
 
@@ -26,11 +27,12 @@ final class SchedulerTests: XCTestCase {
 
         return scheduler
     }
-    
-    
+
+
+    @MainActor
     func testObservedObjectCalls() async throws {
         let numberOfEvents = 6
-        
+
         let testTask = Task(
             title: "Test Task",
             description: "This is a Test task",
@@ -51,10 +53,12 @@ final class SchedulerTests: XCTestCase {
 
         XCTAssertEqual(numberOfEvents, uncompletedEvents + completedEvents)
     }
-    
+
+
+    @MainActor
     func testRandomSchedulerFunctionality() async throws {
         let numberOfEvents = 10
-        
+
         let testTask = Task(
             title: "Random Scheduler Test Task",
             description: "Random Scheduler Test task",
@@ -85,11 +89,12 @@ final class SchedulerTests: XCTestCase {
 
         XCTAssertEqual(numberOfEvents, uncompletedEvents + completedEvents)
     }
-    
-    
+
+
+    @MainActor
     func testCompleteEvents() async throws {
         let numberOfEvents = 6
-        
+
         let testTask = Task(
             title: "Test Task",
             description: "This is a test task",
@@ -103,7 +108,7 @@ final class SchedulerTests: XCTestCase {
         let scheduler = try await createScheduler(withInitialTasks: testTask)
 
         try await _Concurrency.Task.sleep(for: .seconds(1))
-        
+
         let testTask2 = Task(
             title: "Test Task 2",
             description: "This is a second test task",
@@ -123,22 +128,22 @@ final class SchedulerTests: XCTestCase {
         let expectationCompleteEvents = XCTestExpectation(description: "Complete all events")
         expectationCompleteEvents.expectedFulfillmentCount = numberOfEvents * 2
         expectationCompleteEvents.assertForOverFulfill = true
-        
+
         let events: Set<Event> = Set(scheduler.tasks.flatMap { $0.events() })
         _Concurrency.Task {
             for event in events {
-                await event.complete(true)
+                event.complete(true)
                 try? await _Concurrency.Task.sleep(for: .seconds(0.5))
                 expectationCompleteEvents.fulfill()
             }
         }
-        
+
         await fulfillment(of: [expectationCompleteEvents], timeout: (Double(numberOfEvents) * 2 * 0.5) + 3)
 
         XCTAssert(events.allSatisfy { $0.complete })
         XCTAssertEqual(events.count, 12)
     }
-    
+
     func testCodable() throws {
         let tasks = [
             Task(
@@ -162,13 +167,13 @@ final class SchedulerTests: XCTestCase {
                 context: "This is a second test context"
             )
         ]
-        
+
         try encodeAndDecodeTasksAssertion(tasks)
-        
+
         let expectation = XCTestExpectation(description: "Get Updates for all scheduled events.")
         expectation.expectedFulfillmentCount = 4
         expectation.assertForOverFulfill = true
-        
+
         let events: Set<Event> = Set(tasks.flatMap { $0.events() })
         for event in events {
             _Concurrency.Task {
@@ -176,16 +181,16 @@ final class SchedulerTests: XCTestCase {
                 expectation.fulfill()
             }
         }
-        
+
         sleep(1)
         wait(for: [expectation], timeout: TimeInterval(2))
-        
+
         XCTAssert(events.allSatisfy { $0.complete })
         XCTAssertEqual(events.count, 4)
-        
+
         try encodeAndDecodeTasksAssertion(tasks)
     }
-    
+
     private func encodeAndDecodeTasksAssertion(_ tasks: [Task<String>]) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
@@ -286,18 +291,18 @@ final class SchedulerTests: XCTestCase {
         let taskId = UUID()
         let scheduledDate = Date()
         let scheduledEvent = Event(taskId: taskId, scheduledAt: scheduledDate)
-        
+
         let completedEvent = Event(taskId: taskId, scheduledAt: scheduledDate)
         completedEvent.complete(true)
-        
+
         var scheduledEventHasher = Hasher()
         scheduledEvent.hash(into: &scheduledEventHasher)
         let scheduledEventHash = scheduledEventHasher.finalize()
-        
+
         var completedEventHasher = Hasher()
         completedEvent.hash(into: &completedEventHasher)
         let completedEventHash = completedEventHasher.finalize()
-        
+
         XCTAssertEqual(scheduledEventHash, completedEventHash)
     }
 }
