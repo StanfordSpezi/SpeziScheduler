@@ -10,12 +10,14 @@ import Spezi
 import SwiftUI
 
 
-struct SchedulerLifecycle<Context: Codable>: ViewModifier {
+struct SchedulerLifecycle<Context: Codable & Sendable>: ViewModifier {
     @Environment(Scheduler<Context>.self)
     private var scheduler
 
     @Environment(\.scenePhase)
     private var scenePhase
+
+    nonisolated init() {}
 
     func body(content: Content) -> some View {
         content
