@@ -31,7 +31,7 @@ let package = Package(
         .library(name: "SpeziScheduler", targets: ["SpeziScheduler"])
     ],
     dependencies: [
-        .package(url: "https://github.com/StanfordSpezi/Spezi", branch: "feature/dependency-restructure"),
+        .package(url: "https://github.com/StanfordSpezi/Spezi", from: "1.7.0"),
         .package(url: "https://github.com/StanfordSpezi/SpeziStorage", from: "1.1.2")
     ] + swiftLintPackage(),
     targets: [
@@ -73,7 +73,7 @@ func swiftLintPlugin() -> [Target.PluginUsage] {
 
 func swiftLintPackage() -> [PackageDescription.Package.Dependency] {
     if ProcessInfo.processInfo.environment["SPEZI_DEVELOPMENT_SWIFTLINT"] != nil {
-        [.package(url: "https://github.com/realm/SwiftLint.git", .upToNextMinor(from: "0.55.1"))]
+        [.package(url: "https://github.com/realm/SwiftLint.git", from: "0.55.1")]
     } else {
         []
     }
