@@ -8,7 +8,7 @@
 
 import Foundation
 import OSLog
-import UserNotifications
+@preconcurrency import UserNotifications
 
 
 private let logger = Logger(subsystem: "edu.stanford.spezi.scheduler", category: "Task")

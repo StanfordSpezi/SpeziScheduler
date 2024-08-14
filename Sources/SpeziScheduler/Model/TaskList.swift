@@ -10,7 +10,7 @@ import Observation
 
 
 @Observable
-final class TaskList<Context: Codable> {
+final class TaskList<Context: Codable & Sendable> {
     var tasks: [Task<Context>]
 
     init(tasks: [Task<Context>] = []) {

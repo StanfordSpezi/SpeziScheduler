@@ -10,7 +10,7 @@ import Foundation
 import OSLog
 import Spezi
 import SwiftUI
-import UserNotifications
+@preconcurrency import UserNotifications
 
 
 /// Schedule and observe `Task` according to a specified `Schedule`.
@@ -20,24 +20,28 @@ import UserNotifications
 /// Use the ``Scheduler/init(prescheduleNotificationLimit:tasks:)`` initializer or the ``Scheduler/schedule(task:)`` function
 /// to schedule tasks that you can obtain using the ``Scheduler/tasks`` property.
 /// You can use the ``Scheduler`` as an `ObservableObject` to automatically update your SwiftUI views when new events are emitted or events change.
-public class Scheduler<Context: Codable>: Module, EnvironmentAccessible, DefaultInitializable, NotificationHandler {
+@MainActor
+public final class Scheduler<Context: Codable & Sendable>: Module, EnvironmentAccessible, DefaultInitializable, NotificationHandler, Sendable {
     private let logger = Logger(subsystem: "edu.stanford.spezi.scheduler", category: "Scheduler")
 
-    @Dependency private var storage: SchedulerStorage<Context>
-    @Modifier private var modifier = SchedulerLifecycle<Context>()
-
     @AppStorage("Spezi.Scheduler.firstlaunch")
-    private var firstLaunch = true
+    @MainActor private var firstLaunch = true
     private let initialTasks: [Task<Context>]
     private let prescheduleNotificationLimit: Int
 
-    private var taskList: TaskList<Context> {
+    @MainActor private var taskList: TaskList<Context> {
         storage.taskList
     }
 
-    public var tasks: [Task<Context>] {
+    @MainActor  public var tasks: [Task<Context>] {
         taskList.tasks
     }
+
+
+    @Dependency(SchedulerStorage<Context>.self)
+    private var storage
+
+    @Modifier private var modifier = SchedulerLifecycle<Context>()
 
 
     /// Indicates whether the necessary authorization to deliver local notifications is already granted.
@@ -54,7 +58,7 @@ public class Scheduler<Context: Codable>: Module, EnvironmentAccessible, Default
     ///                               We recommend setting the limit to a value lower than 64, e.g., 56, to ensure room inaccuracies in the iOS scheduling APIs.
     ///                               The default value is `56`.
     /// - Parameter initialTasks: The initial set of ``Task``s.
-    public init(prescheduleNotificationLimit: Int = 56, tasks initialTasks: [Task<Context>] = []) {
+    public nonisolated init(prescheduleNotificationLimit: Int = 56, tasks initialTasks: [Task<Context>] = []) {
         assert(
             prescheduleNotificationLimit >= 1 && prescheduleNotificationLimit <= 64,
             "The prescheduleLimit must be bigger than 1 and smaller than the limit of 64 local notifications at a time"
@@ -66,15 +70,15 @@ public class Scheduler<Context: Codable>: Module, EnvironmentAccessible, Default
         // Only run the notification setup when not running unit tests:
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
             let notificationCenter = UNUserNotificationCenter.current()
-            if firstLaunch {
+            if _firstLaunch.wrappedValue {
                 notificationCenter.removeAllDeliveredNotifications()
                 notificationCenter.removeAllPendingNotificationRequests()
-                firstLaunch = false
+                _firstLaunch.wrappedValue = false
             }
         }
     }
-    
-    public required convenience init() {
+
+    public nonisolated required convenience init() {
         self.init(tasks: [])
     }
     
@@ -214,6 +218,7 @@ public class Scheduler<Context: Codable>: Module, EnvironmentAccessible, Default
     }
 
 
+    @MainActor
     private func currentPerTaskNotificationLimit(numberOfTasksWithNotificationsCount: Int) async -> Int {
         let numberOfTasksWithNotifications = max(1, numberOfTasksWithNotificationsCount)
 
@@ -260,16 +265,5 @@ public class Scheduler<Context: Codable>: Module, EnvironmentAccessible, Default
         }
 
         return prescheduleNotificationLimit / numberOfTasksWithNotifications
-    }
-}
-
-
-extension Scheduler: Hashable {
-    public static func == (lhs: Scheduler<Context>, rhs: Scheduler<Context>) -> Bool {
-        lhs.taskList == rhs.taskList
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(taskList)
     }
 }

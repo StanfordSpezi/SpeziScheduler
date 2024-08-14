@@ -11,19 +11,16 @@ import XCTestExtensions
 
 
 class TestAppUITests: XCTestCase {
-    override func setUpWithError() throws {
-        try super.setUpWithError()
-        
+    override func setUp() {
         continueAfterFailure = false
-        
-        let app = XCUIApplication()
-        app.deleteAndLaunch(withSpringboardAppName: "TestApp")
     }
     
-    
+
+    @MainActor
     func testSchedulerLocalStorage() throws {
         let app = XCUIApplication()
-        
+        app.deleteAndLaunch(withSpringboardAppName: "TestApp")
+
         XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
         
         app.assert(tasks: 1, events: 1, pastEvents: 1, fulfilledEvents: 0)
@@ -72,22 +69,27 @@ class TestAppUITests: XCTestCase {
         app.assert(tasks: 2, events: 3, pastEvents: 3, fulfilledEvents: 3)
     }
     
-    
+
+    @MainActor
     func testSchedulerBackgroundNotifications() throws {
         conductSchedulerNotificationTest(exitApp: true, askForPermissionsBeforeTaskSchedule: true)
     }
-    
+
+    @MainActor
     func testSchedulerNotificationsBeforePermissions() throws {
         conductSchedulerNotificationTest(exitApp: true, askForPermissionsBeforeTaskSchedule: false)
     }
-    
+
+    @MainActor
     func testSchedulerNotifications() throws {
         conductSchedulerNotificationTest(exitApp: false, askForPermissionsBeforeTaskSchedule: true)
     }
-    
+
+    @MainActor
     private func conductSchedulerNotificationTest(exitApp: Bool, askForPermissionsBeforeTaskSchedule: Bool = true) {
         let app = XCUIApplication()
-        
+        app.deleteAndLaunch(withSpringboardAppName: "TestApp")
+
         XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
         
         app.assert(tasks: 1, events: 1, pastEvents: 1, fulfilledEvents: 0)
@@ -112,10 +114,12 @@ class TestAppUITests: XCTestCase {
         app.buttons["Fulfill Event"].tap()
         app.assert(tasks: 2, events: 129, pastEvents: 2, fulfilledEvents: 2)
     }
-    
+
+    @MainActor
     func testRepeatedNotificationAuthorization() throws {
         let app = XCUIApplication()
-        
+        app.deleteAndLaunch(withSpringboardAppName: "TestApp")
+
         XCTAssert(app.staticTexts["Scheduler"].waitForExistence(timeout: 2))
         XCTAssert(app.buttons["Request Notification Permissions"].isEnabled)
         

@@ -19,13 +19,14 @@ protocol AnyStorage {
 
 @_spi(Spezi)
 /// Underlying Storage module for the `Scheduler`.
-public actor SchedulerStorage<Context: Codable>: Module, DefaultInitializable, AnyStorage {
+public actor SchedulerStorage<Context: Codable & Sendable>: Module, DefaultInitializable, AnyStorage {
     private let logger = Logger(subsystem: "edu.stanford.spezi.scheduler", category: "Storage")
 
-    @Dependency private var localStorage: LocalStorage
+    @Dependency(LocalStorage.self)
+    private var localStorage
 
     private let storageIsMocked: Bool
-    let taskList: TaskList<Context>
+    @MainActor let taskList = TaskList<Context>()
 
     private var debounceTask: _Concurrency.Task<Void, Never>? {
         willSet {
@@ -44,7 +45,6 @@ public actor SchedulerStorage<Context: Codable>: Module, DefaultInitializable, A
 
     public init(for scheduler: Scheduler<Context>.Type = Scheduler<Context>.self, mockedStorage: Bool) {
         // swiftlint:disable:previous function_default_parameter_at_end
-        self.taskList = TaskList()
         self.storageIsMocked = mockedStorage
     }
 
@@ -69,11 +69,17 @@ public actor SchedulerStorage<Context: Codable>: Module, DefaultInitializable, A
         return nil
     }
 
-    func storeTasks() {
+    @MainActor
+    func storeTasks() async {
+        let taskList = taskList
+        await _storeTasks(taskList: taskList)
+    }
+
+    private func _storeTasks(taskList: TaskList<Context>) async {
         if storageIsMocked {
             logger.debug("""
                          Storage is disabled as we are running int the simulator. No tasks were saved.
-
+                         
                          To enable storage even if running within the simulator you can add the following module to your Spezi configuration:
                          SchedulerStorage(for: Scheduler<\(Context.self)>.self, mockedStorage=false)
                          """)
@@ -87,6 +93,7 @@ public actor SchedulerStorage<Context: Codable>: Module, DefaultInitializable, A
         }
     }
 
+
     nonisolated func signalChange() {
         _Concurrency.Task {
             await debounceCall()
@@ -94,16 +101,14 @@ public actor SchedulerStorage<Context: Codable>: Module, DefaultInitializable, A
     }
 
     private func debounceCall() async {
-        debounceTask = _Concurrency.Task {
+        debounceTask = _Concurrency.Task { @MainActor in
             try? await _Concurrency.Task.sleep(for: .milliseconds(500))
 
             guard !_Concurrency.Task.isCancelled else {
                 return
             }
 
-            storeTasks()
-
-            debounceTask = nil
+            await storeTasks()
         }
     }
 }
