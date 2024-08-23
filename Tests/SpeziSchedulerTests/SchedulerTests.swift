@@ -14,7 +14,112 @@ import XCTest
 import XCTSpezi
 
 
+import SwiftData
+
+@Model
+class Entry {
+    var id: UUID
+    var entry: String
+
+    init(id: UUID = UUID(), entry: String) {
+        self.id = id
+        self.entry = entry
+    }
+}
+
+class Test {
+    var entity: String {
+        get {
+            ""
+        }
+        set {
+            ""
+        }
+    }
+}
+
+@Model
+class SimpleModel {
+    @Attribute(.unique)
+    var id: String
+
+    var content: String
+
+    @Relationship(deleteRule: .cascade) // TODO: no inverse right?
+    var entry: Entry?
+
+    var isUnderlyingNil: Bool {
+        print("_entry: \(String(describing: _entry)), content: \(_content), id: \(_id)")
+        print("metadata: \(_$backingData.metadata)")
+        return _entry == nil
+    }
+
+    init(id: String, content: String, entry: Entry) {
+        self.id = id
+        self.content = content
+        self.entry = entry
+    }
+
+    init(id: String, content: String) {
+        self.id = id
+        self.content = content
+    }
+}
+
 final class SchedulerTests: XCTestCase {
+    // swiftlint:disable:previous type_body_length
+    @MainActor
+    func testILScheduler() throws {
+        let module = ILScheduler()
+        withDependencyResolution {
+            module
+        }
+
+        let results = try module.queryTasks(for: Date.now.addingTimeInterval(-60)..<Date.now)
+        print(results)
+    }
+
+    @MainActor
+    func testSomeSwiftDataTests() throws { // TODO: remove!
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: SimpleModel.self, configurations: configuration)
+
+        let context = ModelContext(container)
+
+        let model2 = SimpleModel(id: "asd2", content: "asd2", entry: Entry(entry: "Entry 2"))
+        print("isNil2: \(model2.isUnderlyingNil)")
+
+        let model = SimpleModel(id: "asf", content: "Some content")
+        print("isNil: \(model.isUnderlyingNil)")
+        model.entry = Entry(entry: "Entry 1")
+        print("isNil: \(model.isUnderlyingNil)")
+        context.insert(model)
+
+        print("Unsaved changes: \(context.hasChanges)")
+        try context.save()
+
+        try print("History: \(context.fetchHistory(HistoryDescriptor<DefaultHistoryTransaction>()))")
+
+        // TODO: context.rollback() might be helpful for error handling?
+
+        model.content = "new Content"
+        print("Unsaved changes: \(context.hasChanges)")
+        try context.save()
+
+        try print("History: \(context.fetchHistory(HistoryDescriptor<DefaultHistoryTransaction>()))")
+
+        let allEntries = try context.fetch(FetchDescriptor<SimpleModel>())
+        for model in allEntries {
+            print("model entries: \(String(describing: model.entry))")
+            print("Model isNil: \(model.isUnderlyingNil)")
+        }
+
+        context.delete(model)
+        try context.save()
+
+        try print("Remaining: \(context.fetch(FetchDescriptor<Entry>()))")
+    }
+
     @MainActor
     private func createScheduler(withInitialTasks initialTasks: Task<String>) async throws -> Scheduler<String> {
         let scheduler = Scheduler<String>(tasks: [initialTasks])
@@ -286,6 +391,7 @@ final class SchedulerTests: XCTestCase {
         let task = try JSONDecoder().decode(Task<String>.self, from: Data(json.utf8))
         XCTAssertEqual(task.schedule.calendar, .current)
     }
+    
     @MainActor
     func testEventHashEqualityForScheduledVsCompleted() throws {
         let taskId = UUID()

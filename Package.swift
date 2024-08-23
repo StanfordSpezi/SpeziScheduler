@@ -1,4 +1,4 @@
-// swift-tools-version:5.9
+// swift-tools-version:6.0
 
 //
 // This source file is part of the Stanford Spezi open-source project
@@ -12,20 +12,13 @@ import class Foundation.ProcessInfo
 import PackageDescription
 
 
-#if swift(<6)
-let swiftConcurrency: SwiftSetting = .enableExperimentalFeature("StrictConcurrency")
-#else
-let swiftConcurrency: SwiftSetting = .enableUpcomingFeature("StrictConcurrency")
-#endif
-
-
 let package = Package(
     name: "SpeziScheduler",
     platforms: [
-        .iOS(.v17),
-        .macOS(.v14),
-        .visionOS(.v1),
-        .watchOS(.v10)
+        .iOS(.v18),
+        .macOS(.v15),
+        .visionOS(.v2),
+        .watchOS(.v11)
     ],
     products: [
         .library(name: "SpeziScheduler", targets: ["SpeziScheduler"])
@@ -41,9 +34,6 @@ let package = Package(
                 .product(name: "Spezi", package: "Spezi"),
                 .product(name: "SpeziLocalStorage", package: "SpeziStorage")
             ],
-            swiftSettings: [
-                swiftConcurrency
-            ],
             plugins: [] + swiftLintPlugin()
         ),
         .testTarget(
@@ -52,9 +42,6 @@ let package = Package(
                 .target(name: "SpeziScheduler"),
                 .product(name: "XCTSpezi", package: "Spezi"),
                 .product(name: "SpeziLocalStorage", package: "SpeziStorage")
-            ],
-            swiftSettings: [
-                swiftConcurrency
             ],
             plugins: [] + swiftLintPlugin()
         )
