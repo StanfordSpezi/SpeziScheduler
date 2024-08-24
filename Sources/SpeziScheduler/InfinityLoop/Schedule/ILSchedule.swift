@@ -74,8 +74,29 @@ public struct ILSchedule {
 
         // TODO: recurrence.calendar = .autoupdatingCurrent (does that change something?)
 
-        // TODO: bring back support for randomly displaced events
-        // TODO: bring back support to specify interval by e.g. event count!
+        // TODO: bring back support for randomly displaced events? random generated seed?
+    }
+
+
+    func dates(for start: Date) -> (start: Date, end: Date) {
+        let occurrenceStart: Date
+        let occurrenceEnd: Date
+
+        switch duration {
+        case .allDay:
+            occurrenceStart = Calendar.current.startOfDay(for: start)
+
+            // TODO: shall we just add 24 hours? (we know start is at start of day) and end is exclusive anyways?
+            guard let endDate = Calendar.current.date(byAdding: .init(day: 1, second: -1), to: occurrenceStart) else {
+                preconditionFailure("Failed to calculate end of date from \(start)")
+            }
+            occurrenceEnd = endDate
+        case let .duration(duration):
+            occurrenceStart = start
+            occurrenceEnd = occurrenceStart.addingTimeInterval(TimeInterval(duration.components.seconds))
+        }
+
+        return (occurrenceStart, occurrenceEnd)
     }
 }
 
@@ -109,6 +130,8 @@ extension ILSchedule {
     /// Create a schedule that repeats daily.
     ///
     /// - Parameters:
+    ///   - calendar: The calendar
+    ///   - interval: The interval in which the daily recurrence repeats (e.g., every `interval`-days).
     ///   - hour: The hour.
     ///   - minute: The minute.
     ///   - second: The second.
@@ -117,25 +140,27 @@ extension ILSchedule {
     ///   - duration: The duration of a single occurrence. By default one hour.
     /// - Returns: Returns the schedule that repeats daily.
     public static func daily( // swiftlint:disable:this function_default_parameter_at_end
+        calendar: Calendar = .current,
         interval: Int = 1,
-        hour: Int, // TODO: still useful?
+        hour: Int,
         minute: Int,
         second: Int = 0,
-        start: Date,
+        startingAt start: Date,
         end: Calendar.RecurrenceRule.End = .never,
         duration: Duration = .hours(1)
     ) -> ILSchedule {
         guard let startTime = Calendar.current.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start date for daily schedule. Can't set \(hour):\(minute):\(second) for \(start).")
         }
-        // TODO: Avoid spelling current calendar all the time?
-        return ILSchedule(startingAt: startTime, duration: duration, recurrence: .daily(calendar: .current, interval: interval, end: end))
+        return ILSchedule(startingAt: startTime, duration: duration, recurrence: .daily(calendar: calendar, interval: interval, end: end))
     }
 
     /// Create a schedule that repeats weekly.
     ///
     /// - Parameters:
-    ///   - weekday: The weekday on which the schedule repeats.
+    ///   - calendar: The calendar
+    ///   - interval: The interval in which the weekly recurrence repeats (e.g., every `interval`-weeks).
+    ///   - weekday: The weekday on which the schedule repeats. If `nil`, it uses the same weekday as the `start` date.
     ///   - hour: The hour.
     ///   - minute: The minute.
     ///   - second: The second.
@@ -144,12 +169,13 @@ extension ILSchedule {
     ///   - duration: The duration of a single occurrence. By default one hour.
     /// - Returns: Returns the schedule that repeats weekly.
     public static func weekly( // swiftlint:disable:this function_default_parameter_at_end
+        calendar: Calendar = .current,
         interval: Int = 1,
         weekday: Locale.Weekday? = nil,
         hour: Int,
         minute: Int,
         second: Int = 0,
-        start: Date,
+        startingAt start: Date,
         end: Calendar.RecurrenceRule.End = .never,
         duration: Duration = .hours(1)
     ) -> ILSchedule {
@@ -159,7 +185,7 @@ extension ILSchedule {
         return ILSchedule(
             startingAt: startTime,
             duration: duration,
-            recurrence: .weekly(calendar: .current, interval: interval, end: end, weekdays: weekday.map { [.every($0)] } ?? [])
+            recurrence: .weekly(calendar: calendar, interval: interval, end: end, weekdays: weekday.map { [.every($0)] } ?? [])
         )
     }
 }
@@ -167,101 +193,68 @@ extension ILSchedule {
 extension ILSchedule {
     // we are using lazy maps, so these are all single pass operations.
 
-    /// The list of occurrences occurring between two dates.
+    /// The list of occurrences occurring in a date range.
     ///
-    /// - Precondition: `start < end`
     /// - Parameters:
     ///   - start: The start date (inclusive).
     ///   - end: The last date an event might start (exclusive).
     /// - Returns: The list of occurrences. Empty if there are no occurrences in the specified time frame.
-    public func occurrences(from start: Date, to end: Date) -> [Occurrence] {
-        precondition(start < end, "Start date must be less than the end date: \(start) < \(end)")
-
-        return occurrences() // we can't pass the end date to the dates method as we then can't derive the base offset
-            .drop { occurrence in
-                occurrence.end < start
-            }
-            .prefix { occurrence in
-                occurrence.starts(before: end)
-            }
+    @_disfavoredOverload
+    public func occurrences(in range: Range<Date>) -> [Occurrence] {
+        Array(occurrences(in: range))
     }
 
-    /// Retrieve the list of occurrences between two occurrence indices.
+
+    /// The list of occurrences occurring on a specific day.
     ///
-    /// - Precondition: `startIndex <= stopIndex`
-    /// - Parameters:
-    ///   - startIndex: The occurrence of the first occurrence of return (inclusive).
-    ///   - stopIndex: The index of the last occurrence (exclusive).
-    /// - Returns: The list of occurrences in the range specified for the supplied indices
-    public func occurrences(betweenIndex startIndex: Int, and stopIndex: Int) -> [Occurrence] {
-        // TODO: support range expressions?
-        precondition(startIndex <= stopIndex, "Start index must be less than or equal to the stopIndex: \(startIndex) was bigger than \(stopIndex)")
+    /// - Parameter date: The day in which the occurrences should occur.
+    /// - Returns: The list of occurrences. Empty if there are no occurrences in the specified time frame.
+    public func occurrences(inDay date: Date) -> [Occurrence] {
+        let start = Calendar.current.startOfDay(for: date)
+        guard let end = Calendar.current.date(byAdding: .day, value: 1, to: start) else {
+            preconditionFailure("Failed to add one day to \(start)")
+        }
 
-        return occurrences()
-            .drop { occurrence in
-                occurrence.index < startIndex
-            }
-            .prefix { occurrence in
-                occurrence.index < stopIndex
-            }
+        return occurrences(in: start..<end)
     }
 
-    /// Retrieve the occurrence for a given occurrence index in the schedule.
+    /// Retrieve the occurrence for a given occurrence start date in the schedule.
     ///
     /// - Precondition: `index >= 0`
-    /// - Parameter index: The index of the occurrence.
+    /// - Parameter date: The start date of the occurrence.
     /// - Returns: Returns the occurrence for the requested index. For example, index `0` returns the first occurrence in the schedule.
     ///     Returns `nil` if the schedule ends before the requested index.
-    public func occurrence(forIndex index: Int) -> Occurrence? {
-        precondition(index >= 0, "The occurrence index cannot be negative. Received \(index)")
-        return occurrences().first { occurrence in
-            occurrence.index == index
+    public func occurrence(forStartDate start: Date) -> Occurrence? {
+        guard let nextSecond = Calendar.current.date(byAdding: .second, value: 1, to: start) else {
+            preconditionFailure("Failed to add one second to \(start)")
+        }
+
+        return occurrences(in: start..<nextSecond).first { occurrence in
+            occurrence.start == start
         }
     }
 
-    public func occurrences() -> LazyMapSequence<some Sequence<(offset: Int, element: Date)>, Occurrence> {
-        // TODO: if we do not need the index, we could limit the date range and make things more efficient!
-        recurrencesSequence()
-            .enumerated()
+    /// Retrieve all occurrences in the schedule.
+    ///
+    /// Returns a potential infinite sequence of all occurrences in the schedule.
+    ///
+    /// - Parameter range: A range that limits the search space. If `nil`, return all occurrences in the schedule.
+    /// - Returns: Returns a potentially infinite sequence of ``Occurrence``s.
+    public func occurrences(in range: Range<Date>? = nil) -> some Sequence<Occurrence> & Sendable {
+        recurrencesSequence(in: range)
             .lazy
-            .map { offset, element in
-                // TODO: inline this init extension again?
-                Occurrence(start: element, schedule: self, index: offset)
+            .map { element in
+                Occurrence(start: element, schedule: self)
             }
     }
 
-    private func recurrencesSequence() -> some Sequence<Date> & Sendable {
+    private func recurrencesSequence(in range: Range<Date>? = nil) -> some Sequence<Date> & Sendable {
         if let recurrence {
-            recurrence.recurrences(of: self.start)
+            recurrence.recurrences(of: self.start, in: range)
         } else {
             // workaround to make sure we return the same opaque but generic sequence (just equals to `start`)
             Calendar.RecurrenceRule(calendar: .current, frequency: .daily, end: .afterOccurrences(1))
-                .recurrences(of: start)
+                .recurrences(of: start, in: range)
         }
-    }
-}
-
-
-extension Occurrence {
-    fileprivate init(start: Date, schedule: ILSchedule, index: Int) {
-        let occurrenceStart: Date
-        let occurrenceEnd: Date
-
-        switch schedule.duration {
-        case .allDay: // TODO: there is a difference between allDay and 24 hour duration?
-            occurrenceStart = Calendar.current.startOfDay(for: start)
-
-            // TODO: why not just add 24 hours?
-            guard let endDate = Calendar.current.date(byAdding: .init(day: 1, second: -1), to: occurrenceStart) else {
-                preconditionFailure("Failed to calculate end of date from \(start)")
-            }
-            occurrenceEnd = endDate
-        case let .duration(duration):
-            occurrenceStart = start
-            occurrenceEnd = occurrenceStart.addingTimeInterval(TimeInterval(duration.components.seconds))
-        }
-
-        // TODO: the index here might be invalid if the Schedule has multiple components!
-        self.init(start: occurrenceStart, end: occurrenceEnd, schedule: schedule, index: index)
     }
 }

@@ -27,7 +27,7 @@ extension Locale.Weekday {
         case .saturday:
             7
         default:
-            preconditionFailure("The world changed a lot. There is another weekday?")
+            preconditionFailure("The world changed a lot. There is another weekday: \(self)?")
         }
     }
 }

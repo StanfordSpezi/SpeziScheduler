@@ -21,25 +21,27 @@ public final class ILTask {
     /// This is a identifier for this task (e.g., `"social-support-questionnaire"`).
     public private(set) var id: String
     /// The user-visible title for this task.
-    public var title: String // TODO: both optional! would love LocalizedStringResource (however, cannot persist in SwiftData!)
+    public private(set) var title: String // TODO: both optional! would love LocalizedStringResource (however, cannot persist in SwiftData!)
     /// Instructions for this task.
     ///
     /// Instructions might describe the purpose for this task.
-    public var instructions: String
-
-    // TODO: when updating a schedule, we must make sure that we do not shadow outcomes that have already been created for
-    //  occurrences that would be overwritten!
+    public private(set) var instructions: String
 
     /// The schedule for the events of this Task.
-    public var schedule: ILSchedule
+    public private(set) var schedule: ILSchedule
 
     // TODO: the relationship makes us require querying all outcomes always!
     /// The list of outcomes associated with this Task.
     @Relationship(deleteRule: .cascade, inverse: \Outcome.task)
-    public private(set) var outcomes: [Outcome]
+    public private(set) var outcomes: [Outcome] // TODO: shall we really allow that? (just make it private and keep it for the cascade rule??)
 
     /// The date from which is version of the task is effective.
     public private(set) var effectiveFrom: Date
+
+    /// Determine if this task is the latest instance.
+    public var isLatestVersion: Bool {
+        nextVersion == nil // next version is always pre-fetched
+    }
 
     /// A reference to a previous version of this task.
     ///
@@ -88,20 +90,17 @@ public final class ILTask {
             return self
         }
 
-        // TODO: update might incur data loss?
-        /*
-         // Ensure that new versions of tasks do not overwrite regions of previous
-         // versions that already have outcomes saved to them.
-         //
-         // |<------------- Time Line --------------->|
-         //  TaskV1 ------x------------------->
-         //                     V2 ---------->
-         //              V3------------------>
-         //
-         // Throws an error when updating to V3 from V2 if V1 has outcomes after `x`.
-         // Throws an error when updating to V3 from V2 if V2 has any outcomes.
-         // Does not throw when updating to V3 from V2 if V1 has outcomes before `x`.
-         */
+        // TODO: make this throwing not crashing?
+        // TODO: allow to delete those, or override this setting to not have this throwing?
+        precondition(
+            outcomes.allSatisfy({ outcome in
+                outcome.occurrenceStartDate < effectiveFrom
+            }),
+            """
+            "An updated Task cannot shadow the outcomes of a previous task. \
+            Make sure the `effectiveFrom` is larger than the start that of the latest completed event.
+            """
+        )
 
         let newVersion = ILTask(
             id: id,

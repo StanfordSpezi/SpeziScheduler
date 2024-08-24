@@ -36,6 +36,13 @@ let package = Package(
             ],
             plugins: [] + swiftLintPlugin()
         ),
+        .target(
+            name: "SpeziSchedulerUI",
+            dependencies: [
+                .target(name: "SpeziScheduler")
+            ],
+            plugins: [] + swiftLintPlugin()
+        ),
         .testTarget(
             name: "SpeziSchedulerTests",
             dependencies: [

@@ -33,8 +33,9 @@ public struct ILEvent {
     /// Complete the event with an outcome.
     ///
     /// - Parameter outcome: The outcome that completes the event.
-    public mutating func setOutcome(_ outcome: Outcome) { // TODO: simple "Void" completion?
+    public mutating func complete() { // TODO: add ability to supply a value?
+        let outcome = Outcome(task: task, occurrence: occurrence)
         self.outcome = outcome
-        task.addOutcome(outcome)
+        task.addOutcome(outcome) // TODO: is this necessary? Would this duplicate the entry?
     }
 }

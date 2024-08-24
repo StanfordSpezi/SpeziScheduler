@@ -15,7 +15,7 @@ import SwiftData
 /// Describes a  outcomes of an ``Event`` of a ``Task``.
 @Model
 public final class Outcome {
-    #Index([\Outcome.id])
+    #Index<Outcome>([\.id, \.occurrenceStartDate])
 
     /// The id of the outcome.
     @Attribute(.unique)
@@ -23,24 +23,41 @@ public final class Outcome {
 
     /// The completion date of the outcome.
     public private(set) var completionDate: Date
+    /// The date of the occurrence.
+    ///
+    /// We use the occurrence date to match the outcome to the ``Occurrence`` instance.
+    /// `Date` is independent of any specific calendar or time zone, representing a time interval relative to an absolute reference date.
+    /// Therefore, you can think of this property as an occurrence index that is monotonic but not necessarily continuous.
+    private(set) var occurrenceStartDate: Date
 
     /// The associated task of the outcome.
-    public private(set) var task: ILTask? // TODO: we might be able to make this non-optional?
-    private var occurrenceIndex: Int // TODO: to which version of the task does this occurrence index point?
+    public private(set) var task: ILTask
 
-    public var occurrence: Occurrence? {
-        task?.schedule.occurrence(forIndex: occurrenceIndex)
+    /// The occurrence of the event the outcome is associated with.
+    public var occurrence: Occurrence {
+        // correct would probably be to call `task.schedule.occurrence(forStartDate:)` and check if this still exists
+        // but assuming the occurrence exists and having a non-optional return type is just easier
+        Occurrence(start: occurrenceStartDate, schedule: task.schedule)
     }
 
-    // TODO: have a getter for the Event?
+    /// The associated event for this outcome.
+    public var event: ILEvent {
+        ILEvent(task: task, occurrence: occurrence, outcome: self)
+    }
 
     // TODO: custom storage for outcomes?
 
-    init(occurrenceIndex: Int) {
+    init(task: ILTask, occurrence: Occurrence) {
         self.id = UUID()
         self.completionDate = .now
-        self.occurrenceIndex = occurrenceIndex
+        self.task = task
+        self.occurrenceStartDate = occurrence.start
+    }
+}
 
-        // TODO: task and associate outcome?
+
+extension Occurrence: Comparable {
+    public static func < (lhs: Occurrence, rhs: Occurrence) -> Bool {
+        lhs.start < rhs.start
     }
 }

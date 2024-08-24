@@ -19,17 +19,18 @@ public struct Occurrence {
     public let end: Date
     /// The associated schedule.
     public let schedule: ILSchedule
-    /// The occurrence index within the schedule.
-    ///
-    /// For example, the occurrence with index `0` is the first event in the schedule.
-    public let index: Int // TODO: check if we can get rid of the index!
 
 
-    init(start: Date, end: Date, schedule: ILSchedule, index: Int) {
+    init(start: Date, end: Date, schedule: ILSchedule) {
         self.start = start
         self.end = end
         self.schedule = schedule
-        self.index = index
+    }
+
+    init(start: Date, schedule: ILSchedule) {
+        let (start, end) = schedule.dates(for: start)
+
+        self.init(start: start, end: end, schedule: schedule)
     }
 }
 

@@ -31,6 +31,9 @@ public final class ILScheduler: Module {
         }
     }
 
+    // TODO: how to specify the initial tasks
+    //   -> result builder and then `getOrCreate` operation and `updateIfNotEqual`?
+
     public init() {}
 
     public func configure() {
@@ -42,7 +45,7 @@ public final class ILScheduler: Module {
         }
     }
 
-    public func hasTasksConfigured(ids: String...) throws -> Bool {
+    public func hasTasksConfigured(ids: String...) throws -> Bool { // TODO: remove again?
         let container = try container
 
         let set = Set(ids)
@@ -93,10 +96,6 @@ public final class ILScheduler: Module {
         }
     }
 
-    public func queryTasks(for interval: DateInterval) throws -> [ILTask] {
-        try self.queryTasks(for: interval.start...interval.end)
-    }
-
     public func queryTasks(for range: ClosedRange<Date>) throws -> [ILTask] {
         let inClosedRangePredicate = #Predicate<ILTask> { task in
             if let effectiveTo = task.nextVersion?.effectiveFrom {
@@ -128,6 +127,9 @@ public final class ILScheduler: Module {
     }
 
     private func queryTask(with predicate: Predicate<ILTask>) throws -> [ILTask] {
+        // TODO: allow to retrieve an anchor (the list of model identifiers)
+
+        // TODO: allow to specify custom predicates (e.g., restrict the task id?)
         let container = try container
         let context = ModelContext(container)
 
@@ -135,7 +137,54 @@ public final class ILScheduler: Module {
         descriptor.predicate = predicate
         descriptor.sortBy = [SortDescriptor(\.effectiveFrom, order: .forward)] // TODO: support custom sorting?
 
-        // TODO: organize this more, e.g., just return the head versions? (group by identifier?)
+        // TODO: configure pre-fetching \.outcomes!
+        // make sure querying the next version is always efficient
+        descriptor.relationshipKeyPathsForPrefetching = [\.nextVersion]
+
         return try context.fetch(descriptor)
+    }
+
+    private func queryOutcomes(for range: Range<Date>) throws -> [Outcome] {
+        let container = try container
+        let context = ModelContext(container) // TODO: reuse container and context from queryTasks!
+
+        var descriptor = FetchDescriptor<Outcome>()
+        descriptor.predicate = #Predicate { outcome in
+            range.contains(outcome.occurrenceStartDate)
+        }
+
+        return try context.fetch(descriptor)
+    }
+
+    // TODO: allow to query outcomes separately?
+    private func queryEvents(for range: Range<Date>) throws -> [ILEvent] {
+        let tasks = try queryTasks(for: range)
+        let outcomes = try queryOutcomes(for: range)
+
+        let outcomesByOccurrence = outcomes.reduce(into: [:]) { partialResult, outcome in
+            partialResult[outcome.occurrenceStartDate] = outcome
+        }
+
+        return tasks
+            .flatMap { task in
+                // If there is a newer task version, we only calculate the events till that the current task is effective.
+                // Otherwise, use the upperBound from the range.
+                let upperBound: Date
+                if let effectiveFrom = task.nextVersion?.effectiveFrom {
+                    upperBound = min(effectiveFrom, range.upperBound) // the range might end before the next version is effective
+                } else {
+                    upperBound = range.upperBound
+                }
+
+                return task.schedule
+                    .occurrences(in: range.lowerBound..<upperBound)
+                    .map { occurrence in
+                        let outcome = outcomesByOccurrence[occurrence.start]
+                        return ILEvent(task: task, occurrence: occurrence, outcome: outcome)
+                    }
+            }
+            .sorted { lhs, rhs in
+                lhs.occurrence < rhs.occurrence
+            }
     }
 }
