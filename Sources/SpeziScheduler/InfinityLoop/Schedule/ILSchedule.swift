@@ -62,7 +62,7 @@ public struct ILSchedule {
     ///   - start: The start date of the first event. If a `recurrence` rule is specified, this date is used as a starting point when searching for recurrences.
     ///   - duration: The duration of a single occurrence.
     ///   - recurrence: Optional recurrence rule to specify how often and in which interval the event my reoccur.
-    public init(startingAt start: Date, duration: Duration = .duration(.hours(1)), recurrence: Calendar.RecurrenceRule? = nil) {
+    public init(startingAt start: Date, duration: Duration = .hours(1), recurrence: Calendar.RecurrenceRule? = nil) {
         // TODO: code sample in the docs!
         if duration == .allDay {
             self._start = Calendar.current.startOfDay(for: start)
@@ -101,7 +101,7 @@ extension ILSchedule {
     /// - Returns: Returns the schedule with a single occurrence.
     public static func once(
         at date: Date,
-        duration: Duration = .duration(.hours(1))
+        duration: Duration = .hours(1)
     ) -> ILSchedule {
         ILSchedule(startingAt: date, duration: duration)
     }
@@ -123,7 +123,7 @@ extension ILSchedule {
         second: Int = 0,
         start: Date,
         end: Calendar.RecurrenceRule.End = .never,
-        duration: Duration = .duration(.hours(1))
+        duration: Duration = .hours(1)
     ) -> ILSchedule {
         guard let startTime = Calendar.current.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start date for daily schedule. Can't set \(hour):\(minute):\(second) for \(start).")
@@ -151,7 +151,7 @@ extension ILSchedule {
         second: Int = 0,
         start: Date,
         end: Calendar.RecurrenceRule.End = .never,
-        duration: Duration = .duration(.hours(1))
+        duration: Duration = .hours(1)
     ) -> ILSchedule {
         guard let startTime = Calendar.current.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start time for weekly schedule. Can't set \(hour):\(minute):\(second) for \(start).")
