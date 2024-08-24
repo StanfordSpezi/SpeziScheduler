@@ -56,7 +56,7 @@ public final class ILTask {
     // TODO: additional context? => outcome values (e.g., goals for e.g. rings or just task like questionnaires)
     // TODO: notifications
 
-    init(
+    public init(
         id: String,
         title: String,
         instructions: String,
