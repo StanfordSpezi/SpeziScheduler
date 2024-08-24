@@ -10,6 +10,9 @@ import Foundation
 import SwiftData
 
 
+/// The outcome of an event.
+///
+/// Describes a  outcomes of an ``Event`` of a ``Task``.
 @Model
 public final class Outcome {
     #Index([\Outcome.id])
@@ -22,14 +25,14 @@ public final class Outcome {
     public private(set) var completionDate: Date
 
     /// The associated task of the outcome.
-    public private(set) var task: ILTask? // TODO: the 
+    public private(set) var task: ILTask? // TODO: we might be able to make this non-optional?
     private var occurrenceIndex: Int // TODO: to which version of the task does this occurrence index point?
 
     public var occurrence: Occurrence? {
-        // TODO: task?.schedule.ocr
-        task?.schedule.occurrences(forIndex: occurrenceIndex)
+        task?.schedule.occurrence(forIndex: occurrenceIndex)
     }
-    // TODO: the index of the occurence (= event)
+
+    // TODO: have a getter for the Event?
 
     // TODO: custom storage for outcomes?
 

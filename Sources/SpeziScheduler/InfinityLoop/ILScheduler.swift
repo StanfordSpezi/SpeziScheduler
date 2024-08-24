@@ -6,31 +6,44 @@
 // SPDX-License-Identifier: MIT
 //
 
+import Foundation
 import Spezi
 import SwiftData
 import SwiftUI
-import Foundation
 
 
 public final class ILScheduler: Module {
-    private var container: ModelContainer? // TODO: configure!
+    public enum DataError: Error { // TODO: localized errors?
+        case invalidContainer
+    }
+
+    @Application(\.logger)
+    private var logger
+
+    private var _container: ModelContainer?
+
+    private var container: ModelContainer {
+        get throws {
+            guard let container = _container else {
+                throw DataError.invalidContainer
+            }
+            return container
+        }
+    }
 
     public init() {}
 
     public func configure() {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true) // TODO: only for tests
         do {
-            container = try ModelContainer(for: ILTask.self, Outcome.self, configurations: configuration)
+            _container = try ModelContainer(for: ILTask.self, Outcome.self, configurations: configuration)
         } catch {
-            print("Error::::: \(error)") // TODO: update!
+            logger.error("Failed to initializer scheduler model container: \(error)")
         }
     }
 
     public func hasTasksConfigured(ids: String...) throws -> Bool {
-        // TODO: doesn't help
-        guard let container else {
-            preconditionFailure("Faield") // TODO: handle
-        }
+        let container = try container
 
         let set = Set(ids)
 
@@ -39,8 +52,6 @@ public final class ILScheduler: Module {
                 set.contains(task.id)
             }
         )
-
-
 
         // TODO: not always create a context? what is smarter?
         let context = ModelContext(container)
@@ -58,24 +69,27 @@ public final class ILScheduler: Module {
 
 
     public func addTasks(_ tasks: [ILTask]) {
-        guard let container else {
-            preconditionFailure("Faield") // TODO: handle
+        guard let container = try? container else {
+            logger.error("Failed to persist tasks as container failed to be configured: \(tasks.map { $0.id }.joined(separator: ", "))")
+            return
         }
         let context = ModelContext(container)
+
         for task in tasks {
             context.insert(task)
         }
     }
 
     public func deleteTasks(_ tasks: [ILTask]) {
-        guard let container else {
-            preconditionFailure("Faield") // TODO: handle
+        guard let container = try? container else {
+            logger.error("Failed to delete tasks as container failed to be configured: \(tasks.map { $0.id }.joined(separator: ", "))")
+            return
         }
+
         let context = ModelContext(container)
+
         for task in tasks {
             context.delete(task)
-
-            // TODO: we can't delete the history, as a transaction might contain multiple unrelated changes!
         }
     }
 
@@ -85,11 +99,13 @@ public final class ILScheduler: Module {
 
     public func queryTasks(for range: ClosedRange<Date>) throws -> [ILTask] {
         let inClosedRangePredicate = #Predicate<ILTask> { task in
-            if let effectiveTo = task.effectiveTo {
+            if let effectiveTo = task.nextVersion?.effectiveFrom {
+                // TODO: this currently doesn't do anything if the range is place in the middle of both!
                 range.contains(task.effectiveFrom)
-                || (range.lowerBound <= effectiveTo && effectiveTo < range.upperBound)
+                    || (range.lowerBound <= effectiveTo && effectiveTo < range.upperBound)
             } else {
-                range.contains(task.effectiveFrom) || task.effectiveFrom <= range.upperBound
+                // this is the latest version, so check if the effective
+                task.effectiveFrom <= range.upperBound
             }
         }
 
@@ -97,62 +113,29 @@ public final class ILScheduler: Module {
     }
 
 
+    // TODO: support RangeThroughs?
     public func queryTasks(for range: Range<Date>) throws -> [ILTask] {
         let inRangePredicate = #Predicate<ILTask> { task in
-            if let effectiveTo = task.effectiveTo {
+            if let effectiveTo = task.nextVersion?.effectiveFrom {
                 range.contains(task.effectiveFrom)
                     || (range.lowerBound <= effectiveTo && effectiveTo <= range.upperBound)
             } else {
-                range.contains(task.effectiveFrom) || task.effectiveFrom < range.upperBound
+                task.effectiveFrom < range.upperBound
             }
         }
 
         return try queryTask(with: inRangePredicate)
     }
 
-    private func queryTask(with predicate: Predicate<ILTask>) throws -> [ILTask] { // TODO: re-throws really?
-        guard let container else {
-            preconditionFailure("Failed") // TODO: make that an error?
-        }
-
+    private func queryTask(with predicate: Predicate<ILTask>) throws -> [ILTask] {
+        let container = try container
         let context = ModelContext(container)
 
         var descriptor = FetchDescriptor<ILTask>()
         descriptor.predicate = predicate
         descriptor.sortBy = [SortDescriptor(\.effectiveFrom, order: .forward)] // TODO: support custom sorting?
 
-        // TODO: CareKit just retrieves ALL tasks and filters after the fact?
-
         // TODO: organize this more, e.g., just return the head versions? (group by identifier?)
         return try context.fetch(descriptor)
     }
-}
-
-
-struct SomeView: View {
-    // TODO: we kinda want to filter for events and not for Tasks?
-    // TODO: scheduler needs to inject the global model context into the scene???
-
-    // TODO: typically we want to get all events for a day?
-
-    // TODO: filter and sort!
-
-    // TODO: there can only be one Model container!
-    @Query(
-        filter: #Predicate<ILTask> { $0.id == "asdf" },
-        sort: \.id,
-        animation: .easeInOut
-    )
-    var asdf: [ILTask]
-
-    var body: some View {
-        EmptyView()
-    }
-
-    private(set) var asdf2: SwiftData.Query<[ILTask].Element, [ILTask]> = .init(
-        filter: #Predicate<ILTask> {
-            $0.id == "asdf"
-        },
-        sort: \.id,
-        animation: .easeInOut)
 }

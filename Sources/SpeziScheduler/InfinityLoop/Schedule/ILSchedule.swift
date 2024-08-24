@@ -9,89 +9,101 @@
 import Foundation
 
 
+// TODO: can we formulate 5pm every Friday that "adjusts" to the timezone? some might want to have a fixed time?
+
+
 /// A schedule to describe the occurrences of a task.
 ///
 /// The ``Occurrence``s of a ``ILTask`` are derived from the Schedule.
 /// A schedule represents the composition of multiple ``ScheduleComponent``s.
 public struct ILSchedule {
-    // TODO: flatten Codable representation?
+    // TODO: allow to specify "text" LocalizedStringResource (e.g., Breakfast, Lunch, etc), otherwise we use the time (and date?)?
+    //   => how to store localized values in the database
 
-    /// The components of the schedule.
-    ///
-    /// Each component can describe one or multiple (repeating) occurrences.
-    public private(set) var components: [ScheduleComponent] // TODO: Make it let? 
+    /// The start date (inclusive).
+    private var _start: Date
+    /// The duration of a single occurrence.
+    public var duration: Duration
+    /// The recurrence of the schedule.
+    public var recurrence: Calendar.RecurrenceRule?
 
-    /// The first start date of the schedule.
+    /// The start date (inclusive).
     public var start: Date {
-        guard let component = components.min(by: { $0.start < $1.start }) else {
-            preconditionFailure("State inconsistency. Encountered empty schedule!")
+        get {
+            switch duration {
+            case .allDay:
+                Calendar.current.startOfDay(for: _start)
+            case .duration:
+                _start
+            }
         }
-        return component.start
+        set {
+            if duration == .allDay {
+                self._start = Calendar.current.startOfDay(for: newValue)
+            } else {
+                self._start = newValue
+            }
+        }
     }
 
-    /// The end date of the schedule if it doesn't repeat indefinitely.
-    public var end: Date? {
-        let endDates = components.compactMap { component in
-            component.end
-        }
-
-        if endDates.count < components.count {
-            return nil // there exists a component without a end date. the whole schedule is infinite
-        }
-        return endDates.max()
-    }
-
-    /// Determine if the schedule repeats indefinitely.
+    /// Indicate if the schedule repeats indefinitely.
     public var repeatsIndefinitely: Bool {
-        components.contains { component in
-            component.repeatsIndefinitely
+        if let recurrence {
+            recurrence.end == .never
+        } else {
+            false
         }
     }
 
-    /// Create a new schedule through composition of individual components.
-    /// - Parameter components: The array of schedule components.
-    /// - Precondition: `!components.isEmpty`
-    public init(composing components: [ScheduleComponent]) {
-        assert(!components.isEmpty, "You cannot create a schedule with zero components!")
-        self.components = components.sorted { lhs, rhs in
-            lhs.start < rhs.start
+
+    /// Create a new schedule.
+    ///
+    /// - Parameters:
+    ///   - start: The start date of the first event. If a `recurrence` rule is specified, this date is used as a starting point when searching for recurrences.
+    ///   - duration: The duration of a single occurrence.
+    ///   - recurrence: Optional recurrence rule to specify how often and in which interval the event my reoccur.
+    public init(startingAt start: Date, duration: Duration = .duration(.hours(1)), recurrence: Calendar.RecurrenceRule? = nil) {
+        // TODO: code sample in the docs!
+        if duration == .allDay {
+            self._start = Calendar.current.startOfDay(for: start)
+        } else {
+            self._start = start
         }
-    }
+        self.duration = duration
+        self.recurrence = recurrence
 
-    /// Create a new schedule through composition of schedules.
-    /// - Parameter schedules: The array of schedules.
-    @_disfavoredOverload
-    public init(composing schedules: [ILSchedule]) {
-        self.init(composing: schedules.flatMap { schedule in
-            schedule.components
-        })
-    }
+        // TODO: recurrence.calendar = .autoupdatingCurrent (does that change something?)
 
-    /// Create a new schedule through composition of individual components.
-    /// - Parameter components: The array of schedule components.
-    /// - Precondition: `!components.isEmpty`
-    public init(composing components: ScheduleComponent...) {
-        self.init(composing: components)
-    }
-
-    /// Create a new schedule through composition of schedules.
-    /// - Parameter schedules: The array of schedules.
-    @_disfavoredOverload
-    public init(composing schedules: ILSchedule...) {
-        self.init(composing: schedules)
+        // TODO: bring back support for randomly displaced events
+        // TODO: bring back support to specify interval by e.g. event count!
     }
 }
 
 
-extension ILSchedule: Codable {}
+extension ILSchedule: Equatable, Sendable {}
+
+
+extension ILSchedule: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case _start = "start" // swiftlint:disable:this identifier_name
+        case duration
+        case recurrence
+    }
+}
 
 
 extension ILSchedule {
+    /// Create a schedule for a single occurrence.
+    ///
+    /// - Parameters:
+    ///   - date: The date and time of the occurrence.
+    ///   - duration: The duration of the occurrence.
+    /// - Returns: Returns the schedule with a single occurrence.
     public static func once(
         at date: Date,
-        duration: Duration = .hours(1)
+        duration: Duration = .duration(.hours(1))
     ) -> ILSchedule {
-        ILSchedule(composing: .once(at: date, duration: duration))
+        ILSchedule(startingAt: date, duration: duration)
     }
 
     /// Create a schedule that repeats daily.
@@ -104,16 +116,26 @@ extension ILSchedule {
     ///   - end: Optional end date of the schedule. Otherwise, it repeats indefinitely.
     ///   - duration: The duration of a single occurrence. By default one hour.
     /// - Returns: Returns the schedule that repeats daily.
-    public static func daily(hour: Int, minute: Int, second: Int = 0, start: Date, end: Date? = nil, duration: Duration = .hours(1)) -> ILSchedule {
-        // swiftlint:disable:previous function_default_parameter_at_end
-        // TODO: some events might not have the semantic of a duration?
-        ILSchedule(composing: .daily(hour: hour, minute: minute, second: second, start: start, end: end, duration: duration))
+    public static func daily( // swiftlint:disable:this function_default_parameter_at_end
+        interval: Int = 1,
+        hour: Int, // TODO: still useful?
+        minute: Int,
+        second: Int = 0,
+        start: Date,
+        end: Calendar.RecurrenceRule.End = .never,
+        duration: Duration = .duration(.hours(1))
+    ) -> ILSchedule {
+        guard let startTime = Calendar.current.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
+            preconditionFailure("Failed to set time of start date for daily schedule. Can't set \(hour):\(minute):\(second) for \(start).")
+        }
+        // TODO: Avoid spelling current calendar all the time?
+        return ILSchedule(startingAt: startTime, duration: duration, recurrence: .daily(calendar: .current, interval: interval, end: end))
     }
 
     /// Create a schedule that repeats weekly.
     ///
     /// - Parameters:
-    ///   - weekday: The weekday on which the schedule repeats
+    ///   - weekday: The weekday on which the schedule repeats.
     ///   - hour: The hour.
     ///   - minute: The minute.
     ///   - second: The second.
@@ -122,20 +144,29 @@ extension ILSchedule {
     ///   - duration: The duration of a single occurrence. By default one hour.
     /// - Returns: Returns the schedule that repeats weekly.
     public static func weekly( // swiftlint:disable:this function_default_parameter_at_end
-        weekday: Int,
+        interval: Int = 1,
+        weekday: Locale.Weekday? = nil,
         hour: Int,
         minute: Int,
         second: Int = 0,
         start: Date,
-        end: Date? = nil,
-        duration: Duration = .hours(1)
+        end: Calendar.RecurrenceRule.End = .never,
+        duration: Duration = .duration(.hours(1))
     ) -> ILSchedule {
-        ILSchedule(composing: .weekly(weekday: weekday, hour: hour, minute: minute, second: second, start: start, end: end, duration: duration))
+        guard let startTime = Calendar.current.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
+            preconditionFailure("Failed to set time of start time for weekly schedule. Can't set \(hour):\(minute):\(second) for \(start).")
+        }
+        return ILSchedule(
+            startingAt: startTime,
+            duration: duration,
+            recurrence: .weekly(calendar: .current, interval: interval, end: end, weekdays: weekday.map { [.every($0)] } ?? [])
+        )
     }
 }
 
-
 extension ILSchedule {
+    // we are using lazy maps, so these are all single pass operations.
+
     /// The list of occurrences occurring between two dates.
     ///
     /// - Precondition: `start < end`
@@ -146,15 +177,33 @@ extension ILSchedule {
     public func occurrences(from start: Date, to end: Date) -> [Occurrence] {
         precondition(start < end, "Start date must be less than the end date: \(start) < \(end)")
 
-        let occurrences = components
-            .filter { $0.start < end }
-            .flatMap { $0.occurrences(from: $0.start, to: end) }
+        return occurrences() // we can't pass the end date to the dates method as we then can't derive the base offset
+            .drop { occurrence in
+                occurrence.end < start
+            }
+            .prefix { occurrence in
+                occurrence.starts(before: end)
+            }
+    }
 
-        let filtered = occurrences.filter { $0.end >= start }
+    /// Retrieve the list of occurrences between two occurrence indices.
+    ///
+    /// - Precondition: `startIndex <= stopIndex`
+    /// - Parameters:
+    ///   - startIndex: The occurrence of the first occurrence of return (inclusive).
+    ///   - stopIndex: The index of the last occurrence (exclusive).
+    /// - Returns: The list of occurrences in the range specified for the supplied indices
+    public func occurrences(betweenIndex startIndex: Int, and stopIndex: Int) -> [Occurrence] {
+        // TODO: support range expressions?
+        precondition(startIndex <= stopIndex, "Start index must be less than or equal to the stopIndex: \(startIndex) was bigger than \(stopIndex)")
 
-        let firstOccurrence = filtered.count - occurrences.count
-
-        return filtered.mergeOccurrences(startingOccurrence: firstOccurrence)
+        return occurrences()
+            .drop { occurrence in
+                occurrence.index < startIndex
+            }
+            .prefix { occurrence in
+                occurrence.index < stopIndex
+            }
     }
 
     /// Retrieve the occurrence for a given occurrence index in the schedule.
@@ -163,54 +212,56 @@ extension ILSchedule {
     /// - Parameter index: The index of the occurrence.
     /// - Returns: Returns the occurrence for the requested index. For example, index `0` returns the first occurrence in the schedule.
     ///     Returns `nil` if the schedule ends before the requested index.
-    public func occurrences(forIndex index: Int) -> Occurrence? {
-        precondition(index >= 0, "The occurrence index cannot be negative")
+    public func occurrence(forIndex index: Int) -> Occurrence? {
+        precondition(index >= 0, "The occurrence index cannot be negative. Received \(index)")
+        return occurrences().first { occurrence in
+            occurrence.index == index
+        }
+    }
 
-        // TODO: we could optimize this my having a lazy collection approach! that sorts itself!
-        let occurrences = components
-            .flatMap { component in
-                component.occurrences(betweenIndex: 0, and: index + 1)
+    public func occurrences() -> LazyMapSequence<some Sequence<(offset: Int, element: Date)>, Occurrence> {
+        // TODO: if we do not need the index, we could limit the date range and make things more efficient!
+        recurrencesSequence()
+            .enumerated()
+            .lazy
+            .map { offset, element in
+                // TODO: inline this init extension again?
+                Occurrence(start: element, schedule: self, index: offset)
             }
-            .mergeOccurrences()
-
-        guard occurrences.count >= index else {
-            return nil // the whole schedule might end before the index
-        }
-
-        return occurrences[index]
     }
 
-    // TODO: func exists(onDay date: Date) -> Bool {
-    /*
-
-    func exists(onDay date: Date) -> Bool {
-        let firstMomentOfTheDay = Calendar.current.startOfDay(for: date)
-        let lastMomentOfTheDay = Calendar.current.date(byAdding: DateComponents(day: 1, second: -1), to: firstMomentOfTheDay)!
-
-        // If there is no end date, we just have to check that it starts before the end of the given day.
-        guard let end = endDate() else {
-            return startDate() <= lastMomentOfTheDay
+    private func recurrencesSequence() -> some Sequence<Date> & Sendable {
+        if let recurrence {
+            recurrence.recurrences(of: self.start)
+        } else {
+            // workaround to make sure we return the same opaque but generic sequence (just equals to `start`)
+            Calendar.RecurrenceRule(calendar: .current, frequency: .daily, end: .afterOccurrences(1))
+                .recurrences(of: start)
         }
-
-        // If there is an end date, the we need to ensure that it has already started, and hasn't ended yet.
-        let startedOnTime = startDate() < lastMomentOfTheDay
-        let didntEndTooEarly = end > firstMomentOfTheDay
-
-        return startedOnTime && didntEndTooEarly
     }
-    */
 }
 
 
-extension Array where Element == Occurrence {
-    // TODO: rename argument!
-    fileprivate func mergeOccurrences(startingOccurrence: Int = 0) -> Self {
-        self
-            .sorted { $0.start < $1.start }
-            .enumerated()
-            .map { offset, occurrence in
-                // TODO: just have a mutable property?
-                Occurrence(start: occurrence.start, end: occurrence.end, schedule: occurrence.schedule, index: startingOccurrence + offset)
+extension Occurrence {
+    fileprivate init(start: Date, schedule: ILSchedule, index: Int) {
+        let occurrenceStart: Date
+        let occurrenceEnd: Date
+
+        switch schedule.duration {
+        case .allDay: // TODO: there is a difference between allDay and 24 hour duration?
+            occurrenceStart = Calendar.current.startOfDay(for: start)
+
+            // TODO: why not just add 24 hours?
+            guard let endDate = Calendar.current.date(byAdding: .init(day: 1, second: -1), to: occurrenceStart) else {
+                preconditionFailure("Failed to calculate end of date from \(start)")
             }
+            occurrenceEnd = endDate
+        case let .duration(duration):
+            occurrenceStart = start
+            occurrenceEnd = occurrenceStart.addingTimeInterval(TimeInterval(duration.components.seconds))
+        }
+
+        // TODO: the index here might be invalid if the Schedule has multiple components!
+        self.init(start: occurrenceStart, end: occurrenceEnd, schedule: schedule, index: index)
     }
 }

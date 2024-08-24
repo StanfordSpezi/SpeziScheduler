@@ -10,104 +10,51 @@ import Foundation
 import SwiftData
 
 // TODO: there are two concepts (ending a task vs. deleting a task (with all of its previous versions)?)
-@Model
-class TaskDraft {
-    var effectiveFrom: Date
-    var supersededOn: Date? // TODO: if nil, there is no  new task?
-
-
-    @Relationship(inverse: \TaskDraft.superSeededBy)
-    var superSeeds: TaskDraft?
-    var superSeededBy: TaskDraft?
-
-    init(effectiveFrom: Date, supersededOn: Date?, superSeeds: TaskDraft?, superSeededBy: TaskDraft?) {
-        self.effectiveFrom = effectiveFrom
-        self.supersededOn = supersededOn
-        self.superSeeds = superSeeds
-        self.superSeededBy = superSeededBy
-    }
-}
-
-
-@Model
-final class NewTask {
-    // TODO: the problem here, it always fetches ALL previous versions? => NOOO
-    /*
-     SwiftData lazily loads all relationship data, fetching it only when accessed by your object.
-     If you know the relationship will be used immediately, you should create a fetch descriptor with its relationshipKeyPathsForPrefetching
-     set to the relationships you'll use.
-     */
-    // TODO: No no, we can prefetch, but we can only prefetch ALL versions of a task!
-
-    @Relationship(deleteRule: .cascade)
-    var current: TaskVersion
-    @Relationship(deleteRule: .cascade)
-    var previousVersions: [TaskVersion] // TODO: might be empty
-
-    var title: String { // TODO: similar overloads!
-        current.title
-    }
-    // TODO: short hand versions to get all events for a given time interval!
-
-    init(
-        id: String,
-        title: String,
-        instructions: String,
-        schedule: ILSchedule,
-        effectiveFrom: Date = .now
-    ) {
-        self.current = TaskVersion(title: title, instruction: instructions, schedule: schedule, effectiveFrom: effectiveFrom)
-        self.previousVersions = []
-    }
-}
-
-
-@Model
-final class TaskVersion {
-    private(set) var id: UUID
-
-    private(set) var title: String
-    private(set) var instruction: String
-    private(set) var schedule: ILSchedule
-    private(set) var effectiveFrom: Date
-
-    init(id: UUID = UUID(), title: String, instruction: String, schedule: ILSchedule, effectiveFrom: Date) {
-        self.id = id
-        self.title = title
-        self.instruction = instruction
-        self.schedule = schedule
-        self.effectiveFrom = effectiveFrom
-    }
-}
 
 
 @Model
 public final class ILTask {
-    #Unique<ILTask>([\.id, \.effectiveFrom, \.effectiveTo])
+    #Unique<ILTask>([\.id, \.effectiveFrom, \.nextVersion])
 
+    /// The identifier for this task.
+    ///
+    /// This is a identifier for this task (e.g., `"social-support-questionnaire"`).
     public private(set) var id: String
-    public var title: String
+    /// The user-visible title for this task.
+    public var title: String // TODO: both optional! would love LocalizedStringResource (however, cannot persist in SwiftData!)
+    /// Instructions for this task.
+    ///
+    /// Instructions might describe the purpose for this task.
     public var instructions: String
 
     // TODO: when updating a schedule, we must make sure that we do not shadow outcomes that have already been created for
     //  occurrences that would be overwritten!
+
+    /// The schedule for the events of this Task.
     public var schedule: ILSchedule
 
     // TODO: the relationship makes us require querying all outcomes always!
+    /// The list of outcomes associated with this Task.
     @Relationship(deleteRule: .cascade, inverse: \Outcome.task)
     public private(set) var outcomes: [Outcome]
 
+    /// The date from which is version of the task is effective.
     public private(set) var effectiveFrom: Date
-    /// The date until which this task is effective.
-    private(set) var effectiveTo: Date?
 
+    /// A reference to a previous version of this task.
+    ///
+    /// The ``effectiveFrom`` date specifies when the previous task is considered outdated and
+    /// is replaced by this task.
     @Relationship(inverse: \ILTask.nextVersion)
     public private(set) var previousVersion: ILTask?
+    /// A reference to a new version of this task.
+    ///
+    /// If not `nil`, this reference specifies the next version of this task.
     @Relationship(deleteRule: .deny)
     public private(set) var nextVersion: ILTask?
 
-    // TODO: notifications
     // TODO: additional context? => outcome values (e.g., goals for e.g. rings or just task like questionnaires)
+    // TODO: notifications
 
     init(
         id: String,
@@ -122,25 +69,6 @@ public final class ILTask {
         self.schedule = schedule
         self.outcomes = []
         self.effectiveFrom = effectiveFrom
-
-        updateEffectiveTo()
-
-        // TODO: should also happen in the other initializer (inconsistency from the database :()
-    }
-
-    private func updateEffectiveTo() {
-        let end = schedule.end
-        let nextEffectiveFrom = nextVersion?.effectiveFrom
-
-        effectiveTo = if let end, let nextEffectiveFrom {
-            min(end, nextEffectiveFrom)
-        } else if let end {
-            end
-        } else if let nextEffectiveFrom {
-            nextEffectiveFrom
-        } else {
-            nil
-        }
     }
 
     func addOutcome(_ outcome: Outcome) {
@@ -150,7 +78,7 @@ public final class ILTask {
 
     // TODO: easy startup operation would be; getOrCreate -> updateIfNotCurrent!
     public func createUpdatedVersion(
-        title: String? = nil,
+        title: String? = nil, // TODO: doesn't support deleting the title (if we make it optional)
         instructions: String? = nil,
         schedule: ILSchedule? = nil,
         effectiveFrom: Date = .now
@@ -160,7 +88,7 @@ public final class ILTask {
             return self
         }
 
-        // TODO: update might incurr data loss?
+        // TODO: update might incur data loss?
         /*
          // Ensure that new versions of tasks do not overwrite regions of previous
          // versions that already have outcomes saved to them.

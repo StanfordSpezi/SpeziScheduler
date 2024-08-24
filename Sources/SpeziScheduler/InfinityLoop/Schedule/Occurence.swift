@@ -18,14 +18,14 @@ public struct Occurrence {
     /// The end date.
     public let end: Date
     /// The associated schedule.
-    public let schedule: ScheduleComponent // TODO: just put the whole schedule there?
+    public let schedule: ILSchedule
     /// The occurrence index within the schedule.
     ///
     /// For example, the occurrence with index `0` is the first event in the schedule.
-    public let index: Int // TODO: the index might refer to the overall schedule not just the component!
+    public let index: Int // TODO: check if we can get rid of the index!
 
 
-    init(start: Date, end: Date, schedule: ScheduleComponent, index: Int) {
+    init(start: Date, end: Date, schedule: ILSchedule, index: Int) {
         self.start = start
         self.end = end
         self.schedule = schedule
@@ -34,7 +34,7 @@ public struct Occurrence {
 }
 
 
-extension Occurrence: Hashable, Sendable {}
+extension Occurrence: Equatable, Sendable {}
 
 
 extension Occurrence {

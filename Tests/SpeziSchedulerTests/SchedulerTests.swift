@@ -68,6 +68,15 @@ class SimpleModel {
 
 final class SchedulerTests: XCTestCase {
     // swiftlint:disable:previous type_body_length
+    func testRec() {
+        let recu: Calendar.RecurrenceRule = .weekly(calendar: .current, weekdays: [
+            .every(.tuesday)
+        ])
+
+        var iterator = recu.recurrences(of: .now).makeIterator()
+        print(iterator.next())
+    }
+
     @MainActor
     func testILScheduler() throws {
         let module = ILScheduler()
