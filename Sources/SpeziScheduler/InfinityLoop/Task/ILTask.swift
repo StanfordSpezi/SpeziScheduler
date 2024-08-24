@@ -93,9 +93,9 @@ public final class ILTask {
         // TODO: make this throwing not crashing?
         // TODO: allow to delete those, or override this setting to not have this throwing?
         precondition(
-            outcomes.allSatisfy({ outcome in
+            outcomes.allSatisfy { outcome in
                 outcome.occurrenceStartDate < effectiveFrom
-            }),
+            },
             """
             "An updated Task cannot shadow the outcomes of a previous task. \
             Make sure the `effectiveFrom` is larger than the start that of the latest completed event.

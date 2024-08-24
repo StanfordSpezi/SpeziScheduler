@@ -12,7 +12,7 @@ import SwiftData
 import SwiftUI
 
 
-public final class ILScheduler: Module {
+public final class ILScheduler: Module, EnvironmentAccessible {
     public enum DataError: Error { // TODO: localized errors?
         case invalidContainer
     }
