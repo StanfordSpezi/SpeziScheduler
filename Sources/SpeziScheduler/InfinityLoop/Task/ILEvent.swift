@@ -32,11 +32,25 @@ public struct ILEvent {
         self.outcome = outcome
     }
 
-    /// Complete the event with an outcome.
+    /// Complete the event.
+    public mutating func complete() {
+        self.complete { _ in }
+    }
+    
+    /// Complete the event with additional information.
     ///
-    /// - Parameter outcome: The outcome that completes the event.
-    public mutating func complete() { // TODO: add ability to supply a value?
+    /// ```swift
+    /// var event: ILEvent
+    ///
+    /// event.complete {
+    ///     event.myCustomData = "..."
+    /// }
+    /// ```
+    ///
+    /// - Parameter closure: A closure that allows setting properties of the outcome.
+    public mutating func complete(with closure: (Outcome) -> Void) {
         let outcome = Outcome(task: task, occurrence: occurrence)
+        closure(outcome)
         self.outcome = outcome
         task.addOutcome(outcome) // TODO: is this necessary? Would this duplicate the entry?
     }

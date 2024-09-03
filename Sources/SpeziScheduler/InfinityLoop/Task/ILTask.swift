@@ -12,11 +12,6 @@ import SwiftData
 
 // TODO: there are two concepts (ending a task vs. deleting a task (with all of its previous versions)?)
 
-public enum TaskAnchor: RepositoryAnchor {}
-
-
-public protocol TaskStorageKey: UserInfoKey where Anchor == TaskAnchor {}
-
 
 class StoredAsData<Value: Codable> {
     private var decodedValue: Value?
@@ -62,7 +57,9 @@ class StoredAsData<Value: Codable> {
 public final class ILTask {
     #Unique<ILTask>([\.id, \.effectiveFrom, \.nextVersion])
 
+    /// The LocalizedStringResource encoded, as we cannot store Locale with SwiftData.
     private var titleResource: Data
+    /// The LocalizedStringResource encoded, as we cannot store Locale with SwiftData.
     private var instructionsResource: Data
 
     @Transient private var titleStorage = StoredAsData<LocalizedStringResource>()
@@ -152,6 +149,7 @@ public final class ILTask {
         self.effectiveFrom = effectiveFrom
     }
 
+    // TODO: we should not allow mutation?
     public subscript<Source: UserInfoKey<TaskAnchor>>(_ source: Source.Type) -> Source.Value? {
         get {
             userInfo.get(source)

@@ -16,7 +16,6 @@ import Foundation
 /// A schedule represents the composition of multiple ``ScheduleComponent``s.
 public struct ILSchedule {
     // TODO: allow to specify "text" LocalizedStringResource (e.g., Breakfast, Lunch, etc), otherwise we use the time (and date?)?
-    //   => how to store localized values in the database
 
     /// The start date (inclusive).
     private var _start: Date
@@ -24,9 +23,8 @@ public struct ILSchedule {
     public var duration: Duration = .seconds(2)
 
     private var recurrenceRule: Data?
-    // TODO: @Transient private var _recurrence: Calendar.RecurrenceRule?
     // TODO: we can't event store the calendar even though it is not being encoded???
-    // TODO: we could do our own wrapper that leaves out the Calendar to store at least most properties!
+    //  => we could do our own wrapper that leaves out the Calendar to store at least most properties!
 
     /// The recurrence of the schedule.
     public var recurrence: Calendar.RecurrenceRule? {

@@ -10,11 +10,6 @@ import Foundation
 import SpeziFoundation
 
 
-public protocol UserInfoKey<Anchor>: KnowledgeSource where Value: Codable {
-    static var identifier: String { get }
-}
-
-
 struct UserInfoStorage<Anchor: RepositoryAnchor> {
     private var userInfo: [String: Data] = [:]
     private var repository: ValueRepository<Anchor>
@@ -30,7 +25,7 @@ struct UserInfoStorage<Anchor: RepositoryAnchor> {
 }
 
 
-extension UserInfoStorage { // TODO: Sendable?
+extension UserInfoStorage {
     mutating func get<Source: UserInfoKey<Anchor>>(_ source: Source.Type) -> Source.Value? {
         if let value = repository.get(source) {
             return value
@@ -62,7 +57,6 @@ extension UserInfoStorage { // TODO: Sendable?
 
 extension UserInfoStorage: Codable {
     init(from decoder: any Decoder) throws {
-        // TODO: does this work with SwiftData?
         self.userInfo = try [String: Data](from: decoder)
         self.repository = ValueRepository()
     }

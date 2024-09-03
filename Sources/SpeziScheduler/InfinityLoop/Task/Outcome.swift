@@ -11,13 +11,6 @@ import SpeziFoundation
 import SwiftData
 
 
-/// The storage anchor for additional user info storage entries for an `Outcome`.
-public enum OutcomeAnchor: RepositoryAnchor {}
-
-
-public protocol OutcomeStorageKey: UserInfoKey where Anchor == OutcomeAnchor {} // TODO: are these necessary?
-
-
 /// The outcome of an event.
 ///
 /// Describes a  outcomes of an ``Event`` of a ``Task``.

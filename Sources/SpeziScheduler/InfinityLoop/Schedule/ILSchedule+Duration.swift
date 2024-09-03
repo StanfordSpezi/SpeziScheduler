@@ -44,7 +44,7 @@ extension ILSchedule.Duration: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         let allDay = try container.decodeIfPresent(Bool.self, forKey: .allDay)
-        if let allDay {
+        if allDay != nil {
             self = .allDay
         } else {
             let duration = try container.decode(Swift.Duration.self, forKey: .duration)
@@ -64,7 +64,7 @@ extension ILSchedule.Duration: Codable {
 }
 
 
-extension ILSchedule.Duration { // TODO: also support Double?
+extension ILSchedule.Duration {
     /// Determine if a duration is all day.
     public var isAllDay: Bool {
         self == .allDay
@@ -92,6 +92,18 @@ extension ILSchedule.Duration { // TODO: also support Double?
         .seconds(minutes * 60)
     }
 
+    /// A duration given a number of minutes.
+    ///
+    /// Creates a new duration given a number of minutes by converting into the closest second scale value.
+    ///
+    /// ```swift
+    /// let duration: Duration = .minutes(27.5)
+    /// ```
+    /// - Returns: A `Duration` representing a given number of minutes.
+    public static func minutes(_ minutes: Double) -> ILSchedule.Duration {
+        .duration(.seconds(minutes * 60))
+    }
+
     /// A duration given a number of hours.
     ///
     /// ```swift
@@ -100,6 +112,18 @@ extension ILSchedule.Duration { // TODO: also support Double?
     /// - Returns: A `Duration` representing a given number of hours.
     @inlinable
     public static func hours(_ hours: some BinaryInteger) -> ILSchedule.Duration {
+        .minutes(hours * 60)
+    }
+
+    /// A duration given a number of hours.
+    ///
+    /// Creates a new duration given a number of hours by converting into the closest second scale value.
+    ///
+    /// ```swift
+    /// let duration: Duration = .hours(4)
+    /// ```
+    /// - Returns: A `Duration` representing a given number of hours.
+    public static func hours(_ hours: Double) -> ILSchedule.Duration {
         .minutes(hours * 60)
     }
 }
