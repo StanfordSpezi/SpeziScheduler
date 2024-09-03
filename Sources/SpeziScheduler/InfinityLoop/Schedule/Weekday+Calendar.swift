@@ -10,6 +10,7 @@ import Foundation
 
 
 extension Locale.Weekday {
+    /// The calendar weekday number from the weekday enum.
     var calendarWeekday: Int {
         switch self {
         case .sunday:

@@ -7,8 +7,6 @@
 //
 
 import Foundation
-
-
 // TODO: can we formulate 5pm every Friday that "adjusts" to the timezone? some might want to have a fixed time?
 
 
@@ -23,9 +21,37 @@ public struct ILSchedule {
     /// The start date (inclusive).
     private var _start: Date
     /// The duration of a single occurrence.
-    public var duration: Duration
+    public var duration: Duration = .seconds(2)
+
+    private var recurrenceRule: Data?
+    // TODO: @Transient private var _recurrence: Calendar.RecurrenceRule?
+    // TODO: we can't event store the calendar even though it is not being encoded???
+    // TODO: we could do our own wrapper that leaves out the Calendar to store at least most properties!
+
     /// The recurrence of the schedule.
-    public var recurrence: Calendar.RecurrenceRule?
+    public var recurrence: Calendar.RecurrenceRule? {
+        get {
+            guard let data = recurrenceRule else {
+                return nil
+            }
+
+            do {
+                return try PropertyListDecoder().decode(Calendar.RecurrenceRule.self, from: data)
+            } catch {
+                print("Failed to decode: \(error)")
+                // TODO: logger
+            }
+            return nil
+        }
+        set {
+            do {
+                recurrenceRule = try PropertyListEncoder().encode(newValue)
+            } catch {
+                print("Failed to encode: \(error)")
+                // TODO: logger
+            }
+        }
+    }
 
     /// The start date (inclusive).
     public var start: Date {
@@ -108,7 +134,7 @@ extension ILSchedule: Codable {
     private enum CodingKeys: String, CodingKey {
         case _start = "start" // swiftlint:disable:this identifier_name
         case duration
-        case recurrence
+        case recurrenceRule = "recurrence"
     }
 }
 

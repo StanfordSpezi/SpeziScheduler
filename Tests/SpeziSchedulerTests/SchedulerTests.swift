@@ -68,15 +68,6 @@ class SimpleModel {
 
 final class SchedulerTests: XCTestCase {
     // swiftlint:disable:previous type_body_length
-    func testRec() {
-        let recu: Calendar.RecurrenceRule = .weekly(calendar: .current, weekdays: [
-            .every(.tuesday)
-        ])
-
-        var iterator = recu.recurrences(of: .now).makeIterator()
-        print(iterator.next())
-    }
-
     @MainActor
     func testILScheduler() throws {
         let module = ILScheduler()
@@ -86,6 +77,29 @@ final class SchedulerTests: XCTestCase {
 
         let results = try module.queryTasks(for: Date.now.addingTimeInterval(-60)..<Date.now)
         print(results)
+    }
+
+    @MainActor
+    func testSimpleTaskStored() throws {
+        let module = ILScheduler()
+        withDependencyResolution {
+            module
+        }
+
+        struct ExampleKey: TaskStorageKey {
+            typealias Value = String
+        }
+
+        let schedule: ILSchedule = .daily(hour: 8, minute: 35, startingAt: .today)
+        let task = ILTask(id: "test-task", title: "Hello World", instructions: "Complete the Task!", schedule: schedule)
+        task[ExampleKey.self] = "Additional Storage Stuff"
+
+        module.addTasks(task)
+        let results = try module.queryTasks(for: Date.yesterday..<Date.tomorrow)
+        XCTAssertEqual(results.count, 1, "Received unexpected amount of tasks in query.")
+        let task0 = try XCTUnwrap(results.first)
+
+        XCTAssertEqual(task0[ExampleKey.self], "Additional Storage Stuff")
     }
 
     @MainActor

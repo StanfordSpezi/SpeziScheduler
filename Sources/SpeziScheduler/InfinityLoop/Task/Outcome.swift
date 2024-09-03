@@ -7,7 +7,15 @@
 //
 
 import Foundation
+import SpeziFoundation
 import SwiftData
+
+
+/// The storage anchor for additional user info storage entries for an `Outcome`.
+public enum OutcomeAnchor: RepositoryAnchor {}
+
+
+public protocol OutcomeStorageKey: UserInfoKey where Anchor == OutcomeAnchor {} // TODO: are these necessary?
 
 
 /// The outcome of an event.
@@ -45,13 +53,26 @@ public final class Outcome {
         ILEvent(task: task, occurrence: occurrence, outcome: self)
     }
 
-    // TODO: custom storage for outcomes?
+    /// Additional userInfo stored alongside the outcome.
+    private var userInfo = UserInfoStorage<OutcomeAnchor>()
 
     init(task: ILTask, occurrence: Occurrence) {
         self.id = UUID()
         self.completionDate = .now
         self.task = task
         self.occurrenceStartDate = occurrence.start
+    }
+}
+
+
+extension Outcome {
+    public subscript<Source: UserInfoKey<OutcomeAnchor>>(_ source: Source.Type) -> Source.Value? {
+        get {
+            userInfo.get(source)
+        }
+        set {
+            userInfo.set(source, value: newValue)
+        }
     }
 }
 

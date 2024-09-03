@@ -6,6 +6,8 @@
 // SPDX-License-Identifier: MIT
 //
 
+import Foundation
+
 
 /// Describes a single event of a Task.
 public struct ILEvent {
@@ -39,3 +41,23 @@ public struct ILEvent {
         task.addOutcome(outcome) // TODO: is this necessary? Would this duplicate the entry?
     }
 }
+
+
+extension ILEvent: Identifiable {
+    public struct ID {
+        private let taskId: ILTask.ID
+        private let occurrenceData: Date
+
+        fileprivate init(taskId: ILTask.ID, occurrenceData: Date) {
+            self.taskId = taskId
+            self.occurrenceData = occurrenceData
+        }
+    }
+
+    public var id: ID {
+        ID(taskId: task.id, occurrenceData: occurrence.start)
+    }
+}
+
+
+extension ILEvent.ID: Hashable, Sendable {}

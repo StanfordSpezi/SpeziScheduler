@@ -20,7 +20,6 @@ final class ScheduleTests: XCTestCase {
         var iterator = occurrences.makeIterator()
 
         let occurrence1 = try XCTUnwrap(iterator.next())
-        XCTAssertEqual(occurrence1.index, 0)
         try XCTAssertEqual(occurrence1.start, .withTestDate(hour: 9, minute: 23, second: 25))
         try XCTAssertEqual(occurrence1.end, .withTestDate(hour: 11, minute: 23, second: 25))
 
@@ -29,23 +28,20 @@ final class ScheduleTests: XCTestCase {
 
     func testDailyScheduleWithThreeOccurrences() throws {
         let startDate: Date = try .withTestDate(hour: 9, minute: 23, second: 25)
-        let schedule: ILSchedule = .daily(hour: 12, minute: 35, start: startDate, end: .afterOccurrences(3), duration: .minutes(30))
+        let schedule: ILSchedule = .daily(hour: 12, minute: 35, startingAt: startDate, end: .afterOccurrences(3), duration: .minutes(30))
 
         let occurrences = schedule.occurrences()
         var iterator = occurrences.makeIterator()
 
         let occurrence1 = try XCTUnwrap(iterator.next())
-        XCTAssertEqual(occurrence1.index, 0)
         try XCTAssertEqual(occurrence1.start, .withTestDate(hour: 12, minute: 35))
         try XCTAssertEqual(occurrence1.end, .withTestDate(hour: 13, minute: 5))
 
         let occurrence2 = try XCTUnwrap(iterator.next())
-        XCTAssertEqual(occurrence2.index, 1)
         try XCTAssertEqual(occurrence2.start, .withTestDate(day: 25, hour: 12, minute: 35))
         try XCTAssertEqual(occurrence2.end, .withTestDate(day: 25, hour: 13, minute: 5))
 
         let occurrence3 = try XCTUnwrap(iterator.next())
-        XCTAssertEqual(occurrence3.index, 2)
         try XCTAssertEqual(occurrence3.start, .withTestDate(day: 26, hour: 12, minute: 35))
         try XCTAssertEqual(occurrence3.end, .withTestDate(day: 26, hour: 13, minute: 5))
 
@@ -59,7 +55,7 @@ final class ScheduleTests: XCTestCase {
             weekday: .sunday,
             hour: 12,
             minute: 35,
-            start: startDate,
+            startingAt: startDate,
             end: .afterDate(endDate),
             duration: .minutes(30)
         )
@@ -68,17 +64,14 @@ final class ScheduleTests: XCTestCase {
         var iterator = occurrences.makeIterator()
 
         let occurrence1 = try XCTUnwrap(iterator.next())
-        XCTAssertEqual(occurrence1.index, 0)
         try XCTAssertEqual(occurrence1.start, .withTestDate(day: 25, hour: 12, minute: 35))
         try XCTAssertEqual(occurrence1.end, .withTestDate(day: 25, hour: 13, minute: 5))
 
         let occurrence2 = try XCTUnwrap(iterator.next())
-        XCTAssertEqual(occurrence2.index, 1)
         try XCTAssertEqual(occurrence2.start, .withTestDate(month: 9, day: 1, hour: 12, minute: 35))
         try XCTAssertEqual(occurrence2.end, .withTestDate(month: 9, day: 1, hour: 13, minute: 5))
 
         let occurrence3 = try XCTUnwrap(iterator.next())
-        XCTAssertEqual(occurrence3.index, 2)
         try XCTAssertEqual(occurrence3.start, .withTestDate(month: 9, day: 8, hour: 12, minute: 35))
         try XCTAssertEqual(occurrence3.end, .withTestDate(month: 9, day: 8, hour: 13, minute: 5))
 

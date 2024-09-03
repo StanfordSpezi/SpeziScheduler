@@ -1,7 +1,7 @@
 //
 // This source file is part of the Stanford Spezi open-source project
 //
-// SPDX-FileCopyrightText: 2022 Stanford University and the project authors (see CONTRIBUTORS.md)
+// SPDX-FileCopyrightText: 2024 Stanford University and the project authors (see CONTRIBUTORS.md)
 //
 // SPDX-License-Identifier: MIT
 //
@@ -12,7 +12,8 @@ import SwiftData
 import SwiftUI
 
 
-public final class ILScheduler: Module, EnvironmentAccessible {
+@MainActor
+public final class ILScheduler: Module, EnvironmentAccessible, Sendable {
     public enum DataError: Error { // TODO: localized errors?
         case invalidContainer
     }
@@ -31,34 +32,30 @@ public final class ILScheduler: Module, EnvironmentAccessible {
         }
     }
 
-    // TODO: how to specify the initial tasks
-    //   -> result builder and then `getOrCreate` operation and `updateIfNotEqual`?
-
-    public init() {}
-
-    public func configure() {
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true) // TODO: only for tests
-        do {
-            _container = try ModelContainer(for: ILTask.self, Outcome.self, configurations: configuration)
-        } catch {
-            logger.error("Failed to initializer scheduler model container: \(error)")
+    var context: ModelContext {
+        get throws {
+            try container.mainContext
         }
     }
 
-    public func hasTasksConfigured(ids: String...) throws -> Bool { // TODO: remove again?
-        let container = try container
+    // TODO: how to specify the initial tasks
+    //   -> result builder and then `getOrCreate` operation and `updateIfNotEqual`?
 
-        let set = Set(ids)
+    public nonisolated init() {}
 
-        let descriptor = FetchDescriptor<ILTask>(
-            predicate: #Predicate { task in
-                set.contains(task.id)
-            }
-        )
-
-        // TODO: not always create a context? what is smarter?
-        let context = ModelContext(container)
-        return try context.fetchCount(descriptor) == ids.count // TODO: forward errors?
+    public func configure() {
+        let configuration: ModelConfiguration
+#if targetEnvironment(simulator)
+        configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+#else
+        let storageUrl = URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite")
+        configuration = ModelConfiguration(url: storageUrl)
+#endif
+        do {
+            _container = try ModelContainer(for: ILTask.self, configurations: configuration)
+        } catch {
+            logger.error("Failed to initializer scheduler model container: \(error)")
+        }
     }
 
     // TODO: best way to configure initial tasks?
@@ -72,11 +69,10 @@ public final class ILScheduler: Module, EnvironmentAccessible {
 
 
     public func addTasks(_ tasks: [ILTask]) {
-        guard let container = try? container else {
+        guard let context = try? context else {
             logger.error("Failed to persist tasks as container failed to be configured: \(tasks.map { $0.id }.joined(separator: ", "))")
             return
         }
-        let context = ModelContext(container)
 
         for task in tasks {
             context.insert(task)
@@ -84,12 +80,10 @@ public final class ILScheduler: Module, EnvironmentAccessible {
     }
 
     public func deleteTasks(_ tasks: [ILTask]) {
-        guard let container = try? container else {
+        guard let context = try? context else {
             logger.error("Failed to delete tasks as container failed to be configured: \(tasks.map { $0.id }.joined(separator: ", "))")
             return
         }
-
-        let context = ModelContext(container)
 
         for task in tasks {
             context.delete(task)
@@ -112,7 +106,6 @@ public final class ILScheduler: Module, EnvironmentAccessible {
     }
 
 
-    // TODO: support RangeThroughs?
     public func queryTasks(for range: Range<Date>) throws -> [ILTask] {
         let inRangePredicate = #Predicate<ILTask> { task in
             if let effectiveTo = task.nextVersion?.effectiveFrom {
@@ -126,38 +119,8 @@ public final class ILScheduler: Module, EnvironmentAccessible {
         return try queryTask(with: inRangePredicate)
     }
 
-    private func queryTask(with predicate: Predicate<ILTask>) throws -> [ILTask] {
-        // TODO: allow to retrieve an anchor (the list of model identifiers)
-
-        // TODO: allow to specify custom predicates (e.g., restrict the task id?)
-        let container = try container
-        let context = ModelContext(container)
-
-        var descriptor = FetchDescriptor<ILTask>()
-        descriptor.predicate = predicate
-        descriptor.sortBy = [SortDescriptor(\.effectiveFrom, order: .forward)] // TODO: support custom sorting?
-
-        // TODO: configure pre-fetching \.outcomes!
-        // make sure querying the next version is always efficient
-        descriptor.relationshipKeyPathsForPrefetching = [\.nextVersion]
-
-        return try context.fetch(descriptor)
-    }
-
-    private func queryOutcomes(for range: Range<Date>) throws -> [Outcome] {
-        let container = try container
-        let context = ModelContext(container) // TODO: reuse container and context from queryTasks!
-
-        var descriptor = FetchDescriptor<Outcome>()
-        descriptor.predicate = #Predicate { outcome in
-            range.contains(outcome.occurrenceStartDate)
-        }
-
-        return try context.fetch(descriptor)
-    }
-
     // TODO: allow to query outcomes separately?
-    private func queryEvents(for range: Range<Date>) throws -> [ILEvent] {
+    public func queryEvents(for range: Range<Date>) throws -> [ILEvent] { // TODO: could be async and return type is sending!
         let tasks = try queryTasks(for: range)
         let outcomes = try queryOutcomes(for: range)
 
@@ -186,5 +149,30 @@ public final class ILScheduler: Module, EnvironmentAccessible {
             .sorted { lhs, rhs in
                 lhs.occurrence < rhs.occurrence
             }
+    }
+
+    private func queryTask(with predicate: Predicate<ILTask>) throws -> [ILTask] {
+        // TODO: allow to retrieve an anchor (the list of model identifiers)
+
+        // TODO: allow to specify custom predicates (e.g., restrict the task id?)
+
+        var descriptor = FetchDescriptor<ILTask>()
+        descriptor.predicate = predicate
+        descriptor.sortBy = [SortDescriptor(\.effectiveFrom, order: .forward)] // TODO: support custom sorting?
+
+        // TODO: configure pre-fetching \.outcomes!
+        // make sure querying the next version is always efficient
+        descriptor.relationshipKeyPathsForPrefetching = [\.nextVersion]
+
+        return try context.fetch(descriptor)
+    }
+
+    private func queryOutcomes(for range: Range<Date>) throws -> [Outcome] {
+        var descriptor = FetchDescriptor<Outcome>()
+        descriptor.predicate = #Predicate { outcome in
+            range.contains(outcome.occurrenceStartDate)
+        }
+
+        return try context.fetch(descriptor)
     }
 }
