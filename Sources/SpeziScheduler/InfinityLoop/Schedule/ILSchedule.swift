@@ -7,64 +7,95 @@
 //
 
 import Foundation
+
 // TODO: can we formulate 5pm every Friday that "adjusts" to the timezone? some might want to have a fixed time?
+// TODO: allow to specify "text" LocalizedStringResource (e.g., Breakfast, Lunch, etc), otherwise we use the time (and date?)?
 
 
 /// A schedule to describe the occurrences of a task.
 ///
 /// The ``Occurrence``s of a ``ILTask`` are derived from the Schedule.
-/// A schedule represents the composition of multiple ``ScheduleComponent``s.
+///
+/// The Schedule uses Swift's [`RecurrenceRule`](https://developer.apple.com/documentation/foundation/calendar/recurrencerule) under to hood to express flexible
+/// recurrence schedules. You can configure a schedule using any recurrence rule you want.
+///
+/// Schedule also provides some convenience initializers like ``once(at:duration:)``, ``daily(calendar:interval:hour:minute:second:startingAt:end:duration:)``
+/// or ``weekly(calendar:interval:weekday:hour:minute:second:startingAt:end:duration:)``.
+///
+/// ```swift
+/// // create a schedule at 8am daily, starting from today, reoccur indefinitely
+/// let schedule: ILSchedule = .daily(hour: 8, minute: 0, startingAt: .today)
+/// ```
+///
+/// ## Topics
+///
+/// ### Properties
+/// - ``start``
+/// - ``duration-swift.property``
+/// - ``recurrence``
+/// - ``repeatsIndefinitely``
+///
+/// ### Creating Schedules
+/// - ``init(startingAt:duration:recurrence:)``
+/// - ``daily(calendar:interval:hour:minute:second:startingAt:end:duration:)``
+/// - ``weekly(calendar:interval:weekday:hour:minute:second:startingAt:end:duration:)``
+/// - ``once(at:duration:)``
+///
+/// ### Retrieving Occurrences
+/// - ``occurrences(in:)-5ir87``
+/// - ``occurrences(inDay:)``
+/// - ``occurrences(in:)-5ir87``
+/// - ``occurrence(forStartDate:)``
 public struct ILSchedule {
-    // TODO: allow to specify "text" LocalizedStringResource (e.g., Breakfast, Lunch, etc), otherwise we use the time (and date?)?
-
     /// The start date (inclusive).
     private var startDate: Date
     /// The duration of a single occurrence.
-    public var duration: Duration
+    ///
+    /// We need a separate storage container as SwiftData cannot store values of type `Swift.Duration`.
+    private var scheduleDuration: Duration.SwiftDataDuration
 
-    private var recurrenceRule: Data?
-    // TODO: we can't event store the calendar even though it is not being encoded???
-    //  => we could do our own wrapper that leaves out the Calendar to store at least most properties!
+    private var recurrenceRule: RecurrenceRule?
+
+    /// The duration of a single occurrence.
+    public var duration: Duration {
+        @storageRestrictions(initializes: scheduleDuration)
+        init(initialValue) {
+            scheduleDuration = Duration.SwiftDataDuration(from: initialValue)
+        }
+        get {
+            Duration(from: scheduleDuration)
+        }
+        set {
+            scheduleDuration = Duration.SwiftDataDuration(from: newValue)
+        }
+    }
 
     /// The recurrence of the schedule.
     public var recurrence: Calendar.RecurrenceRule? {
         @storageRestrictions(initializes: recurrenceRule)
         init(initialValue) {
-            do {
-                recurrenceRule = try initialValue.map { try PropertyListEncoder().encode($0) }
-            } catch {
-                recurrenceRule = nil
-                print("Failed to encode: \(error)")
-                // TODO: logger
-            }
+            recurrenceRule = initialValue.map { RecurrenceRule(from: $0) }
         }
         get {
-            guard let data = recurrenceRule else {
-                return nil
-            }
-
-            do {
-                return try PropertyListDecoder().decode(Calendar.RecurrenceRule.self, from: data)
-            } catch {
-                print("Failed to decode: \(error)")
-                // TODO: logger
-            }
-            return nil
+            recurrenceRule.map { Calendar.RecurrenceRule(from: $0) }
         }
         set {
-            do {
-                recurrenceRule = try newValue.map { try PropertyListEncoder().encode($0) }
-            } catch {
-                print("Failed to encode: \(error)")
-                // TODO: logger
-            }
+            recurrenceRule = newValue.map { RecurrenceRule(from: $0) }
         }
     }
 
     /// The start date (inclusive).
     public var start: Date {
+        @storageRestrictions(initializes: startDate, accesses: scheduleDuration)
+        init(initialValue) {
+            if scheduleDuration == .allDay {
+                startDate = Calendar.current.startOfDay(for: initialValue)
+            } else {
+                startDate = initialValue
+            }
+        }
         get {
-            switch duration.guts {
+            switch duration {
             case .allDay:
                 Calendar.current.startOfDay(for: startDate)
             case .duration:
@@ -92,20 +123,23 @@ public struct ILSchedule {
 
     /// Create a new schedule.
     ///
+    /// ```swift
+    /// // the first weekend day of each month (either saturday or sunday, whichever comes first)
+    /// var recurrence: Calendar.RecurrenceRule = .monthly(calendar: .current, end: .afterOccurrences(5))
+    /// recurrence.weekdays = [.nth(1, .saturday), .nth(1, .sunday)]
+    /// recurrence.setPositions = [1]
+    ///
+    /// let schedule = ILSchedule(startingAt: .today, recurrence: recurrence)
+    /// ```
+    ///
     /// - Parameters:
     ///   - start: The start date of the first event. If a `recurrence` rule is specified, this date is used as a starting point when searching for recurrences.
     ///   - duration: The duration of a single occurrence.
     ///   - recurrence: Optional recurrence rule to specify how often and in which interval the event my reoccur.
     public init(startingAt start: Date, duration: Duration = .hours(1), recurrence: Calendar.RecurrenceRule? = nil) {
-        // TODO: code sample in the docs!
-        if duration == .allDay {
-            self.startDate = Calendar.current.startOfDay(for: start)
-        } else {
-            self.startDate = start
-        }
         self.duration = duration
+        self.start = start
         self.recurrence = recurrence
-
         // TODO: recurrence.calendar = .autoupdatingCurrent (does that change something?)
 
         // TODO: bring back support for randomly displaced events? random generated seed?
@@ -116,7 +150,7 @@ public struct ILSchedule {
         let occurrenceStart: Date
         let occurrenceEnd: Date
 
-        switch duration.guts {
+        switch duration {
         case .allDay:
             occurrenceStart = Calendar.current.startOfDay(for: start)
 
@@ -127,7 +161,7 @@ public struct ILSchedule {
             occurrenceEnd = endDate
         case let .duration(duration):
             occurrenceStart = start
-            occurrenceEnd = occurrenceStart.addingTimeInterval(TimeInterval(duration.duration.components.seconds)) // TODO: dynamic member lookup
+            occurrenceEnd = occurrenceStart.addingTimeInterval(TimeInterval(duration.components.seconds))
         }
 
         return (occurrenceStart, occurrenceEnd)
@@ -135,35 +169,17 @@ public struct ILSchedule {
 }
 
 
-extension ILSchedule: Equatable, Sendable {}
+extension ILSchedule: Equatable, Sendable, Codable {}
 
 
-extension ILSchedule: Codable {
-    private enum CodingKeys: String, CodingKey {
-        case startDate
-        case duration
-        case recurrenceRule
-    }
-
-    public init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        print(container.allKeys)
-        self.startDate = try container.decode(Date.self, forKey: .startDate)
-        self.duration = try container.decode(ILSchedule.Duration.self, forKey: .duration)
-        self.recurrenceRule = try container.decodeIfPresent(Data.self, forKey: .recurrenceRule)
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(self.startDate, forKey: .startDate)
-        try container.encode(self.duration, forKey: .duration)
-        try container.encodeIfPresent(self.recurrenceRule, forKey: .recurrenceRule)
-    }
-}
-
-
-extension ILSchedule {
+extension ILSchedule { // TODO: examples for each? and the init
     /// Create a schedule for a single occurrence.
+    ///
+    /// ```swift
+    /// // create a schedule that occurs exactly once, tomorrow at the same time as now
+    /// let date = Calendar.current.date(byAdding: .day, value: 1, to: .now)!
+    /// let schedule: ILSchedule = .once(at: date)
+    /// ```
     ///
     /// - Parameters:
     ///   - date: The date and time of the occurrence.
@@ -177,6 +193,11 @@ extension ILSchedule {
     }
 
     /// Create a schedule that repeats daily.
+    ///
+    /// ```swift
+    /// // create a schedule at 8 am daily, starting from today, reoccur indefinitely
+    /// let schedule: ILSchedule = .daily(hour: 8, minute: 0, startingAt: .today)
+    /// ```
     ///
     /// - Parameters:
     ///   - calendar: The calendar
@@ -205,6 +226,11 @@ extension ILSchedule {
     }
 
     /// Create a schedule that repeats weekly.
+    ///
+    /// ```swift
+    /// // create a schedule at 8 am bi-weekly, starting from the next wednesday from today, reoccur indefinitely
+    /// let schedule: ILSchedule = .weekly(interval: 2, weekday: .wednesday, hour: 8, minute: 0, startingAt: .today)
+    /// ```
     ///
     /// - Parameters:
     ///   - calendar: The calendar
@@ -269,10 +295,8 @@ extension ILSchedule {
 
     /// Retrieve the occurrence for a given occurrence start date in the schedule.
     ///
-    /// - Precondition: `index >= 0`
-    /// - Parameter date: The start date of the occurrence.
-    /// - Returns: Returns the occurrence for the requested index. For example, index `0` returns the first occurrence in the schedule.
-    ///     Returns `nil` if the schedule ends before the requested index.
+    /// - Parameter start: The start date of the occurrence.
+    /// - Returns: Returns the Occurrence if there is an occurrence for this schedule at exactly the passed `start` date. Otherwise, `nil`.
     public func occurrence(forStartDate start: Date) -> Occurrence? {
         guard let nextSecond = Calendar.current.date(byAdding: .second, value: 1, to: start) else {
             preconditionFailure("Failed to add one second to \(start)")
@@ -283,7 +307,7 @@ extension ILSchedule {
         }
     }
 
-    /// Retrieve all occurrences in the schedule.
+    /// Retrieve the sequence of all occurrences in the schedule.
     ///
     /// Returns a potential infinite sequence of all occurrences in the schedule.
     ///

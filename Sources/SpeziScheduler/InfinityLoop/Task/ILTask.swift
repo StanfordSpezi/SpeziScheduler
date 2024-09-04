@@ -143,7 +143,7 @@ public final class ILTask {
     // TODO: notifications
 
     /// Additional userInfo stored alongside the task.
-    private(set) var userInfo: UserInfoStorage<TaskAnchor>
+    private(set) var userInfo: UserInfoStorage<TaskAnchor> // TODO: investigate if we can store it as a model an allow predicates this way?
     @Transient private var userInfoCache = UserInfoStorage<TaskAnchor>.RepositoryCache()
 
     private init(

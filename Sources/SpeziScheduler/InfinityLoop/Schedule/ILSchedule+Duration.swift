@@ -11,16 +11,19 @@ extension ILSchedule {
     /// The duration of an occurrence.
     ///
     /// While we maintain atto-second accuracy for arithmetic operations on duration, the schedule will always retrieve the duration in a resolution of seconds.
-    public struct Duration {
-        let guts: _Duration
+    public enum Duration {
+        /// An all-day occurrence.
+        case allDay
+        /// Fixed length occurrence.
+        case duration(Swift.Duration)
 
 
-        fileprivate var duration: Swift.Duration { // TODO: make it public?
-            switch guts {
+        fileprivate var duration: Swift.Duration {
+            switch self {
             case .allDay:
                 .seconds(24 * 60 * 60)
             case let .duration(duration):
-                duration.duration
+                duration
             }
         }
     }
@@ -28,84 +31,9 @@ extension ILSchedule {
 
 
 extension ILSchedule.Duration {
-    // Duration encodes itself as an unkeyed container with high and low Int64 values.
-    // See https://github.com/swiftlang/swift/blob/eafb40588c17bf8f6405823f8bedb9428694a9bd/stdlib/public/core/Duration.swift#L238-L240.
-    // SwiftData doesn't support unkeyed containers and crashes. Therefore, we explicitly construct a new Int128 type from it
-    // and encode the duration this way.
-    // A second approach could be to create the `Int128(_low: duration._low, _high: duration._high)` ourselves.
-    // However, the SwiftData encoder "has not implemented support for Int128". Good damn Apple.
-    //
-    // So, as SwiftData requires the type layout to be equal to the CodingKeys, we need to created this MappedDuration type here.
-    struct MappedDuration {
-        private let high: Int64
-        private let low: UInt64
-
-        var duration: Swift.Duration {
-            Swift.Duration(_high: high, low: low)
-        }
-
-        init(from duration: Swift.Duration) {
-            self.high = duration._high
-            self.low = duration._low
-        }
-    }
-
-    enum _Duration { // swiftlint:disable:this type_name
-        case allDay
-        case duration(MappedDuration)
-    }
-}
-
-
-extension ILSchedule.Duration.MappedDuration: Hashable, Sendable, Codable {}
-
-
-extension ILSchedule.Duration._Duration: Hashable, Sendable, Codable {}
-
-
-extension ILSchedule.Duration: Hashable, Sendable, Codable {}
-// TODO: RawRepresentable conformance, but would require to make guts public or we never store it in Schedule?
-
-
-extension ILSchedule.Duration: Comparable {
-    public static func < (lhs: Self, rhs: Self) -> Bool {
-        lhs.duration < rhs.duration
-    }
-}
-
-
-extension ILSchedule.Duration: CustomStringConvertible {
-    public var description: String {
-        switch guts {
-        case .allDay:
-            "allDay"
-        case let .duration(duration):
-            duration.duration.description
-        }
-    }
-}
-
-
-extension ILSchedule.Duration { // TODO: move both up?
-    /// An all-day occurrence.
-    public static var allDay: ILSchedule.Duration {
-        ILSchedule.Duration(guts: .allDay)
-    }
-
-
-    /// Fixed length occurrence.
-    /// - Parameter duration: The duration.
-    /// - Returns: Returns the schedule duration instance.
-    public static func duration(_ duration: Swift.Duration) -> ILSchedule.Duration {
-        ILSchedule.Duration(guts: .duration(MappedDuration(from: duration)))
-    }
-}
-
-
-extension ILSchedule.Duration {
     /// Determine if a duration is all day.
     public var isAllDay: Bool {
-        guts == .allDay
+        self == .allDay
     }
 
     /// A duration given a number of seconds.
@@ -190,5 +118,87 @@ extension ILSchedule.Duration: DurationProtocol {
 
     public static func / (lhs: ILSchedule.Duration, rhs: ILSchedule.Duration) -> Double {
         lhs.duration / rhs.duration
+    }
+}
+
+
+extension ILSchedule.Duration: Hashable, Sendable {}
+
+
+extension ILSchedule.Duration: Comparable {
+    public static func < (lhs: Self, rhs: Self) -> Bool {
+        lhs.duration < rhs.duration
+    }
+}
+
+
+extension ILSchedule.Duration: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .allDay:
+            "allDay"
+        case let .duration(duration):
+            duration.description
+        }
+    }
+}
+
+
+extension ILSchedule.Duration {
+    // Duration encodes itself as an unkeyed container with high and low Int64 values.
+    // See https://github.com/swiftlang/swift/blob/eafb40588c17bf8f6405823f8bedb9428694a9bd/stdlib/public/core/Duration.swift#L238-L240.
+    // SwiftData doesn't support unkeyed containers and crashes. Therefore, we explicitly construct a new Int128 type from it
+    // and encode the duration this way.
+    // A second approach could be to create the `Int128(_low: duration._low, _high: duration._high)` ourselves.
+    // However, the SwiftData encoder "has not implemented support for Int128". Good damn Apple.
+    //
+    // So, as SwiftData requires the type layout to be equal to the CodingKeys, we need to created this MappedDuration type here.
+    struct MappedDuration {
+        private let high: Int64
+        private let low: UInt64
+
+        var duration: Swift.Duration {
+            Swift.Duration(_high: high, low: low)
+        }
+
+        init(from duration: Swift.Duration) {
+            self.high = duration._high
+            self.low = duration._low
+        }
+    }
+
+    enum SwiftDataDuration {
+        case allDay
+        case duration(MappedDuration)
+    }
+}
+
+
+extension ILSchedule.Duration.MappedDuration: Hashable, Sendable, Codable {}
+
+
+extension ILSchedule.Duration.SwiftDataDuration: Hashable, Sendable, Codable {}
+
+
+extension ILSchedule.Duration.SwiftDataDuration {
+    init(from duration: ILSchedule.Duration) {
+        switch duration {
+        case .allDay:
+            self = .allDay
+        case .duration(let duration):
+            self = .duration(ILSchedule.Duration.MappedDuration(from: duration))
+        }
+    }
+}
+
+
+extension ILSchedule.Duration {
+    init(from duration: ILSchedule.Duration.SwiftDataDuration) {
+        switch duration {
+        case .allDay:
+            self = .allDay
+        case let .duration(mapped):
+            self = .duration(mapped.duration)
+        }
     }
 }
