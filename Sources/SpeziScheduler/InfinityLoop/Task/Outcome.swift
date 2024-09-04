@@ -16,7 +16,7 @@ import SwiftData
 /// Describes a  outcomes of an ``Event`` of a ``Task``.
 @Model
 public final class Outcome {
-    #Index<Outcome>([\.id, \.occurrenceStartDate])
+    #Index<Outcome>([\.id], [\.occurrenceStartDate])
 
     /// The id of the outcome.
     @Attribute(.unique)
@@ -48,6 +48,7 @@ public final class Outcome {
 
     /// Additional userInfo stored alongside the outcome.
     private var userInfo = UserInfoStorage<OutcomeAnchor>()
+    @Transient private var userInfoCache = UserInfoStorage<OutcomeAnchor>.RepositoryCache()
 
     init(task: ILTask, occurrence: Occurrence) {
         self.id = UUID()
@@ -59,12 +60,15 @@ public final class Outcome {
 
 
 extension Outcome {
-    public subscript<Source: UserInfoKey<OutcomeAnchor>>(_ source: Source.Type) -> Source.Value? {
+    /// Retrieve or set the value for a given storage key.
+    /// - Parameter source: The outcome storage key.
+    /// - Returns: The value for the outcome storage key, if it is present.
+    public subscript<Source: OutcomeStorageKey>(_ source: Source.Type) -> Source.Value? {
         get {
-            userInfo.get(source)
+            userInfo.get(source, cache: &userInfoCache)
         }
         set {
-            userInfo.set(source, value: newValue)
+            userInfo.set(source, value: newValue, cache: &userInfoCache)
         }
     }
 }

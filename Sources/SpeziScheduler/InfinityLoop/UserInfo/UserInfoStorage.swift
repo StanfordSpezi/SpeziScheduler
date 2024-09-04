@@ -10,24 +10,35 @@ import Foundation
 import SpeziFoundation
 
 
+struct SingleValueWrapper<Value: Codable>: Codable {
+    let value: Value
+
+    init(value: Value) {
+        self.value = value
+    }
+}
+
+
 struct UserInfoStorage<Anchor: RepositoryAnchor> {
+    struct RepositoryCache {
+        var repository = ValueRepository<Anchor>()
+    }
+
     private var userInfo: [String: Data] = [:]
-    private var repository: ValueRepository<Anchor>
 
     init() {
         self.userInfo = [:]
-        self.repository = ValueRepository()
     }
 
     func contains<Source: UserInfoKey<Anchor>>(_ source: Source.Type) -> Bool {
-        repository.contains(source) || userInfo[source.identifier] != nil
+        userInfo[source.identifier] != nil
     }
 }
 
 
 extension UserInfoStorage {
-    mutating func get<Source: UserInfoKey<Anchor>>(_ source: Source.Type) -> Source.Value? {
-        if let value = repository.get(source) {
+    func get<Source: UserInfoKey<Anchor>>(_ source: Source.Type, cache: inout RepositoryCache) -> Source.Value? {
+        if let value = cache.repository.get(source) {
             return value
         }
 
@@ -37,58 +48,83 @@ extension UserInfoStorage {
 
         do {
             let decoder = PropertyListDecoder()
-            let value = try decoder.decode(source.Value.self, from: data)
+            let value = try decoder.decode(SingleValueWrapper<Source.Value>.self, from: data)
 
-            userInfo.removeValue(forKey: source.identifier)
-            repository.set(source, value: value)
-            return value
+            cache.repository.set(source, value: value.value)
+            return value.value
         } catch {
+            print("Unable to decode \(data) for type \(source): \(error)")
             // TODO: log error!
             return nil
         }
     }
 
-    mutating func set<Source: UserInfoKey<Anchor>>(_ source: Source.Type, value newValue: Source.Value?) {
-        repository.set(source, value: newValue)
-        userInfo.removeValue(forKey: source.identifier)
+    mutating func set<Source: UserInfoKey<Anchor>>(_ source: Source.Type, value newValue: Source.Value?, cache: inout RepositoryCache) {
+        cache.repository.set(source, value: newValue)
+
+        if let newValue {
+            do {
+                // TODO: property list encoder is a bit finicky!
+                userInfo[source.identifier] = try PropertyListEncoder().encode(SingleValueWrapper(value: newValue))
+            } catch {
+                print("Failed to encode userInfo value \(newValue) for key \(Source.self): \(error)")
+                // TODO: log error!
+            }
+        } else {
+            userInfo.removeValue(forKey: source.identifier)
+        }
     }
 }
 
 
-extension UserInfoStorage: Codable {
+extension UserInfoStorage: RawRepresentable {
+    var rawValue: [String: Data] {
+        userInfo
+    }
+
+    init(rawValue: [String : Data]) {
+        self.userInfo = rawValue
+    }
+}
+
+extension UserInfoStorage: Codable {/*
+    private struct CodingKeys: CodingKey {
+        var stringValue: String
+        var intValue: Int?
+
+        init(stringValue: String) {
+            self.stringValue = stringValue
+        }
+
+        
+        init?(intValue: Int) {
+            nil
+        }
+    }
+
     init(from decoder: any Decoder) throws {
-        self.userInfo = try [String: Data](from: decoder)
-        self.repository = ValueRepository()
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        var userInfo: [String: Data] = [:]
+        for key in container.allKeys {
+            let data = try container.decode(Data.self, forKey: key)
+            userInfo[key.stringValue] = data
+        }
+        self.userInfo = userInfo
     }
 
     func encode(to encoder: any Encoder) throws {
-        var userInfo = userInfo // TODO: We cannot save this updated representation :/
-        for entry in repository {
-            guard let key = entry.anySource as? any UserInfoKey.Type else {
-                continue
-            }
+        var container = encoder.container(keyedBy: CodingKeys.self)
 
-            let data = try key.anyEncode(entry.anyValue)
-            userInfo[key.identifier] = data
-            // TODO: visitor pattern from SpeziAccount?
+        for (key, data) in userInfo {
+            try container.encode(data, forKey: CodingKeys(stringValue: key))
         }
-
-        try userInfo.encode(to: encoder)
-    }
+    }*/
 }
 
 
-extension UserInfoKey {
-    static var identifier: String {
-        "\(Self.self)"
-    }
-
-    fileprivate static func anyEncode(_ value: Any) throws -> Data {
-        guard let value = value as? Value else {
-            preconditionFailure("Tried to visit \(Self.self) with value \(value) which is not of type \(Value.self)")
-        }
-
-        let encoder = PropertyListEncoder()
-        return try encoder.encode(value)
+extension UserInfoStorage: Equatable {
+    static func == (lhs: UserInfoStorage<Anchor>, rhs: UserInfoStorage<Anchor>) -> Bool {
+        lhs.userInfo == rhs.userInfo
     }
 }

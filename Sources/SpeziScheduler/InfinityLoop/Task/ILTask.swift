@@ -18,6 +18,7 @@ class StoredAsData<Value: Codable> {
 
     func initialValue(for value: Value) -> Data {
         do {
+            decodedValue = value
             return try PropertyListEncoder().encode(value)
         } catch {
             // TODO: should this crash?
@@ -37,7 +38,7 @@ class StoredAsData<Value: Codable> {
             decodedValue = value
             return value
         } catch {
-            preconditionFailure("Failed to decode value: \(error)") // TODO: not ideal!
+            preconditionFailure("Failed to decode value for data \(storage): \(error)") // TODO: not ideal!
         }
     }
 
@@ -47,15 +48,23 @@ class StoredAsData<Value: Codable> {
             storage = try PropertyListEncoder().encode(value)
         } catch {
             // TODO: logger
-            print("Failed to encode: \(error)")
+            preconditionFailure("Failed to encode value \(value): \(error)")
         }
     }
 }
 
 
 @Model
+@dynamicMemberLookup
 public final class ILTask {
-    #Unique<ILTask>([\.id, \.effectiveFrom, \.nextVersion])
+    /// The `nextVersion` must be unique. `id` must be unique in combination with the `nextVersion` (e.g., no two task with the same id that have a next version of `nil`).
+    #Unique<ILTask>([\.nextVersion], [\.id, \.nextVersion])
+
+    /// Create an index for efficient queries.
+    ///
+    /// - Index on `id`.
+    /// - Index on `effectiveFrom` and `nextVersion` (used for queryTask(...)).
+    #Index<ILTask>([\.id], [\.effectiveFrom], [\.effectiveFrom, \.nextVersion])
 
     /// The LocalizedStringResource encoded, as we cannot store Locale with SwiftData.
     private var titleResource: Data
@@ -103,12 +112,15 @@ public final class ILTask {
     /// The schedule for the events of this Task.
     public private(set) var schedule: ILSchedule
 
-    // TODO: the relationship makes us require querying all outcomes always!
     /// The list of outcomes associated with this Task.
+    ///
+    /// - Note: SwiftData lazily loads relationship data. If you do not specify `prefetchOutcomes` when querying the Task, retrieving this property might require
+    ///     fetching all relationship data from disk first.
     @Relationship(deleteRule: .cascade, inverse: \Outcome.task)
-    public private(set) var outcomes: [Outcome] // TODO: shall we really allow that? (just make it private and keep it for the cascade rule??)
+    public private(set) var outcomes: [Outcome]
+    // TODO: shall we really allow that? (just make it private and keep it for the cascade rule??)
 
-    /// The date from which is version of the task is effective.
+    /// The date from which this version of the task is effective.
     public private(set) var effectiveFrom: Date
 
     /// Determine if this task is the latest instance.
@@ -128,18 +140,19 @@ public final class ILTask {
     @Relationship(deleteRule: .deny)
     public private(set) var nextVersion: ILTask?
 
-    // TODO: additional context? => outcome values (e.g., goals for e.g. rings or just task like questionnaires)
     // TODO: notifications
 
     /// Additional userInfo stored alongside the task.
-    private var userInfo = UserInfoStorage<TaskAnchor>()
+    private(set) var userInfo: UserInfoStorage<TaskAnchor>
+    @Transient private var userInfoCache = UserInfoStorage<TaskAnchor>.RepositoryCache()
 
-    public init(
+    private init(
         id: String,
         title: LocalizedStringResource,
         instructions: LocalizedStringResource,
         schedule: ILSchedule,
-        effectiveFrom: Date = .now
+        effectiveFrom: Date = .now,
+        context: Context
     ) {
         self.id = id
         self.title = title
@@ -147,34 +160,67 @@ public final class ILTask {
         self.schedule = schedule
         self.outcomes = []
         self.effectiveFrom = effectiveFrom
+        self.userInfo = context.userInfo
+        self.userInfoCache = context.userInfoCache
     }
 
-    // TODO: we should not allow mutation?
-    public subscript<Source: UserInfoKey<TaskAnchor>>(_ source: Source.Type) -> Source.Value? {
-        get {
-            userInfo.get(source)
-        }
-        set {
-            // TODO: how to handle versioned access?
-            userInfo.set(source, value: newValue)
-        }
+    public convenience init(
+        id: String,
+        title: LocalizedStringResource,
+        instructions: LocalizedStringResource,
+        schedule: ILSchedule,
+        effectiveFrom: Date = .now,
+        with contextClosure: (inout Context) -> Void = { _ in }
+    ) {
+        var context = Context()
+        contextClosure(&context)
+
+        self.init(id: id, title: title, instructions: instructions, schedule: schedule, effectiveFrom: effectiveFrom, context: context)
     }
+
+    public subscript<Value>(dynamicMember keyPath: KeyPath<Context, Value>) -> Value {
+        // we cannot store Context directly in the Model, as it contains a class property which SwiftData cannot ignore :(
+        let context = Context(userInfo: userInfo, userInfoCache: userInfoCache)
+        return context[keyPath: keyPath]
+    }
+
 
     func addOutcome(_ outcome: Outcome) {
         // TODO: does it automatically set the inverse property?
         outcomes.append(outcome) // automatically saves the outcome to the container
     }
-
-    // TODO: easy startup operation would be; getOrCreate -> updateIfNotCurrent!
+    
+    /// Create a new version of this task if any of the provided values differ.
+    ///
+    /// A new version of this task is created, if any of the provided parameters differs from the current value of this version of the task.
+    /// - Parameters:
+    ///   - title: The updated title or `nil` if the title should not be updated.
+    ///   - instructions: The updated instructions or `nil` if the instructions should not be updated.
+    ///   - schedule: The updated schedule or `nil` if the schedule should not be updated.
+    ///   - effectiveFrom: The date this update is effective from.
+    ///   - contextClosure: The updated context or `nil` if the context should not be updated.
+    /// - Returns: Returns the latest version of the `task` and if the task was updated or created indicated by `didChange`.
     public func createUpdatedVersion(
-        title: LocalizedStringResource? = nil, // TODO: doesn't support deleting the title (if we make it optional)
+        title: LocalizedStringResource? = nil,
         instructions: LocalizedStringResource? = nil,
         schedule: ILSchedule? = nil,
-        effectiveFrom: Date = .now
-    ) -> ILTask {
-        guard title != nil || instructions != nil || schedule != nil else {
-            // TODO: check if there is actually any equatable difference!
-            return self
+        effectiveFrom: Date = .now,
+        with contextClosure: ((inout Context) -> Void)? = nil
+    ) -> (task: ILTask, didChange: Bool) {
+        let context: Context?
+        if let contextClosure {
+            var context0 = Context()
+            contextClosure(&context0)
+            context = context0
+        } else {
+            context = nil
+        }
+
+        guard (title != nil && title != self.title)
+                || (instructions != nil && instructions != self.instructions)
+                || (schedule != nil && schedule != self.schedule)
+                || (context != nil && context?.userInfo != self.userInfo) else {
+            return (self, false) // nothing changed
         }
 
         // TODO: make this throwing not crashing?
@@ -194,13 +240,49 @@ public final class ILTask {
             title: title ?? self.title,
             instructions: instructions ?? self.instructions,
             schedule: schedule ?? self.schedule,
-            effectiveFrom: effectiveFrom
+            effectiveFrom: effectiveFrom,
+            context: context ?? Context()
         )
 
-        // TODO: just check equatability?
-
+        // TODO: next version cannot be already set!
         nextVersion = newVersion
         // TODO: do i need to set the previous version?
-        return newVersion
+        return (newVersion, true)
+    }
+}
+
+
+extension ILTask {
+    /// Additional context information stored alongside the task.
+    public struct Context {
+        private class Box {
+            var userInfoCache: UserInfoStorage<TaskAnchor>.RepositoryCache
+
+            init(userInfoCache: UserInfoStorage<TaskAnchor>.RepositoryCache) {
+                self.userInfoCache = userInfoCache
+            }
+        }
+
+        private(set) var userInfo: UserInfoStorage<TaskAnchor>
+        private let box: Box
+
+        var userInfoCache: UserInfoStorage<TaskAnchor>.RepositoryCache {
+            box.userInfoCache
+        }
+
+
+        init(userInfo: UserInfoStorage<TaskAnchor> = .init(), userInfoCache: UserInfoStorage<TaskAnchor>.RepositoryCache = .init()) {
+            self.userInfo = userInfo
+            self.box = Box(userInfoCache: userInfoCache)
+        }
+
+        public subscript<Source: TaskStorageKey>(_ source: Source.Type) -> Source.Value? {
+            get {
+                userInfo.get(source, cache: &box.userInfoCache)
+            }
+            set {
+                userInfo.set(source, value: newValue, cache: &box.userInfoCache)
+            }
+        }
     }
 }

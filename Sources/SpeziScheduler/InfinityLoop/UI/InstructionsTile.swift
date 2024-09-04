@@ -43,7 +43,11 @@ public struct InstructionsTile: View {
 
 
 #if DEBUG
-#Preview {
+@MainActor
+func asdf() {
+}
+#Preview(traits: .schedulerSampleData) {/*
+    // TODO: preview trait with example data!
     let task = ILTask(
         id: "example-task",
         title: "Social Support Questionnaire",
@@ -51,8 +55,14 @@ public struct InstructionsTile: View {
         schedule: .daily(hour: 17, minute: 30, startingAt: .today)
     )
     let occurrence = task.schedule.occurrences(inDay: .today).first!
-    let event = ILEvent(task: task, occurrence: occurrence, outcome: nil)
-    return InstructionsTile(event)
-        .padding()
+    let event = ILEvent(task: task, occurrence: occurrence, outcome: nil)*/
+    @EventQuery(in: Date.today..<Date.tomorrow) @Previewable var events
+
+    if let first = events.first {
+        InstructionsTile(first)
+            .padding()
+    } else {
+        Text(verbatim: "No event")
+    }
 }
 #endif

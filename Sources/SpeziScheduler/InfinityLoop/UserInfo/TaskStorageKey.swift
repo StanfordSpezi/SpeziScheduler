@@ -13,4 +13,4 @@ import SpeziFoundation
 public enum TaskAnchor: RepositoryAnchor {}
 
 
-public protocol TaskStorageKey: UserInfoKey where Anchor == TaskAnchor {} // TODO: Docs
+public protocol TaskStorageKey: UserInfoKey where Anchor == TaskAnchor, Value: Equatable {} // TODO: Docs

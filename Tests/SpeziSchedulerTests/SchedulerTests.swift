@@ -6,7 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
-@testable import Spezi
+import Spezi
 import SpeziLocalStorage
 @testable import SpeziScheduler
 import SpeziSecureStorage
@@ -66,6 +66,22 @@ class SimpleModel {
     }
 }
 
+struct ExampleKey: TaskStorageKey {
+    typealias Value = String
+}
+
+
+extension ILTask.Context {
+    var example: String? {
+        get {
+            self[ExampleKey.self]
+        }
+        set {
+            self[ExampleKey.self] = newValue
+        }
+    }
+}
+
 final class SchedulerTests: XCTestCase {
     // swiftlint:disable:previous type_body_length
     @MainActor
@@ -86,20 +102,24 @@ final class SchedulerTests: XCTestCase {
             module
         }
 
-        struct ExampleKey: TaskStorageKey {
-            typealias Value = String
+        let schedule: ILSchedule = .daily(hour: 8, minute: 35, startingAt: .today)
+
+        try module.createOrUpdateTask(id: "test-task", title: "Hello World", instructions: "Complete the Task!", schedule: schedule) { context in
+            context.example = "Additional Storage Stuff"
         }
 
-        let schedule: ILSchedule = .daily(hour: 8, minute: 35, startingAt: .today)
-        let task = ILTask(id: "test-task", title: "Hello World", instructions: "Complete the Task!", schedule: schedule)
-        task[ExampleKey.self] = "Additional Storage Stuff"
+        // TODO: unit test with two different effective dates
+        /*try module.createOrUpdateTask(id: "test-task", title: "Hello World", instructions: "Complete the Task!", schedule: schedule) { context in
+            context.example = "Additional Storage Stuff"
+        }*/
 
-        module.addTasks(task)
         let results = try module.queryTasks(for: Date.yesterday..<Date.tomorrow)
         XCTAssertEqual(results.count, 1, "Received unexpected amount of tasks in query.")
         let task0 = try XCTUnwrap(results.first)
 
-        XCTAssertEqual(task0[ExampleKey.self], "Additional Storage Stuff")
+        XCTAssertEqual(task0.id, "test-task")
+        XCTAssertEqual(task0.example, "Additional Storage Stuff")
+        XCTAssertEqual(task0.title.key, "Hello World") // TODO: does this still translate?
     }
 
     @MainActor

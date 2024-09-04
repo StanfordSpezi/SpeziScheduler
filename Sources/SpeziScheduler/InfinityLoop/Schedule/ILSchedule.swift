@@ -18,9 +18,9 @@ public struct ILSchedule {
     // TODO: allow to specify "text" LocalizedStringResource (e.g., Breakfast, Lunch, etc), otherwise we use the time (and date?)?
 
     /// The start date (inclusive).
-    private var _start: Date
+    private var startDate: Date
     /// The duration of a single occurrence.
-    public var duration: Duration = .seconds(2)
+    public var duration: Duration
 
     private var recurrenceRule: Data?
     // TODO: we can't event store the calendar even though it is not being encoded???
@@ -28,6 +28,16 @@ public struct ILSchedule {
 
     /// The recurrence of the schedule.
     public var recurrence: Calendar.RecurrenceRule? {
+        @storageRestrictions(initializes: recurrenceRule)
+        init(initialValue) {
+            do {
+                recurrenceRule = try initialValue.map { try PropertyListEncoder().encode($0) }
+            } catch {
+                recurrenceRule = nil
+                print("Failed to encode: \(error)")
+                // TODO: logger
+            }
+        }
         get {
             guard let data = recurrenceRule else {
                 return nil
@@ -43,7 +53,7 @@ public struct ILSchedule {
         }
         set {
             do {
-                recurrenceRule = try PropertyListEncoder().encode(newValue)
+                recurrenceRule = try newValue.map { try PropertyListEncoder().encode($0) }
             } catch {
                 print("Failed to encode: \(error)")
                 // TODO: logger
@@ -54,18 +64,18 @@ public struct ILSchedule {
     /// The start date (inclusive).
     public var start: Date {
         get {
-            switch duration {
+            switch duration.guts {
             case .allDay:
-                Calendar.current.startOfDay(for: _start)
+                Calendar.current.startOfDay(for: startDate)
             case .duration:
-                _start
+                startDate
             }
         }
         set {
             if duration == .allDay {
-                self._start = Calendar.current.startOfDay(for: newValue)
+                self.startDate = Calendar.current.startOfDay(for: newValue)
             } else {
-                self._start = newValue
+                self.startDate = newValue
             }
         }
     }
@@ -89,9 +99,9 @@ public struct ILSchedule {
     public init(startingAt start: Date, duration: Duration = .hours(1), recurrence: Calendar.RecurrenceRule? = nil) {
         // TODO: code sample in the docs!
         if duration == .allDay {
-            self._start = Calendar.current.startOfDay(for: start)
+            self.startDate = Calendar.current.startOfDay(for: start)
         } else {
-            self._start = start
+            self.startDate = start
         }
         self.duration = duration
         self.recurrence = recurrence
@@ -106,7 +116,7 @@ public struct ILSchedule {
         let occurrenceStart: Date
         let occurrenceEnd: Date
 
-        switch duration {
+        switch duration.guts {
         case .allDay:
             occurrenceStart = Calendar.current.startOfDay(for: start)
 
@@ -117,7 +127,7 @@ public struct ILSchedule {
             occurrenceEnd = endDate
         case let .duration(duration):
             occurrenceStart = start
-            occurrenceEnd = occurrenceStart.addingTimeInterval(TimeInterval(duration.components.seconds))
+            occurrenceEnd = occurrenceStart.addingTimeInterval(TimeInterval(duration.duration.components.seconds)) // TODO: dynamic member lookup
         }
 
         return (occurrenceStart, occurrenceEnd)
@@ -130,9 +140,24 @@ extension ILSchedule: Equatable, Sendable {}
 
 extension ILSchedule: Codable {
     private enum CodingKeys: String, CodingKey {
-        case _start = "start" // swiftlint:disable:this identifier_name
+        case startDate
         case duration
-        case recurrenceRule = "recurrence"
+        case recurrenceRule
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        print(container.allKeys)
+        self.startDate = try container.decode(Date.self, forKey: .startDate)
+        self.duration = try container.decode(ILSchedule.Duration.self, forKey: .duration)
+        self.recurrenceRule = try container.decodeIfPresent(Data.self, forKey: .recurrenceRule)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(self.startDate, forKey: .startDate)
+        try container.encode(self.duration, forKey: .duration)
+        try container.encodeIfPresent(self.recurrenceRule, forKey: .recurrenceRule)
     }
 }
 
