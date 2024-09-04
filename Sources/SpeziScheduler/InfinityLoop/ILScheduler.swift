@@ -202,7 +202,7 @@ public final class ILScheduler {
     /// - Returns: The list of `ILTask` that are effective in the specified date range and match the specified `predicate`. The result is ordered by the specified `sortDescriptors`.
     public func queryTasks(
         for range: Range<Date>,
-        predicate: Predicate<ILTask> = #Predicate { _ in true },
+        predicate: Predicate<ILTask> = #Predicate { _ in true }, // TODO: maybe remove?
         sortBy sortDescriptors: [SortDescriptor<ILTask>] = [],
         prefetchOutcomes: Bool = false
     ) throws -> [ILTask] {

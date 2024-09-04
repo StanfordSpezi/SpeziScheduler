@@ -22,7 +22,7 @@ struct PlaygroundList: View {
 
 
 #if DEBUG
-#Preview {
+#Preview(traits: .schedulerSampleData) {
     PlaygroundList()
         .previewWith {
             ILScheduler()

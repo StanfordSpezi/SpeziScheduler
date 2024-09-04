@@ -54,7 +54,7 @@ public struct ILSchedule {
     /// We need a separate storage container as SwiftData cannot store values of type `Swift.Duration`.
     private var scheduleDuration: Duration.SwiftDataDuration
 
-    private var recurrenceRule: RecurrenceRule?
+    private var recurrenceRule: Data?
 
     /// The duration of a single occurrence.
     public var duration: Duration {
@@ -74,13 +74,25 @@ public struct ILSchedule {
     public var recurrence: Calendar.RecurrenceRule? {
         @storageRestrictions(initializes: recurrenceRule)
         init(initialValue) {
-            recurrenceRule = initialValue.map { RecurrenceRule(from: $0) }
+            do {
+                recurrenceRule = try initialValue.map { try PropertyListEncoder().encode($0) }
+            } catch {
+                preconditionFailure("Failed to encode initial value \(String(describing: initialValue)): \(error)")
+            }
         }
         get {
-            recurrenceRule.map { Calendar.RecurrenceRule(from: $0) }
+            do {
+                return try recurrenceRule.map { try PropertyListDecoder().decode(Calendar.RecurrenceRule.self, from: $0) }
+            } catch {
+                preconditionFailure("Failed to decode calendar from \(String(describing: recurrenceRule)): \(error)")
+            }
         }
         set {
-            recurrenceRule = newValue.map { RecurrenceRule(from: $0) }
+            do {
+                recurrenceRule = try newValue.map { try PropertyListEncoder().encode($0) }
+            } catch {
+                preconditionFailure("Failed to encode new value \(String(describing: newValue)): \(error)")
+            }
         }
     }
 
@@ -169,7 +181,27 @@ public struct ILSchedule {
 }
 
 
-extension ILSchedule: Equatable, Sendable, Codable {}
+extension ILSchedule: Equatable, Sendable, Codable {
+    private enum CodingKeys: String, CodingKey {
+        case startDate
+        case scheduleDuration
+        case recurrenceRule
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.startDate = try container.decode(Date.self, forKey: .startDate)
+        self.scheduleDuration = try container.decode(ILSchedule.Duration.SwiftDataDuration.self, forKey: .scheduleDuration)
+        self.recurrenceRule = try container.decodeIfPresent(Data.self, forKey: .recurrenceRule)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(startDate, forKey: .startDate)
+        try container.encode(scheduleDuration, forKey: .scheduleDuration)
+        try container.encode(recurrenceRule, forKey: .recurrenceRule)
+    }
+}
 
 
 extension ILSchedule { // TODO: examples for each? and the init

@@ -80,6 +80,7 @@ extension EventQuery: DynamicProperty {
 
         do {
             // TODO: should this run on the main thread?
+            // TODO: does this refresh when there is a new outcome?
             fetchedEvents = try scheduler.queryEvents(for: configuration.range, predicate: configuration.taskPredicate)
         } catch {
             configuration.fetchError = error

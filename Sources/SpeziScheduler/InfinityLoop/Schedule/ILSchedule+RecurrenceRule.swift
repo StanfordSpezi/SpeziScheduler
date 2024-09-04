@@ -56,7 +56,65 @@ extension ILSchedule {
 }
 
 
-extension ILSchedule.RecurrenceRule: Equatable, Sendable, Codable {}
+extension ILSchedule.RecurrenceRule: Equatable, Sendable {}
+
+extension ILSchedule.RecurrenceRule: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case calendar
+        case matchingPolicy
+        case repeatedTimePolicy
+        case frequency
+        case interval
+        case end
+        case seconds
+        case minutes
+        case hours
+        case weekdays
+        case daysOfTheMonth
+        case daysOfTheYear
+        case months
+        case weeks
+        case setPositions
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        calendar = try container.decode(Data.self, forKey: .calendar)
+        matchingPolicy = try container.decode(Calendar.MatchingPolicy.self, forKey: .matchingPolicy)
+        repeatedTimePolicy = try container.decode(Calendar.RepeatedTimePolicy.self, forKey: .repeatedTimePolicy)
+        frequency = try container.decode(Calendar.RecurrenceRule.Frequency.self, forKey: .frequency)
+        interval = try container.decode(Int.self, forKey: .interval)
+        end = try container.decode(Calendar.RecurrenceRule.End.self, forKey: .end)
+        seconds = try container.decode([Int].self, forKey: .seconds)
+        minutes = try container.decode([Int].self, forKey: .minutes)
+        hours = try container.decode([Int].self, forKey: .hours)
+        weekdays = try container.decode([Calendar.RecurrenceRule.Weekday].self, forKey: .weekdays)
+        daysOfTheMonth = try container.decode([Int].self, forKey: .daysOfTheMonth)
+        daysOfTheYear = try container.decode([Int].self, forKey: .daysOfTheYear)
+        months = try container.decode([Calendar.RecurrenceRule.Month].self, forKey: .months)
+        weeks = try container.decode([Int].self, forKey: .weeks)
+        setPositions = try container.decode([Int].self, forKey: .setPositions)
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(calendar, forKey: .calendar)
+        try container.encode(matchingPolicy, forKey: .matchingPolicy)
+        try container.encode(repeatedTimePolicy, forKey: .repeatedTimePolicy)
+        try container.encode(frequency, forKey: .frequency)
+        try container.encode(interval, forKey: .interval)
+        try container.encode(end, forKey: .end)
+        try container.encode(seconds, forKey: .seconds)
+        try container.encode(minutes, forKey: .minutes)
+        try container.encode(hours, forKey: .hours)
+        try container.encode(weekdays, forKey: .weekdays)
+        try container.encode(daysOfTheMonth, forKey: .daysOfTheMonth)
+        try container.encode(daysOfTheYear, forKey: .daysOfTheYear)
+        try container.encode(months, forKey: .months)
+        try container.encode(weeks, forKey: .weeks)
+        try container.encode(setPositions, forKey: .setPositions)
+    }
+}
 
 
 extension ILSchedule.RecurrenceRule {
