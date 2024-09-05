@@ -45,7 +45,7 @@ struct TileHeader: View {
         }
     }
 
-    @ViewBuilder var clipboard: some View {
+    @ViewBuilder private var clipboard: some View { // TODO: customize the icon based on the event
         Image(systemName: "list.bullet.clipboard")
             .foregroundColor(.accentColor)
             .font(.custom("Screening Task Icon", size: 30, relativeTo: .headline))
@@ -53,13 +53,13 @@ struct TileHeader: View {
             .dynamicTypeSize(...DynamicTypeSize.accessibility2)
     }
 
-    @ViewBuilder var subheadline: some View {
+    @ViewBuilder private var subheadline: some View {
         DynamicHStack(realignAfter: .xxxLarge) {
             Text("Questionnaire") // TODO: label?
 
-            if subheadlineLayout == .horizontal {
-                Spacer()
-            }
+            // TODO: if subheadlineLayout == .horizontal {
+            Spacer()
+            // TODO: }
 
             Text(event.occurrence.start, style: .time) // TODO: end date?
             // TODO: Text("\(task.expectedCompletionMinutes) min", comment: "Expected task completion in minutes.")
@@ -81,17 +81,15 @@ struct TileHeader: View {
 
 
 #if DEBUG
-#Preview {
-    let task = ILTask(
-        id: "example-task",
-        title: "Social Support Questionnaire",
-        instructions: "Please fill out the Social Support Questionnaire every day.",
-        schedule: .daily(hour: 17, minute: 30, startingAt: .today)
-    )
-    let occurrence = task.schedule.occurrences(inDay: .today).first!
-    let event = ILEvent(task: task, occurrence: occurrence, outcome: nil)
-    return List {
-        TileHeader(event)
+#Preview(traits: .schedulerSampleData) {
+    @EventQuery(in: Date.now..<Calendar.current.date(byAdding: .day, value: 1, to: .tomorrow)!) @Previewable var events
+
+    List {
+        if let event = events.first {
+            TileHeader(event)
+        } else {
+            Text(verbatim: "Missing event")
+        }
     }
 }
 #endif

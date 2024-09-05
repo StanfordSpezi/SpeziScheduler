@@ -52,7 +52,7 @@ struct SimpleTile<Header: View, Footer: View, ActionLabel: View>: View {
     @ViewBuilder var tileLabel: some View {
         header
 
-        if Footer.self != EmptyView.self || Action.self != EmptyView.self {
+        if Footer.self != EmptyView.self || ActionLabel.self != EmptyView.self {
             Divider()
                 .padding(.bottom, 4)
         }

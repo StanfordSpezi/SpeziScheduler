@@ -8,79 +8,12 @@
 
 import Spezi
 import SpeziLocalStorage
+@_spi(TestingSupport)
 @testable import SpeziScheduler
 import SpeziSecureStorage
 import XCTest
 import XCTSpezi
 
-
-import SwiftData
-
-@Model
-class Entry {
-    var id: UUID
-    var entry: String
-
-    init(id: UUID = UUID(), entry: String) {
-        self.id = id
-        self.entry = entry
-    }
-}
-
-class Test {
-    var entity: String {
-        get {
-            ""
-        }
-        set {
-            ""
-        }
-    }
-}
-
-@Model
-class SimpleModel {
-    @Attribute(.unique)
-    var id: String
-
-    var content: String
-
-    @Relationship(deleteRule: .cascade) // TODO: no inverse right?
-    var entry: Entry?
-
-    var isUnderlyingNil: Bool {
-        print("_entry: \(String(describing: _entry)), content: \(_content), id: \(_id)")
-        print("metadata: \(_$backingData.metadata)")
-        return _entry == nil
-    }
-
-    init(id: String, content: String, entry: Entry) {
-        self.id = id
-        self.content = content
-        self.entry = entry
-    }
-
-    init(id: String, content: String) {
-        self.id = id
-        self.content = content
-    }
-}
-
-struct ExampleKey: TaskStorageKey {
-    typealias Value = String
-}
-
-
-extension ILTask.Context {
-    var example: String? {
-        get {
-            self[ExampleKey.self]
-        }
-        set {
-            self[ExampleKey.self] = newValue
-        }
-    }
-}
 
 final class SchedulerTests: XCTestCase {
     // swiftlint:disable:previous type_body_length
@@ -123,44 +56,19 @@ final class SchedulerTests: XCTestCase {
     }
 
     @MainActor
-    func testSomeSwiftDataTests() throws { // TODO: remove!
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: SimpleModel.self, configurations: configuration)
+    func testSchedulerSampleData() throws {
+        let container = try SchedulerSampleData.makeSharedContext()
 
-        let context = ModelContext(container)
-
-        let model2 = SimpleModel(id: "asd2", content: "asd2", entry: Entry(entry: "Entry 2"))
-        print("isNil2: \(model2.isUnderlyingNil)")
-
-        let model = SimpleModel(id: "asf", content: "Some content")
-        print("isNil: \(model.isUnderlyingNil)")
-        model.entry = Entry(entry: "Entry 1")
-        print("isNil: \(model.isUnderlyingNil)")
-        context.insert(model)
-
-        print("Unsaved changes: \(context.hasChanges)")
-        try context.save()
-
-        try print("History: \(context.fetchHistory(HistoryDescriptor<DefaultHistoryTransaction>()))")
-
-        // TODO: context.rollback() might be helpful for error handling?
-
-        model.content = "new Content"
-        print("Unsaved changes: \(context.hasChanges)")
-        try context.save()
-
-        try print("History: \(context.fetchHistory(HistoryDescriptor<DefaultHistoryTransaction>()))")
-
-        let allEntries = try context.fetch(FetchDescriptor<SimpleModel>())
-        for model in allEntries {
-            print("model entries: \(String(describing: model.entry))")
-            print("Model isNil: \(model.isUnderlyingNil)")
+        let scheduler = ILScheduler(testingContainer: container)
+        withDependencyResolution {
+            scheduler
         }
 
-        context.delete(model)
-        try context.save()
+        let results = try scheduler.queryTasks(for: Date.yesterday..<Date.tomorrow)
+        XCTAssertEqual(results.count, 1, "Received unexpected amount of tasks in query.")
 
-        try print("Remaining: \(context.fetch(FetchDescriptor<Entry>()))")
+        let events = try scheduler.queryEvents(for: Date.yesterday..<Date.tomorrow)
+        print(events)
     }
 
     @MainActor

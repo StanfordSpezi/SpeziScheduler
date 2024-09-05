@@ -26,18 +26,26 @@ public struct EventQuery {
         }
     }
 
+    @Observable
+    @MainActor
+    fileprivate final class Storage {
+        var viewUpdate: UInt64 = 0
+        var cancelable: AnyCancellable?
+
+        var fetchedEvents: [ILEvent] = []
+    }
+
 
     @Environment(ILScheduler.self)
     private var scheduler
 
-    @State private var viewUpdate: UInt64 = 0
-    @State private var cancelable: AnyCancellable?
-
     @State private var configuration: Configuration
-    @State private var fetchedEvents: [ILEvent] = []
+
+    private let storage = Storage()
 
     public var wrappedValue: [ILEvent] {
-        fetchedEvents
+        _ = storage.viewUpdate // access the viewUpdate to make sure the view is tied to this observable
+        return storage.fetchedEvents
     }
 
     public var projectedValue: Configuration {
@@ -61,19 +69,20 @@ extension EventQuery: DynamicProperty {
     }
 
     private mutating func doUpdate() {
+        // we cannot set @State in the update method (or anything that calls nested update() method!)
+
         guard let context = try? scheduler.context else { // TODO: just embed this into the Scheduler?
             configuration.fetchError = ILScheduler.DataError.invalidContainer
             return
         }
 
-        if cancelable != nil {
-            let viewUpdate = $viewUpdate
-            cancelable = NotificationCenter.default.publisher(for: ModelContext.didSave, object: context)
-                .sink { _ in
+        if storage.cancelable != nil {
+            storage.cancelable = NotificationCenter.default.publisher(for: ModelContext.didSave, object: context)
+                .sink { [storage] _ in
                     // we are using the Main Context, that always runs on the Main Actor
                     // TODO: this is implementation details (make sure it doesnt change)
                     MainActor.assumeIsolated {
-                        viewUpdate.wrappedValue &+= 1 // increment that automatically wraps around
+                        storage.viewUpdate &+= 1 // increment that automatically wraps around
                     }
                 }
         }
@@ -81,7 +90,7 @@ extension EventQuery: DynamicProperty {
         do {
             // TODO: should this run on the main thread?
             // TODO: does this refresh when there is a new outcome?
-            fetchedEvents = try scheduler.queryEvents(for: configuration.range, predicate: configuration.taskPredicate)
+            storage.fetchedEvents = try scheduler.queryEvents(for: configuration.range, predicate: configuration.taskPredicate)
         } catch {
             configuration.fetchError = error
         }

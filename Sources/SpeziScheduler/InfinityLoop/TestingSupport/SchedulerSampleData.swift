@@ -15,7 +15,7 @@ import SwiftUI
 public struct SchedulerSampleData: PreviewModifier {
     public init() {}
 
-    public static func makeSharedContext() async throws -> ModelContainer {
+    public static func makeSharedContext() throws -> ModelContainer {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: ILTask.self, configurations: configuration)
 
@@ -23,14 +23,14 @@ public struct SchedulerSampleData: PreviewModifier {
             id: "example-task",
             title: "Social Support Questionnaire",
             instructions: "Please fill out the Social Support Questionnaire every day.",
-            schedule: .daily(hour: 17, minute: 30, startingAt: .today)
+            schedule: .daily(hour: 17, minute: 0, startingAt: .today)
         )
         // TODO: let occurrence = task.schedule.occurrences(inDay: .today).first!
         // TODO: let event = ILEvent(task: task, occurrence: occurrence, outcome: nil)
+        // TODO: insert model with an outcome?
 
         container.mainContext.insert(task)
         try container.mainContext.save()
-        // TODO: insert model with an outcome?
 
         return container
     }

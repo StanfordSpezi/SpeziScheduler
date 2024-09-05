@@ -29,9 +29,9 @@ public struct InstructionsTile: View {
                 Text(event.task.instructions)
                     .font(.callout)
             } action: {
-                // TODO: show sheet?
+                // TODO: what is the action, show a sheet?
             } actionLabel: {
-                Text("Start Questionnaire") // TODO: where to retrieve that from?
+                Text("Start Questionnaire") // TODO: how to retrieve that?
             }
         }
     }
@@ -43,26 +43,16 @@ public struct InstructionsTile: View {
 
 
 #if DEBUG
-@MainActor
-func asdf() {
-}
-#Preview(traits: .schedulerSampleData) {/*
-    // TODO: preview trait with example data!
-    let task = ILTask(
-        id: "example-task",
-        title: "Social Support Questionnaire",
-        instructions: "Please fill out the Social Support Questionnaire every day.",
-        schedule: .daily(hour: 17, minute: 30, startingAt: .today)
-    )
-    let occurrence = task.schedule.occurrences(inDay: .today).first!
-    let event = ILEvent(task: task, occurrence: occurrence, outcome: nil)*/
-    @EventQuery(in: Date.today..<Date.tomorrow) @Previewable var events
+#Preview(traits: .schedulerSampleData) {
+    @EventQuery(in: Date.now..<Calendar.current.date(byAdding: .day, value: 1, to: .tomorrow)!) @Previewable var events
 
-    if let first = events.first {
+    if let error = $events.fetchError {
+        Text("Error Occurrence: \(error)")
+    } else if let first = events.first {
         InstructionsTile(first)
             .padding()
     } else {
-        Text(verbatim: "No event")
+        ProgressView()
     }
 }
 #endif

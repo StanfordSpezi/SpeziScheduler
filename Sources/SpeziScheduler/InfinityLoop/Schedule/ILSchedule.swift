@@ -54,7 +54,7 @@ public struct ILSchedule {
     /// We need a separate storage container as SwiftData cannot store values of type `Swift.Duration`.
     private var scheduleDuration: Duration.SwiftDataDuration
 
-    private var recurrenceRule: Data?
+    private var recurrenceRule: Data? // TODO: our custom wrapper doesn't work?
 
     /// The duration of a single occurrence.
     public var duration: Duration {
@@ -204,7 +204,7 @@ extension ILSchedule: Equatable, Sendable, Codable {
 }
 
 
-extension ILSchedule { // TODO: examples for each? and the init
+extension ILSchedule {
     /// Create a schedule for a single occurrence.
     ///
     /// ```swift
