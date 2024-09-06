@@ -7,9 +7,11 @@
 //
 
 import Foundation
+import OSLog
 import SpeziFoundation
 
 
+/// Property lists can never store single values (unlike JSON). Therefore, we always embed values into a container.
 struct SingleValueWrapper<Value: Codable>: Codable {
     let value: Value
 
@@ -25,6 +27,10 @@ struct UserInfoStorage<Anchor: RepositoryAnchor> {
     }
 
     private var userInfo: [String: Data] = [:]
+
+    private var logger: Logger {
+        Logger(subsystem: "edu.stanford.spezi.scheduler", category: "\(Self.self)")
+    }
 
     init() {
         self.userInfo = [:]
@@ -53,8 +59,7 @@ extension UserInfoStorage {
             cache.repository.set(source, value: value.value)
             return value.value
         } catch {
-            print("Unable to decode \(data) for type \(source): \(error)")
-            // TODO: log error!
+            logger.error("Failed to decode userInfo value for \(source) from data \(data): \(error)")
             return nil
         }
     }
@@ -64,11 +69,9 @@ extension UserInfoStorage {
 
         if let newValue {
             do {
-                // TODO: property list encoder is a bit finicky!
                 userInfo[source.identifier] = try PropertyListEncoder().encode(SingleValueWrapper(value: newValue))
             } catch {
-                print("Failed to encode userInfo value \(newValue) for key \(Source.self): \(error)")
-                // TODO: log error!
+                logger.error("Failed to encode userInfo value \(String(describing: newValue)) for \(source): \(error)")
             }
         } else {
             userInfo.removeValue(forKey: source.identifier)
@@ -82,45 +85,12 @@ extension UserInfoStorage: RawRepresentable {
         userInfo
     }
 
-    init(rawValue: [String : Data]) {
+    init(rawValue: [String: Data]) {
         self.userInfo = rawValue
     }
 }
 
-extension UserInfoStorage: Codable {/*
-    private struct CodingKeys: CodingKey {
-        var stringValue: String
-        var intValue: Int?
-
-        init(stringValue: String) {
-            self.stringValue = stringValue
-        }
-
-        
-        init?(intValue: Int) {
-            nil
-        }
-    }
-
-    init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-
-        var userInfo: [String: Data] = [:]
-        for key in container.allKeys {
-            let data = try container.decode(Data.self, forKey: key)
-            userInfo[key.stringValue] = data
-        }
-        self.userInfo = userInfo
-    }
-
-    func encode(to encoder: any Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-
-        for (key, data) in userInfo {
-            try container.encode(data, forKey: CodingKeys(stringValue: key))
-        }
-    }*/
-}
+extension UserInfoStorage: Codable {}
 
 
 extension UserInfoStorage: Equatable {

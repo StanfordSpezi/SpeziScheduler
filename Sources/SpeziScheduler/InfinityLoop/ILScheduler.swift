@@ -12,6 +12,16 @@ import Spezi
 import SwiftData
 import SwiftUI
 
+// TODO: can we formulate 5pm every Friday that "adjusts" to the timezone? some might want to have a fixed time?
+//  => is auto updating current the solution?
+// TODO: allow to specify "text" LocalizationValue (e.g., Breakfast, Lunch, etc), otherwise we use the time (and date?)?
+// TODO: bring back support for randomly displaced events? random generated seed?
+// TODO: have a simple entry macro for storage keys?
+// TODO: easy "mark deleted" method (that creates a new tombstone= task version with no events in the schedule).
+// TODO: UI test the following things for @EventQuery:
+//  - update if there is a new version of a Task inserted (via scheduler, via task directly)
+//  - update if the outcome is added to a task version
+
 
 @MainActor
 public final class ILScheduler {
@@ -215,7 +225,6 @@ public final class ILScheduler {
     ///
     /// - Parameter tasks: The list of task to delete.
     public func deleteTasks(_ tasks: [ILTask]) {
-        // TODO: easy "mark deleted" method (that creates a new tombstone= task version with no events in the schedule).
         guard let context = try? context else {
             logger.error("Failed to delete tasks as container failed to be configured: \(tasks.map { $0.id }.joined(separator: ", "))")
             return
@@ -416,22 +425,27 @@ extension ILScheduler {
     private func inRangePredicate(for range: Range<Date>) -> Predicate<ILTask> {
         #Predicate<ILTask> { task in
             if let effectiveTo = task.nextVersion?.effectiveFrom {
-                range.contains(task.effectiveFrom) // TODO: is this also wrong?
-                || (range.lowerBound <= effectiveTo && effectiveTo <= range.upperBound)
+                // This basically boils down to
+                // let taskRange = task.effectiveFrom...<effectiveTo
+                // return taskRange.overlaps(range)
+
+                task.effectiveFrom <= range.lowerBound && range.lowerBound < effectiveTo
+                    || task.effectiveFrom < range.upperBound && range.upperBound <= effectiveTo
             } else {
+                // task lifetime is effectively an `PartialRangeFrom`. So all we do is to check if the `range` overlaps with the lower bound
                 task.effectiveFrom < range.upperBound
             }
         }
     }
 
     private func inClosedRangePredicate(for range: ClosedRange<Date>) -> Predicate<ILTask> {
+        // see comments above for an explanation
         #Predicate<ILTask> { task in
             if let effectiveTo = task.nextVersion?.effectiveFrom {
-                // TODO: this currently doesn't do anything if the range is place in the middle of both!
-                range.contains(task.effectiveFrom)
-                || (range.lowerBound <= effectiveTo && effectiveTo < range.upperBound)
+                task.effectiveFrom <= range.lowerBound && range.lowerBound < effectiveTo
+                    || task.effectiveFrom <= range.upperBound && range.upperBound < effectiveTo
             } else {
-                // this is the latest version, so check if the effective
+                // task lifetime is effectively an `PartialRangeFrom`. So all we do is to check if the closed `range` overlaps with the lower bound
                 task.effectiveFrom <= range.upperBound
             }
         }

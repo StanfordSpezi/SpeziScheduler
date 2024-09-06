@@ -44,6 +44,11 @@ public struct SchedulerSampleData: PreviewModifier {
 
 
 extension PreviewTrait where T == Preview.ViewTraits {
+    /// A preview modifier that provide sample data to the scheduler.
+    ///
+    /// - Note: This preview modifier uses Spezi's [`previewWith(simulateLifecycle:_:)`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/swiftui/view/previewwith(simulatelifecycle:_:))
+    ///     modifier under the hood. Therefore, it is not possible to use this preview modifier if you already
+    ///     using your own `previewWith(simulateLifecycle:_:)` modifier in your view hierarchy of the preview.
     @_spi(TestingSupport)
     public static var schedulerSampleData: PreviewTrait<T> {
         .modifier(SchedulerSampleData())
@@ -52,6 +57,7 @@ extension PreviewTrait where T == Preview.ViewTraits {
 
 
 extension Range where Bound == Date {
+    /// A date range used with scheduler sample events.
     @_spi(TestingSupport)
     public static var sampleEventRange: Range<Date> {
         Date.today..<Date.tomorrow

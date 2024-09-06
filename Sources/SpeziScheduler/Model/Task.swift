@@ -19,23 +19,19 @@ private let logger = Logger(subsystem: "edu.stanford.spezi.scheduler", category:
 /// A `Task` defines an instruction that is scheduled one to multiple times as defined by the ``Task/schedule`` property.
 ///
 /// A `Task` can have an additional ``Task/context`` associated with it that can be used to carry application-specific context.
-public final class Task<Context: Codable & Sendable>: Identifiable, Sendable { // TODO: rename that for the sake of concurrency!
+public final class Task<Context: Codable & Sendable>: Identifiable, Sendable {
     /// The unique identifier of the ``Task``.
-    public let id: UUID // TODO: the user could provide an ID!
+    public let id: UUID
     /// The title of the ``Task``.
     public let title: String
     /// The description of the ``Task``.
-    public let description: String // TODO: basically the instructions?
+    public let description: String
     /// The description of the ``Task`` as defined by a ``Schedule`` instance.
     public let schedule: Schedule
     /// Determines of the task should register local notifications to remind the user to fulfill the task
     public let notifications: Bool
     /// The customized context of the ``Task``.
     public let context: Context
-
-    // TODO: add String tags?
-    // TODO: notes from e.g., a physician to explain why a task changed?
-    // TODO: for versioning CareKit uses associationg to next and previous tasks UUIDs? all UUIDS? and the date at which it was effective?
 
     let events: [Event]
 
@@ -72,7 +68,7 @@ public final class Task<Context: Codable & Sendable>: Identifiable, Sendable { /
     ) {
         let id = UUID()
         var schedule = schedule
-        let dates = schedule.dates() // TODO: we don't support infinite schedules!
+        let dates = schedule.dates()
 
         self.init(
             id: id,

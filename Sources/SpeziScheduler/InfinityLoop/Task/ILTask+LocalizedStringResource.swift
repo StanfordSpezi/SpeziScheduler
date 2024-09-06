@@ -28,10 +28,12 @@ public protocol _LocalizedStringResourceAccessors: _HasLocalization { // swiftli
 
 
 extension _LocalizedStringResourceAccessors {
+    /// The title as a LocalizedStringResource allowing easy integration with SwiftUI.
     public var title: LocalizedStringResource {
         LocalizedStringResource(title)
     }
 
+    /// The instructions as a LocalizedStringResource allowing easy integration with SwiftUI.
     public var instructions: LocalizedStringResource {
         LocalizedStringResource(instructions)
     }

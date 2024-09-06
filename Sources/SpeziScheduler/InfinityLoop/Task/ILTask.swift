@@ -11,9 +11,44 @@ import SpeziFoundation
 import SwiftData
 
 
+/// A task that a user is supposed to perform.
+///
+/// A task represents some form of action or work that a patient or user is supposed to perform. It includes a
+/// ``title`` and ``instructions``.
+/// A task might occur once or multiple times. The occurrence of a task is referred to as an ``Event``.
+/// The ``Schedule`` defines when and how often a task reoccurs.
+///
+/// ### Versioning
+/// Tasks are stored in an append-only format. If you want to modify the contents of a task (e.g., the schedule, title or instructions), you create a new version of the task
+/// and set the ``effectiveFrom`` to indicate the date and time at which the updated version becomes effective. Only the newest task version can be modified.
+/// You can retrieve the chain of versions using the ``previousVersion`` and ``nextVersion`` properties.
+///
+/// ### Additional Information
+///
+/// Tasks support to store additional information. 
+///
+/// ## Topics
+/// ### Properties
+/// - ``id``
+/// - ``title``
+/// - ``instructions``
+/// - ``schedule``
+///
+/// ### Modify a task
+/// - ``ILScheduler/createOrUpdateTask(id:title:instructions:schedule:effectiveFrom:with:)``
+/// - ``createUpdatedVersion(title:instructions:schedule:effectiveFrom:with:)``
+///
+/// ### Storing additional information
+/// - ``Context``
+/// - ``subscript(dynamicMember:)``
+///
+/// ### Versioning
+/// - ``effectiveFrom``
+/// - ``nextVersion``
+/// - ``previousVersion``
 @Model
 @dynamicMemberLookup
-public final class ILTask {
+public final class ILTask { // TODO: complete Additional Information chapter once that is fully thought out!
     /// The `nextVersion` must be unique. `id` must be unique in combination with the `nextVersion` (e.g., no two task with the same id that have a next version of `nil`).
     #Unique<ILTask>([\.nextVersion], [\.id, \.nextVersion])
 
@@ -64,10 +99,11 @@ public final class ILTask {
     @Relationship(deleteRule: .deny)
     public private(set) var nextVersion: ILTask?
 
+    // TODO: add support for tags, notes, other default things?
     // TODO: notifications
 
     /// Additional userInfo stored alongside the task.
-    private(set) var userInfo: UserInfoStorage<TaskAnchor> // TODO: investigate if we can store it as a model an allow predicates this way?
+    private(set) var userInfo: UserInfoStorage<TaskAnchor>
     @Transient private var userInfoCache = UserInfoStorage<TaskAnchor>.RepositoryCache()
 
     private init(
@@ -157,13 +193,14 @@ public final class ILTask {
             throw ILScheduler.DataError.nextVersionAlreadyPresent
         }
 
-        // TODO: allow to delete those, or override this setting to not have this throwing?
-        // TODO: literally loads all outcomes!
-        guard outcomes.allSatisfy({ outcome in
-            outcome.occurrenceStartDate < effectiveFrom
-        }) else {
-            // an updated task cannot shadow already recorded outcomes of a previous task version
-            throw ILScheduler.DataError.shadowingPreviousOutcomes
+        // Caller signaled it already performed this check. Great to avoid lazily loading ALL associated outcomes.
+        if !skipShadowCheck {
+            guard outcomes.allSatisfy({ outcome in
+                outcome.occurrenceStartDate < effectiveFrom
+            }) else {
+                // an updated task cannot shadow already recorded outcomes of a previous task version
+                throw ILScheduler.DataError.shadowingPreviousOutcomes
+            }
         }
 
         let newVersion = ILTask(
@@ -232,6 +269,6 @@ extension ILTask {
                 userInfo.set(source, value: newValue, cache: &box.userInfoCache)
             }
         }
-        // TODO: overload for computed etc?
+        // TODO: overload for computed, default providing knowledge sources etc?
     }
 }

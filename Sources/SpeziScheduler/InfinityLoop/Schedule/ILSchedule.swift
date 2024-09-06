@@ -8,10 +8,6 @@
 
 import Foundation
 
-// TODO: can we formulate 5pm every Friday that "adjusts" to the timezone? some might want to have a fixed time?
-//  => is auto updating current the solution?
-// TODO: allow to specify "text" LocalizationValue (e.g., Breakfast, Lunch, etc), otherwise we use the time (and date?)?
-
 
 /// A schedule to describe the occurrences of a task.
 ///
@@ -153,7 +149,6 @@ public struct ILSchedule {
         self.duration = duration
         self.start = start
         self.recurrence = recurrence
-        // TODO: bring back support for randomly displaced events? random generated seed?
     }
 
 

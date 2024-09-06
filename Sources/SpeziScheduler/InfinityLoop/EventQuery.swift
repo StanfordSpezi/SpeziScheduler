@@ -12,11 +12,6 @@ import SwiftData
 import SwiftUI
 
 
-// TODO: UI test the following things:
-//  - update if there is a new version of a Task inserted (via scheduler, via task directly)
-//  - update if the outcome is added to a task version
-
-
 /// Query events in your SwiftUI view.
 ///
 /// Use this property wrapper in your SwiftUI view to query a list of ``ILEvent``s for a given date range.
@@ -154,9 +149,8 @@ extension EventQuery: DynamicProperty {
         //  - All Models are Observable. Therefore, views will automatically update if they use anything that changes over the lifetime of the model.
         //   Most importantly, we access the `nextVersion` of each Task in the `queryEvents` method. Inserting a new task is therefore covered by
         //   observation.
-        //  - Should there be any completely new task, it triggers our `didSave` publisher above (new tasks are always saved immediately
-        // TODO: adding outcomes
-        // TODO: updating task with the instance method.
+        //  - Should there be any completely new task, it triggers our `didSave` publisher above (new tasks are always saved immediately).
+        //  - Adding outcomes results in a call to the `save()` method. These updates are, therefore, also covered.
 
         do {
             // We always keep track of the set of models we are interested in. Only if that changes we query the "real thing".

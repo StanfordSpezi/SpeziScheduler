@@ -17,6 +17,12 @@ import XCTSpezi
 import SwiftUI // TODO: remove?
 
 final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_length
+    func testTeste() { // TODO: remove and below
+        let range = ...5
+        range.contains(7)
+        print(type(of: range))
+    }
+
     @MainActor
     func testExperiment() throws {
         let id = 123

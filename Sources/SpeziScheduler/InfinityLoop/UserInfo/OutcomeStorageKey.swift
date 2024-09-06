@@ -13,5 +13,4 @@ import SpeziFoundation
 public enum OutcomeAnchor: RepositoryAnchor {}
 
 
-// TODO: have a simple entry macro for these?
 public protocol OutcomeStorageKey: UserInfoKey where Anchor == OutcomeAnchor {} // TODO: docs
