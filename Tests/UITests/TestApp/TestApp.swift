@@ -18,7 +18,18 @@ struct UITestsApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            TabView {
+                ScheduleView()
+                    .tabItem {
+                        Label("Schedule", systemImage: "list.clipboard.fill")
+                    }
+                VStack {
+                    ContentView()
+                }
+                    .tabItem {
+                        Label("Legacy", systemImage: "moon.zzz")
+                    }
+            }
                 .spezi(appDelegate)
         }
     }

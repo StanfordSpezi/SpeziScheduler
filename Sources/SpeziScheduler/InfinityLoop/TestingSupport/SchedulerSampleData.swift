@@ -17,16 +17,15 @@ public struct SchedulerSampleData: PreviewModifier {
 
     public static func makeSharedContext() throws -> ModelContainer {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: ILTask.self, configurations: configuration)
+        let container = try ModelContainer(for: ILTask.self, Outcome.self, configurations: configuration)
 
         let task = ILTask(
             id: "example-task",
             title: "Social Support Questionnaire",
             instructions: "Please fill out the Social Support Questionnaire every day.",
-            schedule: .daily(hour: 17, minute: 0, startingAt: .today)
+            schedule: .daily(hour: 17, minute: 0, startingAt: .today),
+            effectiveFrom: .today // make sure test task always starts from the start of today
         )
-        // TODO: let occurrence = task.schedule.occurrences(inDay: .today).first!
-        // TODO: let event = ILEvent(task: task, occurrence: occurrence, outcome: nil)
         // TODO: insert model with an outcome?
 
         container.mainContext.insert(task)
@@ -48,5 +47,13 @@ extension PreviewTrait where T == Preview.ViewTraits {
     @_spi(TestingSupport)
     public static var schedulerSampleData: PreviewTrait<T> {
         .modifier(SchedulerSampleData())
+    }
+}
+
+
+extension Range where Bound == Date {
+    @_spi(TestingSupport)
+    public static var sampleEventRange: Range<Date> {
+        Date.today..<Date.tomorrow
     }
 }

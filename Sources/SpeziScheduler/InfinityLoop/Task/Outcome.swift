@@ -43,7 +43,7 @@ public final class Outcome {
 
     /// The associated event for this outcome.
     public var event: ILEvent {
-        ILEvent(task: task, occurrence: occurrence, outcome: self)
+        ILEvent(task: task, occurrence: occurrence, outcome: .value(self))
     }
 
     /// Additional userInfo stored alongside the outcome.

@@ -11,13 +11,35 @@ import Foundation
 
 /// Describes a single event of a Task.
 public struct ILEvent {
+    enum OutcomeValue {
+        case createWith(ILScheduler)
+        case value(Outcome)
+    }
+
+    private class State {
+        var outcome: OutcomeValue
+
+        init(_ outcome: OutcomeValue) {
+            self.outcome = outcome
+        }
+    }
+
     /// The task the event is associated with.
     public let task: ILTask
     /// Information about when this event occurs.
     public let occurrence: Occurrence
 
+    private let outcomeState: State
+
+
     /// The outcome of the event if already completed.
-    public private(set) var outcome: Outcome?
+    public var outcome: Outcome? {
+        if case let .value(outcome) = outcomeState.outcome {
+            outcome
+        } else {
+            nil
+        }
+    }
 
     /// Determine if the event was completed.
     ///
@@ -26,14 +48,17 @@ public struct ILEvent {
         outcome != nil
     }
 
-    init(task: ILTask, occurrence: Occurrence, outcome: Outcome?) {
+    init(task: ILTask, occurrence: Occurrence, outcome: OutcomeValue) {
         self.task = task
         self.occurrence = occurrence
-        self.outcome = outcome
+        self.outcomeState = State(outcome)
     }
 
     /// Complete the event.
-    public mutating func complete() {
+    ///
+    /// Does nothing if the event is already completed.
+    @MainActor
+    public func complete() {
         self.complete { _ in }
     }
     
@@ -47,12 +72,25 @@ public struct ILEvent {
     /// }
     /// ```
     ///
+    /// - Warning: If the event is already completed, the closure will be applied to the existing outcome.
+    ///
     /// - Parameter closure: A closure that allows setting properties of the outcome.
-    public mutating func complete(with closure: (Outcome) -> Void) {
-        let outcome = Outcome(task: task, occurrence: occurrence)
-        closure(outcome)
-        self.outcome = outcome
-        task.addOutcome(outcome) // TODO: is this necessary? Would this duplicate the entry?
+    @MainActor
+    public func complete(with closure: (Outcome) -> Void) {
+        switch outcomeState.outcome {
+        case let .createWith(scheduler):
+            let outcome = Outcome(task: task, occurrence: occurrence)
+            closure(outcome)
+
+            self.outcomeState.outcome = .value(outcome)
+
+            // Makes sure this is saved instantly. Only after models are fully saved, they are made available in the `outcomes`
+            // property of the task. Also saving makes sure an @EventQuery would be instantly refreshed.
+            scheduler.addOutcome(outcome)
+        case let .value(outcome):
+            // allows to merge additional properties
+            closure(outcome)
+        }
     }
 }
 

@@ -14,9 +14,20 @@ import SpeziSecureStorage
 import XCTest
 import XCTSpezi
 
+import SwiftUI // TODO: remove?
 
-final class SchedulerTests: XCTestCase {
-    // swiftlint:disable:previous type_body_length
+final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_length
+    @MainActor
+    func testExperiment() throws {
+        let id = 123
+        let value: String.LocalizationValue = "Asdf what the hell \(id)?"
+
+        try print(String(data: JSONEncoder().encode(value), encoding: .utf8)!)
+
+        let value2: LocalizedStringKey = "Hey what is the thing \(id)?"
+        print(value2)
+    }
+
     @MainActor
     func testILScheduler() throws {
         let module = ILScheduler()
@@ -52,7 +63,7 @@ final class SchedulerTests: XCTestCase {
 
         XCTAssertEqual(task0.id, "test-task")
         XCTAssertEqual(task0.example, "Additional Storage Stuff")
-        XCTAssertEqual(task0.title.key, "Hello World") // TODO: does this still translate?
+        XCTAssertEqual(task0.title, "Hello World") // TODO: does this still translate?
     }
 
     @MainActor

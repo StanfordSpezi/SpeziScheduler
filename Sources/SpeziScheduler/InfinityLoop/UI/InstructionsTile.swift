@@ -10,7 +10,10 @@ import SwiftUI
 
 
 public struct InstructionsTile: View {
-    private let event: ILEvent
+    private var event: ILEvent
+
+    @Environment(ILScheduler.self)
+    private var scheduler
 
     public var body: some View {
         if event.completed {
@@ -29,6 +32,7 @@ public struct InstructionsTile: View {
                 Text(event.task.instructions)
                     .font(.callout)
             } action: {
+                event.complete()
                 // TODO: what is the action, show a sheet?
             } actionLabel: {
                 Text("Start Questionnaire") // TODO: how to retrieve that?
@@ -44,7 +48,8 @@ public struct InstructionsTile: View {
 
 #if DEBUG
 #Preview(traits: .schedulerSampleData) {
-    @EventQuery(in: Date.now..<Calendar.current.date(byAdding: .day, value: 1, to: .tomorrow)!) @Previewable var events
+    @EventQuery(in: .sampleEventRange)
+    @Previewable var events
 
     if let error = $events.fetchError {
         Text("Error Occurrence: \(error)")

@@ -9,7 +9,8 @@
 import Foundation
 
 // TODO: can we formulate 5pm every Friday that "adjusts" to the timezone? some might want to have a fixed time?
-// TODO: allow to specify "text" LocalizedStringResource (e.g., Breakfast, Lunch, etc), otherwise we use the time (and date?)?
+//  => is auto updating current the solution?
+// TODO: allow to specify "text" LocalizationValue (e.g., Breakfast, Lunch, etc), otherwise we use the time (and date?)?
 
 
 /// A schedule to describe the occurrences of a task.
@@ -54,7 +55,7 @@ public struct ILSchedule {
     /// We need a separate storage container as SwiftData cannot store values of type `Swift.Duration`.
     private var scheduleDuration: Duration.SwiftDataDuration
 
-    private var recurrenceRule: Data? // TODO: our custom wrapper doesn't work?
+    private var recurrenceRule: Data?
 
     /// The duration of a single occurrence.
     public var duration: Duration {
@@ -152,8 +153,6 @@ public struct ILSchedule {
         self.duration = duration
         self.start = start
         self.recurrence = recurrence
-        // TODO: recurrence.calendar = .autoupdatingCurrent (does that change something?)
-
         // TODO: bring back support for randomly displaced events? random generated seed?
     }
 
@@ -166,7 +165,6 @@ public struct ILSchedule {
         case .allDay:
             occurrenceStart = Calendar.current.startOfDay(for: start)
 
-            // TODO: shall we just add 24 hours? (we know start is at start of day) and end is exclusive anyways?
             guard let endDate = Calendar.current.date(byAdding: .init(day: 1, second: -1), to: occurrenceStart) else {
                 preconditionFailure("Failed to calculate end of date from \(start)")
             }

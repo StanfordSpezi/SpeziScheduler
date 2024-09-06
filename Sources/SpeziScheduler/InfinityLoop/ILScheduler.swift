@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+import Combine
 import Foundation
 import Spezi
 import SwiftData
@@ -17,14 +18,14 @@ public final class ILScheduler {
     @Application(\.logger)
     private var logger
 
-    private var _container: ModelContainer?
+    private var _container: Result<ModelContainer, Error>?
 
     private var container: ModelContainer {
         get throws {
             guard let container = _container else {
-                throw DataError.invalidContainer
+                throw DataError.invalidContainer(nil)
             }
-            return container
+            return try container.get()
         }
     }
 
@@ -34,11 +35,19 @@ public final class ILScheduler {
         }
     }
 
+
+    /// A task that slightly delays saving tasks.
+    private var saveTask: _Concurrency.Task<Void, Never>?
+
     /// Configure the Scheduler.
     public nonisolated init() {}
 
-    init(testingContainer: ModelContainer) {
-        self._container = testingContainer
+    
+    /// Configure the Scheduler with a pre-populated model container.
+    /// - Parameter testingContainer: The model container that is preconfigured with the ``ILTask`` and ``Outcome`` models.
+    @_spi(TestingSupport)
+    public init(testingContainer: ModelContainer) {
+        self._container = .success(testingContainer)
     }
 
     /// Configure the Scheduler module.
@@ -56,10 +65,40 @@ public final class ILScheduler {
         configuration = ModelConfiguration(url: storageUrl)
 #endif
         do {
-            _container = try ModelContainer(for: ILTask.self, configurations: configuration)
+            _container = .success(try ModelContainer(for: ILTask.self, Outcome.self, configurations: configuration))
         } catch {
-            // TODO: store the error and propagate via invalidContainer error?
             logger.error("Failed to initializer scheduler model container: \(error)")
+            _container = .failure(error)
+        }
+
+
+        // This is a really good article explaining some of the concurrency considerations with SwiftData
+        // https://medium.com/@samhastingsis/use-swiftdata-like-a-boss-92c05cba73bf
+        // It also makes it easier to understand the SwiftData-related infrastructure around Spezi Scheduler.
+        // One could think that Apple could have provided a lot of this information in their documentation.
+    }
+
+
+    /// Schedules a new save.
+    ///
+    /// When we add a new task we want to instantly save it to disk. This helps to, e.g., make sure a `@EventQuery` receives the update by subscribing to the
+    /// `didSave` notification. We delay saving the context by a bit, by queuing a task for the next possible execution. This helps to avoid that adding a new task model
+    /// blocks longer than needed and makes sure that creating multiple tasks in sequence (which happens at startup) doesn't call `save()` more often than required.
+    private func scheduleSave(for context: ModelContext) {
+        guard saveTask == nil else {
+            return // se docs above
+        }
+
+        saveTask = _Concurrency.Task { [logger] in
+            defer {
+                saveTask = nil
+            }
+
+            do {
+                try context.save()
+            } catch {
+                logger.error("Failed to save the scheduler model context: \(error)")
+            }
         }
     }
 
@@ -81,27 +120,48 @@ public final class ILScheduler {
     @discardableResult
     public func createOrUpdateTask(
         id: String,
-        title: LocalizedStringResource,
-        instructions: LocalizedStringResource,
+        title: String.LocalizationValue,
+        instructions: String.LocalizationValue,
         schedule: ILSchedule,
         effectiveFrom: Date = .now,
         with contextClosure: ((inout ILTask.Context) -> Void)? = nil
     ) throws -> (task: ILTask, didChange: Bool) {
         let context = try context
-        let results = try context.fetch(FetchDescriptor<ILTask>(
-            predicate: #Predicate { task in
-                task.id == id && task.nextVersion == nil
-            }
-        ))
+
+        let predicate: Predicate<ILTask> = #Predicate { task in
+            task.id == id && task.nextVersion == nil
+        }
+        let results = try context.fetch(FetchDescriptor<ILTask>(predicate: predicate))
 
         if let existingTask = results.first {
-            return existingTask.createUpdatedVersion(
+            let descriptor = FetchDescriptor<Outcome>(
+                predicate: #Predicate { outcome in
+                    predicate.evaluate(outcome.task) // ensure we use the same predicate
+                        && outcome.occurrenceStartDate >= effectiveFrom
+                }
+            )
+            let outcomesThatWouldBeShadowed = try context.fetchCount(descriptor)
+
+            if outcomesThatWouldBeShadowed > 0 {
+                // an updated task cannot shadow already recorded outcomes of a previous task version
+                throw ILScheduler.DataError.shadowingPreviousOutcomes
+            }
+
+            // while this is throwing, it won't really throw for us, as we do all the checks beforehand
+            let result = try existingTask.createUpdatedVersion(
+                skipShadowCheck: true, // we perform the check much more efficient with the query above and do not require fetching all outcomes
                 title: title,
                 instructions: instructions,
                 schedule: schedule,
                 effectiveFrom: effectiveFrom,
                 with: contextClosure
             )
+
+            if result.didChange {
+                scheduleSave(for: context)
+            }
+
+            return result
         } else {
             let task = ILTask(
                 id: id,
@@ -112,7 +172,7 @@ public final class ILScheduler {
                 with: contextClosure ?? { _ in }
             )
             context.insert(task)
-            try context.save() // TODO: should we?
+            scheduleSave(for: context)
             return (task, true)
         }
     }
@@ -130,7 +190,20 @@ public final class ILScheduler {
     public func deleteTasks(_ tasks: ILTask...) {
         self.deleteTasks(tasks)
     }
-    
+
+    func addOutcome(_ outcome: Outcome) {
+        let context: ModelContext
+        do {
+            context = try self.context
+        } catch {
+            logger.error("Failed to persist outcome for task \(outcome.task.id): \(error)")
+            return
+        }
+
+        context.insert(outcome)
+        scheduleSave(for: context)
+    }
+
     /// Delete a task from the store.
     ///
     /// This permanently deletes a task (version) from the store.
@@ -172,18 +245,7 @@ public final class ILScheduler {
         sortBy sortDescriptors: [SortDescriptor<ILTask>] = [],
         prefetchOutcomes: Bool = false
     ) throws -> [ILTask] {
-        let inClosedRangePredicate = #Predicate<ILTask> { task in
-            if let effectiveTo = task.nextVersion?.effectiveFrom {
-                // TODO: this currently doesn't do anything if the range is place in the middle of both!
-                range.contains(task.effectiveFrom)
-                    || (range.lowerBound <= effectiveTo && effectiveTo < range.upperBound)
-            } else {
-                // this is the latest version, so check if the effective
-                task.effectiveFrom <= range.upperBound
-            }
-        }
-
-        return try queryTask(with: inClosedRangePredicate, combineWith: predicate, sortBy: sortDescriptors, prefetchOutcomes: prefetchOutcomes)
+        try queryTask(with: inClosedRangePredicate(for: range), combineWith: predicate, sortBy: sortDescriptors, prefetchOutcomes: prefetchOutcomes)
     }
 
     
@@ -202,22 +264,13 @@ public final class ILScheduler {
     /// - Returns: The list of `ILTask` that are effective in the specified date range and match the specified `predicate`. The result is ordered by the specified `sortDescriptors`.
     public func queryTasks(
         for range: Range<Date>,
-        predicate: Predicate<ILTask> = #Predicate { _ in true }, // TODO: maybe remove?
+        predicate: Predicate<ILTask> = #Predicate { _ in true },
         sortBy sortDescriptors: [SortDescriptor<ILTask>] = [],
         prefetchOutcomes: Bool = false
     ) throws -> [ILTask] {
-        let inRangePredicate = #Predicate<ILTask> { task in
-            if let effectiveTo = task.nextVersion?.effectiveFrom {
-                range.contains(task.effectiveFrom) // TODO: is this also wrong?
-                    || (range.lowerBound <= effectiveTo && effectiveTo <= range.upperBound)
-            } else {
-                task.effectiveFrom < range.upperBound
-            }
-        }
-
-        return try queryTask(with: inRangePredicate, combineWith: predicate, sortBy: sortDescriptors, prefetchOutcomes: prefetchOutcomes)
+        try queryTask(with: inRangePredicate(for: range), combineWith: predicate, sortBy: sortDescriptors, prefetchOutcomes: prefetchOutcomes)
     }
-    
+
     /// Query the list of events.
     ///
     /// This method fetches all tasks that are effective in the specified `range` and fulfill the additional `taskPredicate` (if specified).
@@ -231,7 +284,7 @@ public final class ILScheduler {
     ///   - taskPredicate: An additional predicate that allows to pre-filter the list of task that should be considered.
     /// - Returns: The list of events that occurred in the given date `range` for tasks that fulfill the provided `taskPredicate` returned as a list that is sorted by the events
     ///     ``ILEvent/occurrence`` in ascending order.
-    public func queryEvents( // TODO: allow closed range as well?
+    public func queryEvents(
         for range: Range<Date>,
         predicate taskPredicate: Predicate<ILTask> = #Predicate { _ in true }
     ) throws -> [ILEvent] {
@@ -247,6 +300,8 @@ public final class ILScheduler {
                 // If there is a newer task version, we only calculate the events till that the current task is effective.
                 // Otherwise, use the upperBound from the range.
                 let upperBound: Date
+                // Accessing `nextVersion` is is vital for the `EventQuery`. The property will be tracked using observation.
+                // Inserting (or removing) a new task version will, therefore, instantly cause a view refresh and updating the query results.
                 if let effectiveFrom = task.nextVersion?.effectiveFrom {
                     upperBound = min(effectiveFrom, range.upperBound) // the range might end before the next version is effective
                 } else {
@@ -256,8 +311,11 @@ public final class ILScheduler {
                 return task.schedule
                     .occurrences(in: range.lowerBound..<upperBound)
                     .map { occurrence in
-                        let outcome = outcomesByOccurrence[occurrence.start]
-                        return ILEvent(task: task, occurrence: occurrence, outcome: outcome)
+                        if let outcome = outcomesByOccurrence[occurrence.start] {
+                            ILEvent(task: task, occurrence: occurrence, outcome: .value(outcome))
+                        } else {
+                            ILEvent(task: task, occurrence: occurrence, outcome: .createWith(self))
+                        }
                     }
             }
             .sorted { lhs, rhs in
@@ -265,17 +323,47 @@ public final class ILScheduler {
             }
     }
 
+    func queryEventsAnchor(
+        for range: Range<Date>,
+        predicate taskPredicate: Predicate<ILTask> = #Predicate { _ in true }
+    ) throws -> Set<PersistentIdentifier> {
+        let taskIdentifier = try queryTaskIdentifiers(with: inRangePredicate(for: range), combineWith: taskPredicate)
+        let outcomeIdentifiers = try queryOutcomeIdentifiers(for: range, predicate: taskPredicate)
+
+        return taskIdentifier.union(outcomeIdentifiers)
+    }
+
+    func sinkDidSavePublisher(into consume: @escaping (Notification) -> Void) throws -> AnyCancellable {
+        let context = try context
+
+        return NotificationCenter.default.publisher(for: ModelContext.didSave, object: context)
+            .sink { notification in
+                // We use the mainContext. Therefore, the vent will always be called from the main actor
+                MainActor.assumeIsolated {
+                    consume(notification)
+                }
+            }
+    }
+}
+
+
+extension ILScheduler: Module, EnvironmentAccessible, Sendable {}
+
+// MARK: - Fetch Implementations
+
+extension ILScheduler {
     private func queryTask(
         with basePredicate: Predicate<ILTask>,
         combineWith userPredicate: Predicate<ILTask>,
         sortBy sortDescriptors: [SortDescriptor<ILTask>],
         prefetchOutcomes: Bool
     ) throws -> [ILTask] {
-        var descriptor = FetchDescriptor<ILTask>()
-        descriptor.predicate = #Predicate { task in
-            basePredicate.evaluate(task) && userPredicate.evaluate(task)
-        }
-        descriptor.sortBy = sortDescriptors
+        var descriptor = FetchDescriptor<ILTask>(
+            predicate: #Predicate { task in
+                basePredicate.evaluate(task) && userPredicate.evaluate(task)
+            },
+            sortBy: sortDescriptors
+        )
         descriptor.sortBy.append(SortDescriptor(\.effectiveFrom, order: .forward))
 
         // make sure querying the next version is always efficient
@@ -289,22 +377,85 @@ public final class ILScheduler {
     }
 
     private func queryOutcomes(for range: Range<Date>, predicate taskPredicate: Predicate<ILTask>) throws -> [Outcome] {
-        var descriptor = FetchDescriptor<Outcome>()
-        descriptor.predicate = #Predicate { outcome in
-            range.contains(outcome.occurrenceStartDate) && taskPredicate.evaluate(outcome.task)
-        }
+        let descriptor = FetchDescriptor<Outcome>(
+            predicate: #Predicate { outcome in
+                range.contains(outcome.occurrenceStartDate) && taskPredicate.evaluate(outcome.task)
+            }
+        )
 
         return try context.fetch(descriptor)
+    }
+
+    private func queryTaskIdentifiers(
+        with basePredicate: Predicate<ILTask>,
+        combineWith userPredicate: Predicate<ILTask>
+    ) throws -> Set<PersistentIdentifier> {
+        let descriptor = FetchDescriptor<ILTask>(
+            predicate: #Predicate { task in
+                basePredicate.evaluate(task) && userPredicate.evaluate(task)
+            }
+        )
+
+        return try Set(context.fetchIdentifiers(descriptor))
+    }
+
+    private func queryOutcomeIdentifiers(for range: Range<Date>, predicate taskPredicate: Predicate<ILTask>) throws -> Set<PersistentIdentifier> {
+        let descriptor = FetchDescriptor<Outcome>(
+            predicate: #Predicate { outcome in
+                range.contains(outcome.occurrenceStartDate) && taskPredicate.evaluate(outcome.task)
+            }
+        )
+
+        return try Set(context.fetchIdentifiers(descriptor))
+    }
+}
+
+// MARK: - Predicate Creation
+
+extension ILScheduler {
+    private func inRangePredicate(for range: Range<Date>) -> Predicate<ILTask> {
+        #Predicate<ILTask> { task in
+            if let effectiveTo = task.nextVersion?.effectiveFrom {
+                range.contains(task.effectiveFrom) // TODO: is this also wrong?
+                || (range.lowerBound <= effectiveTo && effectiveTo <= range.upperBound)
+            } else {
+                task.effectiveFrom < range.upperBound
+            }
+        }
+    }
+
+    private func inClosedRangePredicate(for range: ClosedRange<Date>) -> Predicate<ILTask> {
+        #Predicate<ILTask> { task in
+            if let effectiveTo = task.nextVersion?.effectiveFrom {
+                // TODO: this currently doesn't do anything if the range is place in the middle of both!
+                range.contains(task.effectiveFrom)
+                || (range.lowerBound <= effectiveTo && effectiveTo < range.upperBound)
+            } else {
+                // this is the latest version, so check if the effective
+                task.effectiveFrom <= range.upperBound
+            }
+        }
     }
 }
 
 
-extension ILScheduler: Module, EnvironmentAccessible, Sendable {}
-
+// MARK: - Error
 
 extension ILScheduler {
     public enum DataError: Error {
-        case invalidContainer
+        /// No model container present.
+        ///
+        /// The container failed to initialize at startup. The `underlying` error is the error occurred when trying to initialize the container.
+        /// The `underlying` is `nil` if the container was accessed before ``ILScheduler/configure()`` was called.
+        case invalidContainer(_ underlying: (any Error)?)
+        /// An updated Task cannot shadow the outcomes of a previous task version.
+        ///
+        /// Make sure the ``ILTask/effectiveFrom`` date is larger than the start that of the latest completed event.
+        case shadowingPreviousOutcomes
+        /// Trying to modify a task that is already super-seeded by a newer version.
+        ///
+        /// This error is thrown if you are trying to modify a task version that is already outdated. Make sure to always apply updates to the newest version of a task.
+        case nextVersionAlreadyPresent
     }
 }
 
@@ -314,6 +465,10 @@ extension ILScheduler.DataError: LocalizedError {
         switch self {
         case .invalidContainer:
             String(localized: "Invalid Container")
+        case .shadowingPreviousOutcomes:
+            String(localized: "Shadowing previous Outcomes")
+        case .nextVersionAlreadyPresent:
+            String(localized: "Outdated Task")
         }
     }
 
@@ -321,6 +476,10 @@ extension ILScheduler.DataError: LocalizedError {
         switch self {
         case .invalidContainer:
             String(localized: "The underlying storage container failed to initialize.")
+        case .shadowingPreviousOutcomes:
+            String(localized: "An updated Task cannot shadow the outcomes of a previous task version.")
+        case .nextVersionAlreadyPresent:
+            String(localized: "Only the latest version of a task can be changed.")
         }
     }
 }

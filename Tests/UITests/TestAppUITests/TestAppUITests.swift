@@ -14,7 +14,7 @@ class TestAppUITests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
     }
-    
+
 
     @MainActor
     func testSchedulerLocalStorage() throws {

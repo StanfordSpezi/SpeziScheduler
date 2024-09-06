@@ -8,5 +8,6 @@
 
 
 enum Constants {
+    // TODO: how would the migration look like?
     static let taskStorageKey: String = "spezi.scheduler.tasks"
 }

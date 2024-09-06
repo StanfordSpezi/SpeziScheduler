@@ -57,9 +57,9 @@ struct TileHeader: View {
         DynamicHStack(realignAfter: .xxxLarge) {
             Text("Questionnaire") // TODO: label?
 
-            // TODO: if subheadlineLayout == .horizontal {
-            Spacer()
-            // TODO: }
+            if subheadlineLayout == .horizontal {
+                Spacer()
+            }
 
             Text(event.occurrence.start, style: .time) // TODO: end date?
             // TODO: Text("\(task.expectedCompletionMinutes) min", comment: "Expected task completion in minutes.")
@@ -82,7 +82,8 @@ struct TileHeader: View {
 
 #if DEBUG
 #Preview(traits: .schedulerSampleData) {
-    @EventQuery(in: Date.now..<Calendar.current.date(byAdding: .day, value: 1, to: .tomorrow)!) @Previewable var events
+    @EventQuery(in: .sampleEventRange)
+    @Previewable var events
 
     List {
         if let event = events.first {

@@ -10,49 +10,6 @@ import Foundation
 import SpeziFoundation
 import SwiftData
 
-// TODO: there are two concepts (ending a task vs. deleting a task (with all of its previous versions)?)
-
-
-class StoredAsData<Value: Codable> {
-    private var decodedValue: Value?
-
-    func initialValue(for value: Value) -> Data {
-        do {
-            decodedValue = value
-            return try PropertyListEncoder().encode(value)
-        } catch {
-            // TODO: should this crash?
-            // TODO: logger
-
-            return Data()
-        }
-    }
-
-    func get(from storage: inout Data) -> Value {
-        if let decodedValue {
-            return decodedValue
-        }
-
-        do {
-            let value = try PropertyListDecoder().decode(Value.self, from: storage)
-            decodedValue = value
-            return value
-        } catch {
-            preconditionFailure("Failed to decode value for data \(storage): \(error)") // TODO: not ideal!
-        }
-    }
-
-    func set(_ value: Value, to storage: inout Data) {
-        decodedValue = value
-        do {
-            storage = try PropertyListEncoder().encode(value)
-        } catch {
-            // TODO: logger
-            preconditionFailure("Failed to encode value \(value): \(error)")
-        }
-    }
-}
-
 
 @Model
 @dynamicMemberLookup
@@ -66,48 +23,16 @@ public final class ILTask {
     /// - Index on `effectiveFrom` and `nextVersion` (used for queryTask(...)).
     #Index<ILTask>([\.id], [\.effectiveFrom], [\.effectiveFrom, \.nextVersion])
 
-    /// The LocalizedStringResource encoded, as we cannot store Locale with SwiftData.
-    private var titleResource: Data
-    /// The LocalizedStringResource encoded, as we cannot store Locale with SwiftData.
-    private var instructionsResource: Data
-
-    @Transient private var titleStorage = StoredAsData<LocalizedStringResource>()
-    @Transient private var instructionsStorage = StoredAsData<LocalizedStringResource>()
-
     /// The identifier for this task.
     ///
     /// This is a identifier for this task (e.g., `"social-support-questionnaire"`).
     public private(set) var id: String
     /// The user-visible title for this task.
-    public private(set) var title: LocalizedStringResource {
-        @storageRestrictions(initializes: _titleResource, accesses: _$backingData, titleStorage)
-        init(initialValue) {
-            _titleResource = .init()
-            _$backingData.setValue(forKey: \.titleResource, to: titleStorage.initialValue(for: initialValue))
-        }
-        get {
-            titleStorage.get(from: &titleResource)
-        }
-        set {
-            titleStorage.set(newValue, to: &titleResource)
-        }
-    }
+    public private(set) var title: String.LocalizationValue
     /// Instructions for this task.
     ///
     /// Instructions might describe the purpose for this task.
-    public private(set) var instructions: LocalizedStringResource {
-        @storageRestrictions(initializes: _instructionsResource, accesses: _$backingData, instructionsStorage)
-        init(initialValue) {
-            _instructionsResource = .init()
-            _$backingData.setValue(forKey: \.instructionsResource, to: instructionsStorage.initialValue(for: initialValue))
-        }
-        get {
-            instructionsStorage.get(from: &instructionsResource)
-        }
-        set {
-            instructionsStorage.set(newValue, to: &instructionsResource)
-        }
-    }
+    public private(set) var instructions: String.LocalizationValue
 
     /// The schedule for the events of this Task.
     public private(set) var schedule: ILSchedule
@@ -118,7 +43,6 @@ public final class ILTask {
     ///     fetching all relationship data from disk first.
     @Relationship(deleteRule: .cascade, inverse: \Outcome.task)
     public private(set) var outcomes: [Outcome]
-    // TODO: shall we really allow that? (just make it private and keep it for the cascade rule??)
 
     /// The date from which this version of the task is effective.
     public private(set) var effectiveFrom: Date
@@ -148,10 +72,10 @@ public final class ILTask {
 
     private init(
         id: String,
-        title: LocalizedStringResource,
-        instructions: LocalizedStringResource,
+        title: String.LocalizationValue,
+        instructions: String.LocalizationValue,
         schedule: ILSchedule,
-        effectiveFrom: Date = .now,
+        effectiveFrom: Date,
         context: Context
     ) {
         self.id = id
@@ -164,10 +88,10 @@ public final class ILTask {
         self.userInfoCache = context.userInfoCache
     }
 
-    public convenience init(
+    convenience init(
         id: String,
-        title: LocalizedStringResource,
-        instructions: LocalizedStringResource,
+        title: String.LocalizationValue,
+        instructions: String.LocalizationValue,
         schedule: ILSchedule,
         effectiveFrom: Date = .now,
         with contextClosure: (inout Context) -> Void = { _ in }
@@ -178,18 +102,6 @@ public final class ILTask {
         self.init(id: id, title: title, instructions: instructions, schedule: schedule, effectiveFrom: effectiveFrom, context: context)
     }
 
-    public subscript<Value>(dynamicMember keyPath: KeyPath<Context, Value>) -> Value {
-        // we cannot store Context directly in the Model, as it contains a class property which SwiftData cannot ignore :(
-        let context = Context(userInfo: userInfo, userInfoCache: userInfoCache)
-        return context[keyPath: keyPath]
-    }
-
-
-    func addOutcome(_ outcome: Outcome) {
-        // TODO: does it automatically set the inverse property?
-        outcomes.append(outcome) // automatically saves the outcome to the container
-    }
-    
     /// Create a new version of this task if any of the provided values differ.
     ///
     /// A new version of this task is created, if any of the provided parameters differs from the current value of this version of the task.
@@ -201,12 +113,30 @@ public final class ILTask {
     ///   - contextClosure: The updated context or `nil` if the context should not be updated.
     /// - Returns: Returns the latest version of the `task` and if the task was updated or created indicated by `didChange`.
     public func createUpdatedVersion(
-        title: LocalizedStringResource? = nil,
-        instructions: LocalizedStringResource? = nil,
+        title: String.LocalizationValue? = nil,
+        instructions: String.LocalizationValue? = nil,
         schedule: ILSchedule? = nil,
         effectiveFrom: Date = .now,
         with contextClosure: ((inout Context) -> Void)? = nil
-    ) -> (task: ILTask, didChange: Bool) {
+    ) throws -> (task: ILTask, didChange: Bool) {
+        try createUpdatedVersion(
+            skipShadowCheck: false,
+            title: title,
+            instructions: instructions,
+            schedule: schedule,
+            effectiveFrom: effectiveFrom,
+            with: contextClosure
+        )
+    }
+
+    func createUpdatedVersion(
+        skipShadowCheck: Bool,
+        title: String.LocalizationValue? = nil,
+        instructions: String.LocalizationValue? = nil,
+        schedule: ILSchedule? = nil,
+        effectiveFrom: Date = .now,
+        with contextClosure: ((inout Context) -> Void)? = nil
+    ) throws -> (task: ILTask, didChange: Bool) {
         let context: Context?
         if let contextClosure {
             var context0 = Context()
@@ -223,17 +153,18 @@ public final class ILTask {
             return (self, false) // nothing changed
         }
 
-        // TODO: make this throwing not crashing?
+        if nextVersion != nil {
+            throw ILScheduler.DataError.nextVersionAlreadyPresent
+        }
+
         // TODO: allow to delete those, or override this setting to not have this throwing?
-        precondition(
-            outcomes.allSatisfy { outcome in
-                outcome.occurrenceStartDate < effectiveFrom
-            },
-            """
-            "An updated Task cannot shadow the outcomes of a previous task. \
-            Make sure the `effectiveFrom` is larger than the start that of the latest completed event.
-            """
-        )
+        // TODO: literally loads all outcomes!
+        guard outcomes.allSatisfy({ outcome in
+            outcome.occurrenceStartDate < effectiveFrom
+        }) else {
+            // an updated task cannot shadow already recorded outcomes of a previous task version
+            throw ILScheduler.DataError.shadowingPreviousOutcomes
+        }
 
         let newVersion = ILTask(
             id: id,
@@ -244,10 +175,24 @@ public final class ILTask {
             context: context ?? Context()
         )
 
-        // TODO: next version cannot be already set!
-        nextVersion = newVersion
-        // TODO: do i need to set the previous version?
+
+        // @EventQuery is implicitly observing the `nextVersion` property. So we do not necessarily need to save the model here for it to update
+        self.nextVersion = newVersion
+        // TODO: do i need to set the previous version? test that, otherwise just set it
+        
         return (newVersion, true)
+    }
+
+    /// Access members of the tasks context.
+    ///
+    /// This subscript allows to dynamically access members of the ``Context`` of the task.
+    ///
+    /// - Parameter keyPath: The key path to a property of the `Context`.
+    /// - Returns: The value for that property `Context`.
+    public subscript<Value>(dynamicMember keyPath: KeyPath<Context, Value>) -> Value {
+        // we cannot store Context directly in the Model, as it contains a class property which SwiftData cannot ignore :(
+        let context = Context(userInfo: userInfo, userInfoCache: userInfoCache)
+        return context[keyPath: keyPath]
     }
 }
 
@@ -276,6 +221,9 @@ extension ILTask {
             self.box = Box(userInfoCache: userInfoCache)
         }
 
+        /// Retrieve the value for a given task storage key.
+        /// - Parameter source: The storage key type.
+        /// - Returns: The value or `nil` if there isn't currently a value stored in the context.
         public subscript<Source: TaskStorageKey>(_ source: Source.Type) -> Source.Value? {
             get {
                 userInfo.get(source, cache: &box.userInfoCache)
@@ -284,5 +232,6 @@ extension ILTask {
                 userInfo.set(source, value: newValue, cache: &box.userInfoCache)
             }
         }
+        // TODO: overload for computed etc?
     }
 }
