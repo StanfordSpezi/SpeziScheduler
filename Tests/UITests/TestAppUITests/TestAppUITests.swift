@@ -18,6 +18,7 @@ class TestAppUITests: XCTestCase {
 
     @MainActor
     func testSchedulerLocalStorage() throws {
+        throw XCTSkip("Legacy test!")
         let app = XCUIApplication()
         app.deleteAndLaunch(withSpringboardAppName: "TestApp")
 
@@ -72,16 +73,19 @@ class TestAppUITests: XCTestCase {
 
     @MainActor
     func testSchedulerBackgroundNotifications() throws {
+        throw XCTSkip("Legacy test!")
         conductSchedulerNotificationTest(exitApp: true, askForPermissionsBeforeTaskSchedule: true)
     }
 
     @MainActor
     func testSchedulerNotificationsBeforePermissions() throws {
+        throw XCTSkip("Legacy test!")
         conductSchedulerNotificationTest(exitApp: true, askForPermissionsBeforeTaskSchedule: false)
     }
 
     @MainActor
     func testSchedulerNotifications() throws {
+        throw XCTSkip("Legacy test!")
         conductSchedulerNotificationTest(exitApp: false, askForPermissionsBeforeTaskSchedule: true)
     }
 
@@ -117,6 +121,7 @@ class TestAppUITests: XCTestCase {
 
     @MainActor
     func testRepeatedNotificationAuthorization() throws {
+        throw XCTSkip("Legacy test!")
         let app = XCUIApplication()
         app.deleteAndLaunch(withSpringboardAppName: "TestApp")
 

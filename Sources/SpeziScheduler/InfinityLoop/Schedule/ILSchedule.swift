@@ -71,25 +71,13 @@ public struct ILSchedule {
     public var recurrence: Calendar.RecurrenceRule? {
         @storageRestrictions(initializes: recurrenceRule)
         init(initialValue) {
-            do {
-                recurrenceRule = try initialValue.map { try PropertyListEncoder().encode($0) }
-            } catch {
-                preconditionFailure("Failed to encode initial value \(String(describing: initialValue)): \(error)")
-            }
+            recurrenceRule = initialValue.map { Data(encoding: $0) }
         }
         get {
-            do {
-                return try recurrenceRule.map { try PropertyListDecoder().decode(Calendar.RecurrenceRule.self, from: $0) }
-            } catch {
-                preconditionFailure("Failed to decode calendar from \(String(describing: recurrenceRule)): \(error)")
-            }
+            recurrenceRule.map { Calendar.RecurrenceRule(fromEncoded: $0) }
         }
         set {
-            do {
-                recurrenceRule = try newValue.map { try PropertyListEncoder().encode($0) }
-            } catch {
-                preconditionFailure("Failed to encode new value \(String(describing: newValue)): \(error)")
-            }
+            recurrenceRule = newValue.map { Data(encoding: $0) }
         }
     }
 
@@ -353,6 +341,41 @@ extension ILSchedule {
             // workaround to make sure we return the same opaque but generic sequence (just equals to `start`)
             Calendar.RecurrenceRule(calendar: .current, frequency: .daily, end: .afterOccurrences(1))
                 .recurrences(of: start, in: range)
+        }
+    }
+}
+
+
+extension ILSchedule: CustomStringConvertible {
+    public var description: String {
+        """
+        Schedule(\
+        start: \(start),
+        duration: \(scheduleDuration),
+        recurrence: \(recurrence.map { "\($0)" } ?? "nil")
+        )
+        """
+    }
+}
+
+
+extension Calendar.RecurrenceRule {
+    fileprivate init(fromEncoded data: Data) {
+        do {
+            self = try PropertyListDecoder().decode(Calendar.RecurrenceRule.self, from: data)
+        } catch {
+            preconditionFailure("Failed to decode calendar from \(data): \(error)")
+        }
+    }
+}
+
+
+extension Data {
+    fileprivate init(encoding recurrenceRule: Calendar.RecurrenceRule) {
+        do {
+            self = try PropertyListEncoder().encode(recurrenceRule)
+        } catch {
+            preconditionFailure("Failed to encode recurrence rule \(recurrenceRule): \(error)")
         }
     }
 }

@@ -304,6 +304,8 @@ public final class ILScheduler {
             partialResult[outcome.occurrenceStartDate] = outcome
         }
 
+        print("Task count: \(tasks.count), \(tasks.map { $0.id }.joined(separator: ", "))") // TODO: remove
+
         return tasks
             .flatMap { task in
                 // If there is a newer task version, we only calculate the events till that the current task is effective.
@@ -317,8 +319,17 @@ public final class ILScheduler {
                     upperBound = range.upperBound
                 }
 
+                let lowerBound: Date
+                if task.previousVersion != nil {
+                    // if there is a previous version, the previous version is responsible should the lowerBound be less than the
+                    // date that this version of this task is effective from
+                    lowerBound = max(task.effectiveFrom, range.lowerBound)
+                } else {
+                    lowerBound = range.lowerBound
+                }
+
                 return task.schedule
-                    .occurrences(in: range.lowerBound..<upperBound)
+                    .occurrences(in: lowerBound..<upperBound)
                     .map { occurrence in
                         if let outcome = outcomesByOccurrence[occurrence.start] {
                             ILEvent(task: task, occurrence: occurrence, outcome: .value(outcome))
@@ -429,8 +440,8 @@ extension ILScheduler {
                 // let taskRange = task.effectiveFrom...<effectiveTo
                 // return taskRange.overlaps(range)
 
-                task.effectiveFrom <= range.lowerBound && range.lowerBound < effectiveTo
-                    || task.effectiveFrom < range.upperBound && range.upperBound <= effectiveTo
+                task.effectiveFrom < range.upperBound
+                    && range.lowerBound < effectiveTo
             } else {
                 // task lifetime is effectively an `PartialRangeFrom`. So all we do is to check if the `range` overlaps with the lower bound
                 task.effectiveFrom < range.upperBound
@@ -442,8 +453,9 @@ extension ILScheduler {
         // see comments above for an explanation
         #Predicate<ILTask> { task in
             if let effectiveTo = task.nextVersion?.effectiveFrom {
-                task.effectiveFrom <= range.lowerBound && range.lowerBound < effectiveTo
-                    || task.effectiveFrom <= range.upperBound && range.upperBound < effectiveTo
+
+                task.effectiveFrom <= range.upperBound
+                    && range.lowerBound < effectiveTo
             } else {
                 // task lifetime is effectively an `PartialRangeFrom`. So all we do is to check if the closed `range` overlaps with the lower bound
                 task.effectiveFrom <= range.upperBound
@@ -497,3 +509,6 @@ extension ILScheduler.DataError: LocalizedError {
         }
     }
 }
+
+
+// swiftlint:disable:this file_length

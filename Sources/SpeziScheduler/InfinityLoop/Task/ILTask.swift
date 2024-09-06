@@ -103,7 +103,7 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
     // TODO: notifications
 
     /// Additional userInfo stored alongside the task.
-    private(set) var userInfo: UserInfoStorage<TaskAnchor>
+    private(set) var userInfo: UserInfoStorage<TaskAnchor> // TODO: make custom string convertible?
     @Transient private var userInfoCache = UserInfoStorage<TaskAnchor>.RepositoryCache()
 
     private init(
@@ -214,9 +214,12 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
 
 
         // @EventQuery is implicitly observing the `nextVersion` property. So we do not necessarily need to save the model here for it to update
-        self.nextVersion = newVersion
-        // TODO: do i need to set the previous version? test that, otherwise just set it
-        
+        self.nextVersion = newVersion // automatically sets the previous version as well
+        assert(
+            newVersion.previousVersion === self,
+            "Previous version was set to an unexpected value: \(String(describing: newVersion.previousVersion))"
+        )
+
         return (newVersion, true)
     }
 
@@ -270,5 +273,23 @@ extension ILTask {
             }
         }
         // TODO: overload for computed, default providing knowledge sources etc?
+    }
+}
+
+
+extension ILTask: CustomStringConvertible {
+    public var description: String { // TODO: verify
+        """
+        Task(\
+        id: \(id), \
+        title: \(title), \
+        instructions: \(instructions), \
+        schedule: \(schedule), \
+        outcomes: <redacted for performance reasons>, \
+        effectiveFrom: \(effectiveFrom), \
+        hasPreviousVersion: \(previousVersion != nil), \
+        hasNextVersion: \(nextVersion != nil)\
+        )
+        """ // TODO: support printing userInfo!
     }
 }

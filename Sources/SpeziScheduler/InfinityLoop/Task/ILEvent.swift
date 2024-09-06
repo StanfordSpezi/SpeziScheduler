@@ -14,6 +14,15 @@ public struct ILEvent {
     enum OutcomeValue {
         case createWith(ILScheduler)
         case value(Outcome)
+
+        var value: Outcome? {
+            switch self {
+            case let .value(value):
+                value
+            case .createWith:
+                nil
+            }
+        }
     }
 
     private class State {
@@ -34,7 +43,7 @@ public struct ILEvent {
 
     /// The outcome of the event if already completed.
     public var outcome: Outcome? {
-        if case let .value(outcome) = outcomeState.outcome {
+        if let outcome = outcomeState.outcome.value {
             outcome
         } else {
             nil
@@ -113,3 +122,16 @@ extension ILEvent: Identifiable {
 
 
 extension ILEvent.ID: Hashable, Sendable {}
+
+
+extension ILEvent: CustomStringConvertible {
+    public var description: String {
+        """
+        Event(\
+        occurrence: \(occurrence), \
+        task: \(task), \
+        outcome: \(outcomeState.outcome.value.map { $0.description } ?? "nil")\
+        )
+        """
+    }
+}

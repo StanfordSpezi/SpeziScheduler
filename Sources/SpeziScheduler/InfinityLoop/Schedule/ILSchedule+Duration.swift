@@ -180,6 +180,18 @@ extension ILSchedule.Duration.MappedDuration: Hashable, Sendable, Codable {}
 extension ILSchedule.Duration.SwiftDataDuration: Hashable, Sendable, Codable {}
 
 
+extension ILSchedule.Duration.SwiftDataDuration: CustomStringConvertible {
+    var description: String {
+        switch self {
+        case .allDay:
+            "allDay"
+        case let .duration(duration):
+            duration.duration.description
+        }
+    }
+}
+
+
 extension ILSchedule.Duration.SwiftDataDuration {
     init(from duration: ILSchedule.Duration) {
         switch duration {

@@ -74,8 +74,15 @@ extension Outcome {
 }
 
 
-extension Occurrence: Comparable {
-    public static func < (lhs: Occurrence, rhs: Occurrence) -> Bool {
-        lhs.start < rhs.start
+extension Outcome: CustomStringConvertible {
+    public var description: String {
+        """
+        Outcome(\
+        id: \(id), \
+        completionDate: \(completionDate), \
+        occurrence: \(occurrence), \
+        task: \(task)\
+        )
+        """
     }
 }

@@ -61,3 +61,22 @@ extension Occurrence {
         return false
     }
 }
+
+
+extension Occurrence: Comparable {
+    public static func < (lhs: Occurrence, rhs: Occurrence) -> Bool {
+        lhs.start < rhs.start
+    }
+}
+
+
+extension Occurrence: CustomStringConvertible {
+    public var description: String {
+        """
+        Occurrence(\
+        start: \(start), \
+        end: \(end)\
+        )
+        """
+    }
+}

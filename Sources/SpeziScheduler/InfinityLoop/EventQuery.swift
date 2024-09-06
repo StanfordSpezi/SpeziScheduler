@@ -188,15 +188,13 @@ private let logger = Logger(subsystem: "edu.stanford.spezi.scheduler", category:
 func measure<T, C: Clock>(
     clock: C = ContinuousClock(),
     name: @autoclosure @escaping () -> StaticString,
-    _ action: () throws -> T,
-    file: StaticString = #filePath,
-    line: UInt = #line
+    _ action: () throws -> T
 ) rethrows -> T where C.Instant.Duration == Duration {
     #if DEBUG || TEST
     let start = clock.now
     let result = try action()
     let end = clock.now
-    logger.debug("\(file):\(line) \(name()) took \(end.duration(to: start))")
+    logger.debug("Performing \(name()) took \(end.duration(to: start))")
     return result
     #else
     try action()
