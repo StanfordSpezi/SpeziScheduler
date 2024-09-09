@@ -66,9 +66,9 @@ jobs:
       scheme: TestApp
   uploadcoveragereport:
     name: Upload Coverage Report
-    needs: [buildandtest_ios, buildandtest_watchos, buildandtest_visionos, buildandtest_macos, buildandtestuitests_ios]
+    needs: [buildandtest_ios, buildandtest_watchos, buildandtest_visionos, buildandtestuitests_ios]
     uses: StanfordSpezi/.github/.github/workflows/create-and-upload-coverage-report.yml@v2
     with:
-      coveragereports: SpeziScheduler-iOS.xcresult SpeziScheduler-watchOS.xcresult SpeziScheduler-visionOS.xcresult SpeziScheduler-macOS.xcresult TestApp.xcresult
+      coveragereports: SpeziScheduler-iOS.xcresult SpeziScheduler-watchOS.xcresult SpeziScheduler-visionOS.xcresult TestApp.xcresult
     secrets:
       token: ${{ secrets.CODECOV_TOKEN }}
