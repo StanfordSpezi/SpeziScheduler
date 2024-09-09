@@ -13,11 +13,15 @@ import SwiftData
 import SwiftUI
 
 // TODO: can we formulate 5pm every Friday that "adjusts" to the timezone? some might want to have a fixed time?
-//  => is auto updating current the solution?
+//  => is auto updating current the solution? => make that an issue
 // TODO: allow to specify "text" LocalizationValue (e.g., Breakfast, Lunch, etc), otherwise we use the time (and date?)?
-// TODO: bring back support for randomly displaced events? random generated seed?
-// TODO: have a simple entry macro for storage keys?
-// TODO: easy "mark deleted" method (that creates a new tombstone= task version with no events in the schedule).
+//  => make that an issue (a view that accepts multiple events!) => Checklist style view?
+// TODO: support showing tasks as overdue! => issue!
+// TODO: easy "mark deleted" method (that creates a new tombstone= task version with no events in the schedule). => create an issue
+// TODO: bring back support for notifications => issue!
+
+
+// TODO: have a simple entry macro for storage keys? => issue????
 // TODO: UI test the following things for @EventQuery:
 //  - update if there is a new version of a Task inserted (via scheduler, via task directly)
 //  - update if the outcome is added to a task version
@@ -128,10 +132,11 @@ public final class ILScheduler {
     ///   - contextClosure: The closure that allows to customize the ``ILTask/Context`` that is stored with the task.
     /// - Returns: Returns the latest version of the `task` and if the task was updated or created indicated by `didChange`.
     @discardableResult
-    public func createOrUpdateTask(
+    public func createOrUpdateTask( // swiftlint:disable:this function_default_parameter_at_end
         id: String,
         title: String.LocalizationValue,
         instructions: String.LocalizationValue,
+        category: ILTask.Category? = nil,
         schedule: ILSchedule,
         effectiveFrom: Date = .now,
         with contextClosure: ((inout ILTask.Context) -> Void)? = nil
@@ -162,6 +167,7 @@ public final class ILScheduler {
                 skipShadowCheck: true, // we perform the check much more efficient with the query above and do not require fetching all outcomes
                 title: title,
                 instructions: instructions,
+                category: category,
                 schedule: schedule,
                 effectiveFrom: effectiveFrom,
                 with: contextClosure
@@ -177,6 +183,7 @@ public final class ILScheduler {
                 id: id,
                 title: title,
                 instructions: instructions,
+                category: category,
                 schedule: schedule,
                 effectiveFrom: effectiveFrom,
                 with: contextClosure ?? { _ in }
@@ -303,8 +310,6 @@ public final class ILScheduler {
         let outcomesByOccurrence = outcomes.reduce(into: [:]) { partialResult, outcome in
             partialResult[outcome.occurrenceStartDate] = outcome
         }
-
-        print("Task count: \(tasks.count), \(tasks.map { $0.id }.joined(separator: ", "))") // TODO: remove
 
         return tasks
             .flatMap { task in
@@ -453,7 +458,6 @@ extension ILScheduler {
         // see comments above for an explanation
         #Predicate<ILTask> { task in
             if let effectiveTo = task.nextVersion?.effectiveFrom {
-
                 task.effectiveFrom <= range.upperBound
                     && range.lowerBound < effectiveTo
             } else {

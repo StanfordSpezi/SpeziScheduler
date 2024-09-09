@@ -23,6 +23,7 @@ public struct SchedulerSampleData: PreviewModifier {
             id: "example-task",
             title: "Social Support Questionnaire",
             instructions: "Please fill out the Social Support Questionnaire every day.",
+            category: .init("Questionnaire", systemName: "list.bullet.clipboard"),
             schedule: .daily(hour: 17, minute: 0, startingAt: .today),
             effectiveFrom: .today // make sure test task always starts from the start of today
         )

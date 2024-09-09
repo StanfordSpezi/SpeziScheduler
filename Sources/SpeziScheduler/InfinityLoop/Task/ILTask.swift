@@ -32,6 +32,7 @@ import SwiftData
 /// - ``id``
 /// - ``title``
 /// - ``instructions``
+/// - ``category``
 /// - ``schedule``
 ///
 /// ### Modify a task
@@ -68,9 +69,16 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
     ///
     /// Instructions might describe the purpose for this task.
     public private(set) var instructions: String.LocalizationValue
+    /// The user-visible category of a task.
+    ///
+    /// Tasks can optionally provide a user-visible category to more clearly communicate the type of task to the user.
+    /// UI components can use the category to
+    public private(set) var category: Category?
 
     /// The schedule for the events of this Task.
     public private(set) var schedule: ILSchedule
+
+    // TODO: should we support tags?
 
     /// The list of outcomes associated with this Task.
     ///
@@ -99,9 +107,6 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
     @Relationship(deleteRule: .deny)
     public private(set) var nextVersion: ILTask?
 
-    // TODO: add support for tags, notes, other default things?
-    // TODO: notifications
-
     /// Additional userInfo stored alongside the task.
     private(set) var userInfo: UserInfoStorage<TaskAnchor> // TODO: make custom string convertible?
     @Transient private var userInfoCache = UserInfoStorage<TaskAnchor>.RepositoryCache()
@@ -110,6 +115,7 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
         id: String,
         title: String.LocalizationValue,
         instructions: String.LocalizationValue,
+        category: Category?,
         schedule: ILSchedule,
         effectiveFrom: Date,
         context: Context
@@ -117,6 +123,7 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
         self.id = id
         self.title = title
         self.instructions = instructions
+        self.category = category
         self.schedule = schedule
         self.outcomes = []
         self.effectiveFrom = effectiveFrom
@@ -128,14 +135,23 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
         id: String,
         title: String.LocalizationValue,
         instructions: String.LocalizationValue,
+        category: Category?,
         schedule: ILSchedule,
-        effectiveFrom: Date = .now,
+        effectiveFrom: Date,
         with contextClosure: (inout Context) -> Void = { _ in }
     ) {
         var context = Context()
         contextClosure(&context)
 
-        self.init(id: id, title: title, instructions: instructions, schedule: schedule, effectiveFrom: effectiveFrom, context: context)
+        self.init(
+            id: id,
+            title: title,
+            instructions: instructions,
+            category: category,
+            schedule: schedule,
+            effectiveFrom: effectiveFrom,
+            context: context
+        )
     }
 
     /// Create a new version of this task if any of the provided values differ.
@@ -151,6 +167,7 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
     public func createUpdatedVersion(
         title: String.LocalizationValue? = nil,
         instructions: String.LocalizationValue? = nil,
+        category: Category? = nil,
         schedule: ILSchedule? = nil,
         effectiveFrom: Date = .now,
         with contextClosure: ((inout Context) -> Void)? = nil
@@ -159,6 +176,7 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
             skipShadowCheck: false,
             title: title,
             instructions: instructions,
+            category: category,
             schedule: schedule,
             effectiveFrom: effectiveFrom,
             with: contextClosure
@@ -169,6 +187,7 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
         skipShadowCheck: Bool,
         title: String.LocalizationValue? = nil,
         instructions: String.LocalizationValue? = nil,
+        category: Category? = nil,
         schedule: ILSchedule? = nil,
         effectiveFrom: Date = .now,
         with contextClosure: ((inout Context) -> Void)? = nil
@@ -182,10 +201,15 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
             context = nil
         }
 
-        guard (title != nil && title != self.title)
-                || (instructions != nil && instructions != self.instructions)
-                || (schedule != nil && schedule != self.schedule)
-                || (context != nil && context?.userInfo != self.userInfo) else {
+        func didChange<V: Equatable>(_ value: V?, for keyPath: KeyPath<ILTask, V>) -> Bool {
+            value != nil && value != self[keyPath: keyPath]
+        }
+
+        guard didChange(title, for: \.title)
+                || didChange(instructions, for: \.instructions)
+                || didChange(category, for: \.category)
+                || didChange(schedule, for: \.schedule)
+                || didChange(context?.userInfo, for: \.userInfo) else {
             return (self, false) // nothing changed
         }
 
@@ -207,6 +231,7 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
             id: id,
             title: title ?? self.title,
             instructions: instructions ?? self.instructions,
+            category: category ?? self.category,
             schedule: schedule ?? self.schedule,
             effectiveFrom: effectiveFrom,
             context: context ?? Context()
@@ -278,7 +303,7 @@ extension ILTask {
 
 
 extension ILTask: CustomStringConvertible {
-    public var description: String { // TODO: verify
+    public var description: String {
         """
         Task(\
         id: \(id), \

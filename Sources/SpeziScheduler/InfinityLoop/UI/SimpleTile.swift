@@ -9,16 +9,27 @@
 import SwiftUI
 
 
-struct SimpleTile<Header: View, Footer: View, ActionLabel: View>: View {
-    private struct Action {
-        let action: () -> Void
-        let label: ActionLabel
+struct TileAction<Label: View> {
+    let action: () -> Void
+    let label: Label
+
+    init(action: @escaping () -> Void, label: Label) {
+        self.action = action
+        self.label = label
     }
 
+    init(action: @escaping () -> Void, @ViewBuilder label: () -> Label) {
+        self.action = action
+        self.label = label()
+    }
+}
+
+
+struct SimpleTile<Header: View, Footer: View, ActionLabel: View>: View {
     private let alignment: HorizontalAlignment
     private let header: Header
     private let footer: Footer
-    private let action: Action?
+    private let action: TileAction<ActionLabel>?
 
     var body: some View {
         VStack(alignment: alignment) {
@@ -60,11 +71,11 @@ struct SimpleTile<Header: View, Footer: View, ActionLabel: View>: View {
         footer
     }
 
-    private init(
-        alignment: HorizontalAlignment,
+    init( // swiftlint:disable:this function_default_parameter_at_end
+        alignment: HorizontalAlignment = .leading,
+        action: TileAction<ActionLabel>?,
         @ViewBuilder header: () -> Header,
-        @ViewBuilder footer: () -> Footer,
-        action: Action?
+        @ViewBuilder footer: () -> Footer
     ) {
         self.alignment = alignment
         self.header = header()
@@ -80,7 +91,7 @@ struct SimpleTile<Header: View, Footer: View, ActionLabel: View>: View {
         action: @escaping () -> Void,
         @ViewBuilder actionLabel: () -> ActionLabel
     ) {
-        self.init(alignment: alignment, header: header, footer: footer, action: Action(action: action, label: actionLabel()))
+        self.init(alignment: alignment, action: TileAction(action: action, label: actionLabel), header: header, footer: footer)
     }
 
     init(
@@ -88,7 +99,7 @@ struct SimpleTile<Header: View, Footer: View, ActionLabel: View>: View {
         @ViewBuilder header: () -> Header,
         @ViewBuilder footer: () -> Footer = { EmptyView() }
     ) where ActionLabel == EmptyView {
-        self.init(alignment: alignment, header: header, footer: footer, action: nil)
+        self.init(alignment: alignment, action: nil, header: header, footer: footer)
     }
 }
 

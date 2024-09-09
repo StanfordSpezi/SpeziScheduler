@@ -38,6 +38,9 @@ let package = Package(
                 .product(name: "SpeziViews", package: "SpeziViews"),
                 .product(name: "SpeziLocalStorage", package: "SpeziStorage")
             ],
+            resources: [
+                .process("Resources")
+            ],
             plugins: [] + swiftLintPlugin()
         ),
         .target(

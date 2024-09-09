@@ -54,6 +54,8 @@ public struct ILSchedule {
     private var recurrenceRule: Data?
 
     /// The duration of a single occurrence.
+    ///
+    /// If the duration is `nil`, the schedule provides a start date only. The end date will be automatically chosen to be end of day.
     public var duration: Duration {
         @storageRestrictions(initializes: scheduleDuration)
         init(initialValue) {
@@ -95,7 +97,7 @@ public struct ILSchedule {
             switch duration {
             case .allDay:
                 Calendar.current.startOfDay(for: startDate)
-            case .duration:
+            case .duration, .tillEndOfDay:
                 startDate
             }
         }
@@ -133,7 +135,7 @@ public struct ILSchedule {
     ///   - start: The start date of the first event. If a `recurrence` rule is specified, this date is used as a starting point when searching for recurrences.
     ///   - duration: The duration of a single occurrence.
     ///   - recurrence: Optional recurrence rule to specify how often and in which interval the event my reoccur.
-    public init(startingAt start: Date, duration: Duration = .hours(1), recurrence: Calendar.RecurrenceRule? = nil) {
+    public init(startingAt start: Date, duration: Duration = .tillEndOfDay, recurrence: Calendar.RecurrenceRule? = nil) {
         self.duration = duration
         self.start = start
         self.recurrence = recurrence
@@ -155,6 +157,14 @@ public struct ILSchedule {
         case let .duration(duration):
             occurrenceStart = start
             occurrenceEnd = occurrenceStart.addingTimeInterval(TimeInterval(duration.components.seconds))
+        case .tillEndOfDay:
+            occurrenceStart = start
+
+            let startOfDay = Calendar.current.startOfDay(for: start)
+            guard let endOfDay = Calendar.current.date(byAdding: .init(day: 1, second: -1), to: startOfDay) else {
+                preconditionFailure("Failed to calculate end of day from \(startOfDay)")
+            }
+            occurrenceEnd = endOfDay
         }
 
         return (occurrenceStart, occurrenceEnd)
@@ -200,7 +210,7 @@ extension ILSchedule {
     /// - Returns: Returns the schedule with a single occurrence.
     public static func once(
         at date: Date,
-        duration: Duration = .hours(1)
+        duration: Duration = .tillEndOfDay
     ) -> ILSchedule {
         ILSchedule(startingAt: date, duration: duration)
     }
@@ -230,7 +240,7 @@ extension ILSchedule {
         second: Int = 0,
         startingAt start: Date,
         end: Calendar.RecurrenceRule.End = .never,
-        duration: Duration = .hours(1)
+        duration: Duration = .tillEndOfDay
     ) -> ILSchedule {
         guard let startTime = Calendar.current.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start date for daily schedule. Can't set \(hour):\(minute):\(second) for \(start).")
@@ -265,7 +275,7 @@ extension ILSchedule {
         second: Int = 0,
         startingAt start: Date,
         end: Calendar.RecurrenceRule.End = .never,
-        duration: Duration = .hours(1)
+        duration: Duration = .tillEndOfDay
     ) -> ILSchedule {
         guard let startTime = Calendar.current.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start time for weekly schedule. Can't set \(hour):\(minute):\(second) for \(start).")

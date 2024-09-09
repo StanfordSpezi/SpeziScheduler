@@ -39,7 +39,7 @@ public struct CompletedTile<Title: View, Description: View>: View {
                 title
                     .font(.headline)
 
-                Text("Completed", comment: "Completed Tile. Subtitle")
+                Text("Completed", bundle: .module, comment: "Completed Tile. Subtitle")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }

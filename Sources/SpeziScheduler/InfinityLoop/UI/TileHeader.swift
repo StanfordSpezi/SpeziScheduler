@@ -10,86 +10,116 @@ import SpeziViews
 import SwiftUI
 
 
-struct TileHeader: View {
-    private static let iconRealignSize: DynamicTypeSize = .accessibility3
-
-    private let event: ILEvent
+public struct TileHeader<Icon: View, Title: View, Subheadline: View>: View {
+    private let alignment: HorizontalAlignment
+    private let icon: Icon
+    private let title: Title
+    private let subheadline: Subheadline
 
     @Environment(\.dynamicTypeSize)
     private var dynamicTypeSize
-    @Environment(\.horizontalSizeClass)
-    private var horizontalSizeClass // for iPad or landscape we want to stay horizontal
 
-    @State private var subheadlineLayout: DynamicLayout?
-
-    private var iconGloballyPlaced: Bool {
-        horizontalSizeClass == .regular || dynamicTypeSize < Self.iconRealignSize
-    }
-
-    var body: some View {
-        HStack {
-            if iconGloballyPlaced {
-                clipboard
+    public var body: some View {
+        if alignment == .center {
+            VStack(alignment: .center, spacing: 4) {
+                icon
+                modifiedTitle
+                modifiedSubheadline
             }
-
-            VStack(alignment: .leading, spacing: 4) {
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+        } else {
+            ViewThatFits(in: .horizontal) {
                 HStack {
-                    if !iconGloballyPlaced {
-                        clipboard
+                    icon
+
+                    VStack(alignment: alignment, spacing: 4) {
+                        modifiedTitle
+                        modifiedSubheadline
                     }
-                    Text(event.task.title)
-                        .font(.headline)
                 }
-                subheadline
+
+                VStack(alignment: alignment, spacing: 4) {
+                    HStack(alignment: .center) {
+                        if dynamicTypeSize < .accessibility3 {
+                            icon
+                        }
+                        modifiedTitle
+                    }
+                    modifiedSubheadline
+                }
             }
+            .accessibilityElement(children: .combine)
         }
     }
 
-    @ViewBuilder private var clipboard: some View { // TODO: customize the icon based on the event
-        Image(systemName: "list.bullet.clipboard")
-            .foregroundColor(.accentColor)
-            .font(.custom("Screening Task Icon", size: 30, relativeTo: .headline))
-            .accessibilityHidden(true)
-            .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+    private var modifiedTitle: some View {
+        title
+            .font(.headline)
     }
 
-    @ViewBuilder private var subheadline: some View {
-        DynamicHStack(realignAfter: .xxxLarge) {
-            Text("Questionnaire") // TODO: label?
-
-            if subheadlineLayout == .horizontal {
-                Spacer()
-            }
-
-            Text(event.occurrence.start, style: .time) // TODO: end date?
-            // TODO: Text("\(task.expectedCompletionMinutes) min", comment: "Expected task completion in minutes.")
-            //    .accessibilityLabel("takes \(task.expectedCompletionMinutesSpoken) min")
-        }
+    private var modifiedSubheadline: some View {
+        subheadline
             .font(.subheadline)
             .foregroundColor(.secondary)
-            .accessibilityElement(children: .combine)
-            .onPreferenceChange(DynamicLayout.self) { layout in
-                subheadlineLayout = layout
-            }
     }
 
-
-    init(_ event: ILEvent) {
-        self.event = event
+    public init(
+        alignment: HorizontalAlignment = .leading,
+        @ViewBuilder icon: () -> Icon,
+        @ViewBuilder title: () -> Title,
+        @ViewBuilder subheadline: () -> Subheadline
+    ) {
+        self.alignment = alignment
+        self.icon = icon()
+        self.title = title()
+        self.subheadline = subheadline()
     }
 }
 
 
 #if DEBUG
-#Preview(traits: .schedulerSampleData) {
-    @EventQuery(in: .sampleEventRange)
-    @Previewable var events
-
+#Preview {
     List {
-        if let event = events.first {
-            TileHeader(event)
-        } else {
-            Text(verbatim: "Missing event")
+        TileHeader {
+            Image(systemName: "book.pages.fill")
+                .foregroundStyle(.teal)
+                .font(.custom("Task Icon", size: 30, relativeTo: .headline))
+                .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+        } title: {
+            Text("Awesome Book")
+        } subheadline: {
+            Text("This a nice book recommendation")
+        }
+    }
+}
+
+#Preview {
+    List {
+        TileHeader(alignment: .center) {
+            Image(systemName: "book.pages.fill")
+                .foregroundStyle(.teal)
+                .font(.custom("Task Icon", size: 30, relativeTo: .headline))
+                .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+        } title: {
+            Text("Awesome Book")
+        } subheadline: {
+            Text("This a nice book recommendation")
+        }
+    }
+}
+
+#Preview {
+    List {
+        TileHeader(alignment: .trailing) {
+            Image(systemName: "book.pages.fill")
+                .foregroundStyle(.teal)
+                .font(.custom("Task Icon", size: 30, relativeTo: .headline))
+                .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+        } title: {
+            Text("Awesome Book")
+        } subheadline: {
+            Text("This a nice book recommendation")
         }
     }
 }

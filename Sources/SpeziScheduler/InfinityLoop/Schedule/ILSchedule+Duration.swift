@@ -13,19 +13,13 @@ extension ILSchedule {
     /// While we maintain atto-second accuracy for arithmetic operations on duration, the schedule will always retrieve the duration in a resolution of seconds.
     public enum Duration {
         /// An all-day occurrence.
+        ///
+        /// The start the will always the the `startOfDay` date.
         case allDay
+        /// An occurrence that
+        case tillEndOfDay
         /// Fixed length occurrence.
         case duration(Swift.Duration)
-
-
-        fileprivate var duration: Swift.Duration {
-            switch self {
-            case .allDay:
-                .seconds(24 * 60 * 60)
-            case let .duration(duration):
-                duration
-            }
-        }
     }
 }
 
@@ -95,41 +89,7 @@ extension ILSchedule.Duration {
 }
 
 
-extension ILSchedule.Duration: DurationProtocol {
-    public static var zero: ILSchedule.Duration {
-        .duration(.zero)
-    }
-
-    public static func + (lhs: ILSchedule.Duration, rhs: ILSchedule.Duration) -> ILSchedule.Duration {
-        .duration(lhs.duration + rhs.duration)
-    }
-
-    public static func - (lhs: ILSchedule.Duration, rhs: ILSchedule.Duration) -> ILSchedule.Duration {
-        .duration(lhs.duration - rhs.duration)
-    }
-
-    public static func / (lhs: ILSchedule.Duration, rhs: Int) -> ILSchedule.Duration {
-        .duration(lhs.duration / rhs)
-    }
-
-    public static func * (lhs: ILSchedule.Duration, rhs: Int) -> ILSchedule.Duration {
-        .duration(lhs.duration * rhs)
-    }
-
-    public static func / (lhs: ILSchedule.Duration, rhs: ILSchedule.Duration) -> Double {
-        lhs.duration / rhs.duration
-    }
-}
-
-
 extension ILSchedule.Duration: Hashable, Sendable {}
-
-
-extension ILSchedule.Duration: Comparable {
-    public static func < (lhs: Self, rhs: Self) -> Bool {
-        lhs.duration < rhs.duration
-    }
-}
 
 
 extension ILSchedule.Duration: CustomStringConvertible {
@@ -137,6 +97,8 @@ extension ILSchedule.Duration: CustomStringConvertible {
         switch self {
         case .allDay:
             "allDay"
+        case .tillEndOfDay:
+            "tillEndOfDay"
         case let .duration(duration):
             duration.description
         }
@@ -169,6 +131,7 @@ extension ILSchedule.Duration {
 
     enum SwiftDataDuration {
         case allDay
+        case tillEndOfDay
         case duration(MappedDuration)
     }
 }
@@ -185,6 +148,8 @@ extension ILSchedule.Duration.SwiftDataDuration: CustomStringConvertible {
         switch self {
         case .allDay:
             "allDay"
+        case .tillEndOfDay:
+            "tillEndOfDay"
         case let .duration(duration):
             duration.duration.description
         }
@@ -197,6 +162,8 @@ extension ILSchedule.Duration.SwiftDataDuration {
         switch duration {
         case .allDay:
             self = .allDay
+        case .tillEndOfDay:
+            self = .tillEndOfDay
         case .duration(let duration):
             self = .duration(ILSchedule.Duration.MappedDuration(from: duration))
         }
@@ -209,6 +176,8 @@ extension ILSchedule.Duration {
         switch duration {
         case .allDay:
             self = .allDay
+        case .tillEndOfDay:
+            self = .tillEndOfDay
         case let .duration(mapped):
             self = .duration(mapped.duration)
         }
