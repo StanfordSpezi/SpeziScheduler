@@ -25,7 +25,7 @@ import SwiftData
 ///
 /// ### Additional Information
 ///
-/// Tasks support to store additional information. 
+/// Tasks support storing additional metadata information. 
 ///
 /// ## Topics
 /// ### Properties
@@ -108,7 +108,7 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
     public private(set) var nextVersion: ILTask?
 
     /// Additional userInfo stored alongside the task.
-    private(set) var userInfo: UserInfoStorage<TaskAnchor> // TODO: make custom string convertible?
+    private(set) var userInfo: UserInfoStorage<TaskAnchor>
     @Transient private var userInfoCache = UserInfoStorage<TaskAnchor>.RepositoryCache()
 
     private init(
@@ -313,8 +313,9 @@ extension ILTask: CustomStringConvertible {
         outcomes: <redacted for performance reasons>, \
         effectiveFrom: \(effectiveFrom), \
         hasPreviousVersion: \(previousVersion != nil), \
-        hasNextVersion: \(nextVersion != nil)\
+        hasNextVersion: \(nextVersion != nil), \
+        userInfo: \(userInfo)\
         )
-        """ // TODO: support printing userInfo!
+        """
     }
 }

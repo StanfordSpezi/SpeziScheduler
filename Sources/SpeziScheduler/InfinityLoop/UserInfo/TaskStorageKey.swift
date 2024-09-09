@@ -13,4 +13,15 @@ import SpeziFoundation
 public enum TaskAnchor: RepositoryAnchor {}
 
 
-public protocol TaskStorageKey: UserInfoKey where Anchor == TaskAnchor, Value: Equatable {} // TODO: Docs
+/// Store additional information in a `Task`.
+///
+/// Using a `TaskStorageKey` you can store additional data in a ``ILTask``.
+///
+/// You can store any `Codable` value in Task by adding a new entry using the ``UserStorageEntry()`` macro.
+/// Just extend ``ILTask/Context`` by adding a new property with optional type.
+/// ```swift
+/// extension ILTask.Context {
+///     @UserInfoEntry var measurementType: MeasurementType?
+/// }
+/// ```
+public protocol TaskStorageKey: _UserInfoKey where Anchor == TaskAnchor, Value: Equatable {}

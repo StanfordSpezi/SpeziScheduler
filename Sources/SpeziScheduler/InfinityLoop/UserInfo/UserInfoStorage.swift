@@ -36,14 +36,14 @@ struct UserInfoStorage<Anchor: RepositoryAnchor> {
         self.userInfo = [:]
     }
 
-    func contains<Source: UserInfoKey<Anchor>>(_ source: Source.Type) -> Bool {
+    func contains<Source: _UserInfoKey<Anchor>>(_ source: Source.Type) -> Bool {
         userInfo[source.identifier] != nil
     }
 }
 
 
 extension UserInfoStorage {
-    func get<Source: UserInfoKey<Anchor>>(_ source: Source.Type, cache: inout RepositoryCache) -> Source.Value? {
+    func get<Source: _UserInfoKey<Anchor>>(_ source: Source.Type, cache: inout RepositoryCache) -> Source.Value? {
         if let value = cache.repository.get(source) {
             return value
         }
@@ -64,7 +64,7 @@ extension UserInfoStorage {
         }
     }
 
-    mutating func set<Source: UserInfoKey<Anchor>>(_ source: Source.Type, value newValue: Source.Value?, cache: inout RepositoryCache) {
+    mutating func set<Source: _UserInfoKey<Anchor>>(_ source: Source.Type, value newValue: Source.Value?, cache: inout RepositoryCache) {
         cache.repository.set(source, value: newValue)
 
         if let newValue {
@@ -96,5 +96,12 @@ extension UserInfoStorage: Codable {}
 extension UserInfoStorage: Equatable {
     static func == (lhs: UserInfoStorage<Anchor>, rhs: UserInfoStorage<Anchor>) -> Bool {
         lhs.userInfo == rhs.userInfo
+    }
+}
+
+
+extension UserInfoStorage: CustomStringConvertible {
+    var description: String {
+        "UserInfoStorage(\(userInfo.keys.joined(separator: ", ")))"
     }
 }

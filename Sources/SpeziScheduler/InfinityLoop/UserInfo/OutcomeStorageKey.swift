@@ -13,4 +13,15 @@ import SpeziFoundation
 public enum OutcomeAnchor: RepositoryAnchor {}
 
 
-public protocol OutcomeStorageKey: UserInfoKey where Anchor == OutcomeAnchor {} // TODO: docs
+/// Store additional information in an `Outcome`.
+///
+/// Using a `OutcomeStorageKey` you can store additional data in an ``Outcome``.
+///
+/// You can store any `Codable` value in an Outcome by adding a new entry using the ``UserStorageEntry()`` macro.
+/// Just extend `Outcome` by adding a new property with optional type.
+/// ```swift
+/// extension Outcome {
+///     @UserInfoEntry var tag: String?
+/// }
+/// ```
+public protocol OutcomeStorageKey: _UserInfoKey where Anchor == OutcomeAnchor {}

@@ -9,18 +9,11 @@
 import SpeziScheduler
 
 
-struct ExampleKey: TaskStorageKey {
-    typealias Value = String
+extension Outcome {
+    @UserStorageEntry var example: String?
 }
 
 
 extension ILTask.Context {
-    var example: String? {
-        get {
-            self[ExampleKey.self]
-        }
-        set {
-            self[ExampleKey.self] = newValue
-        }
-    }
+    @UserStorageEntry var example: String?
 }

@@ -81,7 +81,8 @@ extension Outcome: CustomStringConvertible {
         id: \(id), \
         completionDate: \(completionDate), \
         occurrence: \(occurrence), \
-        task: \(task)\
+        task: \(task), \
+        userInfo: \(userInfo)\
         )
         """
     }

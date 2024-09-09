@@ -10,6 +10,7 @@ import Foundation
 
 
 extension ILTask {
+    /// User-visible category information of a task.
     public struct Category { // TODO: make category its own model, reuse information and allow to easily migrate data!
         private let categoryLabel: String.LocalizationValue
         let systemName: String?
@@ -19,7 +20,12 @@ extension ILTask {
             LocalizedStringResource(categoryLabel)
         }
 
-        public init(_ label: String.LocalizationValue, systemName: String? = nil) {
+        
+        /// Create a new category.
+        /// - Parameters:
+        ///   - label: The localized label for the category.
+        ///   - systemName: An optional system image that represents the category.
+        public init(_ label: String.LocalizationValue, systemName: String? = nil) { // TODO: how to support any images?
             self.categoryLabel = label
             self.systemName = systemName
         }

@@ -8,6 +8,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+import CompilerPluginSupport
 import class Foundation.ProcessInfo
 import PackageDescription
 
@@ -27,12 +28,23 @@ let package = Package(
         .package(url: "https://github.com/StanfordSpezi/SpeziFoundation", from: "2.0.0-beta.2"),
         .package(url: "https://github.com/StanfordSpezi/Spezi", from: "1.7.0"),
         .package(url: "https://github.com/StanfordSpezi/SpeziViews", from: "1.6.0"),
-        .package(url: "https://github.com/StanfordSpezi/SpeziStorage", from: "1.1.2")
+        .package(url: "https://github.com/StanfordSpezi/SpeziStorage", from: "1.1.2"),
+        .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0-prerelease-2024-08-14")
     ] + swiftLintPackage(),
     targets: [
+        .macro(
+            name: "SpeziSchedulerMacros",
+            dependencies: [
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+                .product(name: "SwiftDiagnostics", package: "swift-syntax")
+            ],
+            plugins: [] + swiftLintPlugin()
+        ),
         .target(
             name: "SpeziScheduler",
             dependencies: [
+                .target(name: "SpeziSchedulerMacros"),
                 .product(name: "SpeziFoundation", package: "SpeziFoundation"),
                 .product(name: "Spezi", package: "Spezi"),
                 .product(name: "SpeziViews", package: "SpeziViews"),
@@ -58,6 +70,15 @@ let package = Package(
                 .product(name: "SpeziLocalStorage", package: "SpeziStorage")
             ],
             plugins: [] + swiftLintPlugin()
+        ),
+        .testTarget(
+            name: "SpeziSchedulerMacrosTest",
+            dependencies: [
+                "SpeziSchedulerMacros",
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax")
+            ],
+            plugins: [] + swiftLintPlugin()
         )
     ]
 )
@@ -74,7 +95,7 @@ func swiftLintPlugin() -> [Target.PluginUsage] {
 
 func swiftLintPackage() -> [PackageDescription.Package.Dependency] {
     if ProcessInfo.processInfo.environment["SPEZI_DEVELOPMENT_SWIFTLINT"] != nil {
-        [.package(url: "https://github.com/realm/SwiftLint.git", from: "0.55.1")]
+        [.package(url: "https://github.com/realm/SwiftLint.git", from: "0.56.2")]
     } else {
         []
     }
