@@ -22,6 +22,8 @@ jobs:
     with:
       runsonlabels: '["macOS", "self-hosted"]'
       scheme: SpeziScheduler
+      xcodeversion: latest
+      swiftVersion: 6
       resultBundle: SpeziScheduler-iOS.xcresult
       artifactname: SpeziScheduler-iOS.xcresult
   buildandtest_watchos:
@@ -31,6 +33,8 @@ jobs:
       runsonlabels: '["macOS", "self-hosted"]'
       scheme: SpeziScheduler
       destination: 'platform=watchOS Simulator,name=Apple Watch Series 9 (45mm)'
+      xcodeversion: latest
+      swiftVersion: 6
       resultBundle: SpeziScheduler-watchOS.xcresult
       artifactname: SpeziScheduler-watchOS.xcresult
   buildandtest_visionos:
@@ -40,6 +44,8 @@ jobs:
       runsonlabels: '["macOS", "self-hosted"]'
       scheme: SpeziScheduler
       destination: 'platform=visionOS Simulator,name=Apple Vision Pro'
+      xcodeversion: latest
+      swiftVersion: 6
       resultBundle: SpeziScheduler-visionOS.xcresult
       artifactname: SpeziScheduler-visionOS.xcresult
   buildandtest_macos:
@@ -49,6 +55,8 @@ jobs:
       runsonlabels: '["macOS", "self-hosted"]'
       scheme: SpeziScheduler
       destination: 'platform=macOS,arch=arm64'
+      xcodeversion: latest
+      swiftVersion: 6
       resultBundle: SpeziScheduler-macOS.xcresult
       artifactname: SpeziScheduler-macOS.xcresult
   buildandtestuitests_ios:
@@ -58,6 +66,8 @@ jobs:
       xcodeversion: latest
       artifactname: TestApp.xcresult
       runsonlabels: '["macOS", "self-hosted"]'
+      xcodeversion: latest
+      swiftVersion: 6
       path: 'Tests/UITests'
       scheme: TestApp
   uploadcoveragereport:
