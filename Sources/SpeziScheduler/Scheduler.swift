@@ -85,6 +85,7 @@ public final class Scheduler<Context: Codable & Sendable>: Module, EnvironmentAc
     
     public func configure() {
         _Concurrency.Task {
+            let storage = storage
             let storedTasks = await storage.loadTasks()
 
             await schedule(tasks: storedTasks ?? initialTasks)
@@ -116,6 +117,7 @@ public final class Scheduler<Context: Codable & Sendable>: Module, EnvironmentAc
         if task.notifications {
             await self.updateScheduleNotifications()
         }
+        let storage = storage
         await storage.storeTasks() // we store the added tasks
     }
     
@@ -133,6 +135,7 @@ public final class Scheduler<Context: Codable & Sendable>: Module, EnvironmentAc
     @MainActor
     func handleApplicationWillTerminate() {
         _Concurrency.Task {
+            let storage = storage
             await storage.storeTasks()
         }
     }
