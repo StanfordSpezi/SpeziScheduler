@@ -17,17 +17,17 @@ public struct SchedulerSampleData: PreviewModifier {
 
     public static func makeSharedContext() throws -> ModelContainer {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: ILTask.self, Outcome.self, configurations: configuration)
+        let container = try ModelContainer(for: Task.self, Outcome.self, configurations: configuration)
 
-        let task = ILTask(
+        let task = Task(
             id: "example-task",
             title: "Social Support Questionnaire",
             instructions: "Please fill out the Social Support Questionnaire every day.",
             category: .init("Questionnaire", systemName: "list.bullet.clipboard"),
             schedule: .daily(hour: 17, minute: 0, startingAt: .today),
+            tags: [],
             effectiveFrom: .today // make sure test task always starts from the start of today
         )
-        // TODO: insert model with an outcome?
 
         container.mainContext.insert(task)
         try container.mainContext.save()
@@ -38,7 +38,7 @@ public struct SchedulerSampleData: PreviewModifier {
     public func body(content: Content, context: ModelContainer) -> some View {
         content
             .previewWith {
-                ILScheduler(testingContainer: context)
+                Scheduler(testingContainer: context)
             }
     }
 }

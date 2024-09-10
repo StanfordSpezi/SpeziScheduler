@@ -10,10 +10,15 @@ import SpeziScheduler
 
 
 extension Outcome {
-    @UserStorageEntry var example: String?
+    @Property var example: String?
 }
 
 
-extension ILTask.Context {
-    @UserStorageEntry var example: String?
+extension Task.Context {
+    @Property var example: String?
+}
+
+
+extension Task.Context {
+    @Property var example2: String = "Hello World"
 }

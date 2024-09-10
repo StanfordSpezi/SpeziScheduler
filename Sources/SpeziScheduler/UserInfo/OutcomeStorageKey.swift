@@ -10,6 +10,7 @@ import SpeziFoundation
 
 
 /// The storage anchor for additional user info storage entries for an `Outcome`.
+@_documentation(visibility: internal)
 public enum OutcomeAnchor: RepositoryAnchor {}
 
 
@@ -17,11 +18,6 @@ public enum OutcomeAnchor: RepositoryAnchor {}
 ///
 /// Using a `OutcomeStorageKey` you can store additional data in an ``Outcome``.
 ///
-/// You can store any `Codable` value in an Outcome by adding a new entry using the ``UserStorageEntry()`` macro.
-/// Just extend `Outcome` by adding a new property with optional type.
-/// ```swift
-/// extension Outcome {
-///     @UserInfoEntry var tag: String?
-/// }
-/// ```
+/// For more information, refer to the documentation of the ``Property()`` macro.
+@_documentation(visibility: internal)
 public protocol OutcomeStorageKey: _UserInfoKey where Anchor == OutcomeAnchor {}

@@ -7,7 +7,7 @@
 //
 
 
-extension ILSchedule {
+extension Schedule {
     /// The duration of an occurrence.
     ///
     /// While we maintain atto-second accuracy for arithmetic operations on duration, the schedule will always retrieve the duration in a resolution of seconds.
@@ -24,7 +24,7 @@ extension ILSchedule {
 }
 
 
-extension ILSchedule.Duration {
+extension Schedule.Duration {
     /// Determine if a duration is all day.
     public var isAllDay: Bool {
         self == .allDay
@@ -37,7 +37,7 @@ extension ILSchedule.Duration {
     /// ```
     /// - Returns: A `Duration` representing a given number of seconds.
     @inlinable
-    public static func seconds(_ seconds: some BinaryInteger) -> ILSchedule.Duration {
+    public static func seconds(_ seconds: some BinaryInteger) -> Schedule.Duration {
         .duration(.seconds(seconds))
     }
 
@@ -48,7 +48,7 @@ extension ILSchedule.Duration {
     /// ```
     /// - Returns: A `Duration` representing a given number of minutes.
     @inlinable
-    public static func minutes(_ minutes: some BinaryInteger) -> ILSchedule.Duration {
+    public static func minutes(_ minutes: some BinaryInteger) -> Schedule.Duration {
         .seconds(minutes * 60)
     }
 
@@ -60,7 +60,7 @@ extension ILSchedule.Duration {
     /// let duration: Duration = .minutes(27.5)
     /// ```
     /// - Returns: A `Duration` representing a given number of minutes.
-    public static func minutes(_ minutes: Double) -> ILSchedule.Duration {
+    public static func minutes(_ minutes: Double) -> Schedule.Duration {
         .duration(.seconds(minutes * 60))
     }
 
@@ -71,7 +71,7 @@ extension ILSchedule.Duration {
     /// ```
     /// - Returns: A `Duration` representing a given number of hours.
     @inlinable
-    public static func hours(_ hours: some BinaryInteger) -> ILSchedule.Duration {
+    public static func hours(_ hours: some BinaryInteger) -> Schedule.Duration {
         .minutes(hours * 60)
     }
 
@@ -83,16 +83,16 @@ extension ILSchedule.Duration {
     /// let duration: Duration = .hours(4)
     /// ```
     /// - Returns: A `Duration` representing a given number of hours.
-    public static func hours(_ hours: Double) -> ILSchedule.Duration {
+    public static func hours(_ hours: Double) -> Schedule.Duration {
         .minutes(hours * 60)
     }
 }
 
 
-extension ILSchedule.Duration: Hashable, Sendable {}
+extension Schedule.Duration: Hashable, Sendable {}
 
 
-extension ILSchedule.Duration: CustomStringConvertible {
+extension Schedule.Duration: CustomStringConvertible {
     public var description: String {
         switch self {
         case .allDay:
@@ -106,7 +106,7 @@ extension ILSchedule.Duration: CustomStringConvertible {
 }
 
 
-extension ILSchedule.Duration {
+extension Schedule.Duration {
     // Duration encodes itself as an unkeyed container with high and low Int64 values.
     // See https://github.com/swiftlang/swift/blob/eafb40588c17bf8f6405823f8bedb9428694a9bd/stdlib/public/core/Duration.swift#L238-L240.
     // SwiftData doesn't support unkeyed containers and crashes. Therefore, we explicitly construct a new Int128 type from it
@@ -137,13 +137,13 @@ extension ILSchedule.Duration {
 }
 
 
-extension ILSchedule.Duration.MappedDuration: Hashable, Sendable, Codable {}
+extension Schedule.Duration.MappedDuration: Hashable, Sendable, Codable {}
 
 
-extension ILSchedule.Duration.SwiftDataDuration: Hashable, Sendable, Codable {}
+extension Schedule.Duration.SwiftDataDuration: Hashable, Sendable, Codable {}
 
 
-extension ILSchedule.Duration.SwiftDataDuration: CustomStringConvertible {
+extension Schedule.Duration.SwiftDataDuration: CustomStringConvertible {
     var description: String {
         switch self {
         case .allDay:
@@ -157,22 +157,22 @@ extension ILSchedule.Duration.SwiftDataDuration: CustomStringConvertible {
 }
 
 
-extension ILSchedule.Duration.SwiftDataDuration {
-    init(from duration: ILSchedule.Duration) {
+extension Schedule.Duration.SwiftDataDuration {
+    init(from duration: Schedule.Duration) {
         switch duration {
         case .allDay:
             self = .allDay
         case .tillEndOfDay:
             self = .tillEndOfDay
         case .duration(let duration):
-            self = .duration(ILSchedule.Duration.MappedDuration(from: duration))
+            self = .duration(Schedule.Duration.MappedDuration(from: duration))
         }
     }
 }
 
 
-extension ILSchedule.Duration {
-    init(from duration: ILSchedule.Duration.SwiftDataDuration) {
+extension Schedule.Duration {
+    init(from duration: Schedule.Duration.SwiftDataDuration) {
         switch duration {
         case .allDay:
             self = .allDay

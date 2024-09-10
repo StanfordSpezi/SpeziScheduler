@@ -11,7 +11,7 @@ import Foundation
 
 /// A schedule to describe the occurrences of a task.
 ///
-/// The ``Occurrence``s of a ``ILTask`` are derived from the Schedule.
+/// The ``Occurrence``s of a ``Task`` are derived from the Schedule.
 ///
 /// The Schedule uses Swift's [`RecurrenceRule`](https://developer.apple.com/documentation/foundation/calendar/recurrencerule) under to hood to express flexible
 /// recurrence schedules. You can configure a schedule using any recurrence rule you want.
@@ -21,7 +21,7 @@ import Foundation
 ///
 /// ```swift
 /// // create a schedule at 8am daily, starting from today, reoccur indefinitely
-/// let schedule: ILSchedule = .daily(hour: 8, minute: 0, startingAt: .today)
+/// let schedule: Schedule = .daily(hour: 8, minute: 0, startingAt: .today)
 /// ```
 ///
 /// ## Topics
@@ -39,11 +39,11 @@ import Foundation
 /// - ``once(at:duration:)``
 ///
 /// ### Retrieving Occurrences
-/// - ``occurrences(in:)-5ir87``
+/// - ``occurrences(in:)-1r4pv``
 /// - ``occurrences(inDay:)``
-/// - ``occurrences(in:)-5ir87``
+/// - ``occurrences(in:)-3a9p3``
 /// - ``occurrence(forStartDate:)``
-public struct ILSchedule {
+public struct Schedule {
     /// The start date (inclusive).
     private var startDate: Date
     /// The duration of a single occurrence.
@@ -128,7 +128,7 @@ public struct ILSchedule {
     /// recurrence.weekdays = [.nth(1, .saturday), .nth(1, .sunday)]
     /// recurrence.setPositions = [1]
     ///
-    /// let schedule = ILSchedule(startingAt: .today, recurrence: recurrence)
+    /// let schedule = Schedule(startingAt: .today, recurrence: recurrence)
     /// ```
     ///
     /// - Parameters:
@@ -172,7 +172,7 @@ public struct ILSchedule {
 }
 
 
-extension ILSchedule: Equatable, Sendable, Codable {
+extension Schedule: Equatable, Sendable, Codable {
     private enum CodingKeys: String, CodingKey {
         case startDate
         case scheduleDuration
@@ -182,7 +182,7 @@ extension ILSchedule: Equatable, Sendable, Codable {
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.startDate = try container.decode(Date.self, forKey: .startDate)
-        self.scheduleDuration = try container.decode(ILSchedule.Duration.SwiftDataDuration.self, forKey: .scheduleDuration)
+        self.scheduleDuration = try container.decode(Schedule.Duration.SwiftDataDuration.self, forKey: .scheduleDuration)
         self.recurrenceRule = try container.decodeIfPresent(Data.self, forKey: .recurrenceRule)
     }
 
@@ -195,13 +195,13 @@ extension ILSchedule: Equatable, Sendable, Codable {
 }
 
 
-extension ILSchedule {
+extension Schedule {
     /// Create a schedule for a single occurrence.
     ///
     /// ```swift
     /// // create a schedule that occurs exactly once, tomorrow at the same time as now
     /// let date = Calendar.current.date(byAdding: .day, value: 1, to: .now)!
-    /// let schedule: ILSchedule = .once(at: date)
+    /// let schedule: Schedule = .once(at: date)
     /// ```
     ///
     /// - Parameters:
@@ -211,15 +211,15 @@ extension ILSchedule {
     public static func once(
         at date: Date,
         duration: Duration = .tillEndOfDay
-    ) -> ILSchedule {
-        ILSchedule(startingAt: date, duration: duration)
+    ) -> Schedule {
+        Schedule(startingAt: date, duration: duration)
     }
 
     /// Create a schedule that repeats daily.
     ///
     /// ```swift
     /// // create a schedule at 8 am daily, starting from today, reoccur indefinitely
-    /// let schedule: ILSchedule = .daily(hour: 8, minute: 0, startingAt: .today)
+    /// let schedule: Schedule = .daily(hour: 8, minute: 0, startingAt: .today)
     /// ```
     ///
     /// - Parameters:
@@ -241,18 +241,18 @@ extension ILSchedule {
         startingAt start: Date,
         end: Calendar.RecurrenceRule.End = .never,
         duration: Duration = .tillEndOfDay
-    ) -> ILSchedule {
+    ) -> Schedule {
         guard let startTime = Calendar.current.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start date for daily schedule. Can't set \(hour):\(minute):\(second) for \(start).")
         }
-        return ILSchedule(startingAt: startTime, duration: duration, recurrence: .daily(calendar: calendar, interval: interval, end: end))
+        return Schedule(startingAt: startTime, duration: duration, recurrence: .daily(calendar: calendar, interval: interval, end: end))
     }
 
     /// Create a schedule that repeats weekly.
     ///
     /// ```swift
     /// // create a schedule at 8 am bi-weekly, starting from the next wednesday from today, reoccur indefinitely
-    /// let schedule: ILSchedule = .weekly(interval: 2, weekday: .wednesday, hour: 8, minute: 0, startingAt: .today)
+    /// let schedule: Schedule = .weekly(interval: 2, weekday: .wednesday, hour: 8, minute: 0, startingAt: .today)
     /// ```
     ///
     /// - Parameters:
@@ -276,11 +276,11 @@ extension ILSchedule {
         startingAt start: Date,
         end: Calendar.RecurrenceRule.End = .never,
         duration: Duration = .tillEndOfDay
-    ) -> ILSchedule {
+    ) -> Schedule {
         guard let startTime = Calendar.current.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start time for weekly schedule. Can't set \(hour):\(minute):\(second) for \(start).")
         }
-        return ILSchedule(
+        return Schedule(
             startingAt: startTime,
             duration: duration,
             recurrence: .weekly(calendar: calendar, interval: interval, end: end, weekdays: weekday.map { [.every($0)] } ?? [])
@@ -288,14 +288,12 @@ extension ILSchedule {
     }
 }
 
-extension ILSchedule {
+extension Schedule {
     // we are using lazy maps, so these are all single pass operations.
 
     /// The list of occurrences occurring in a date range.
     ///
-    /// - Parameters:
-    ///   - start: The start date (inclusive).
-    ///   - end: The last date an event might start (exclusive).
+    /// - Parameter range: The date range to retrieve all occurrences for.
     /// - Returns: The list of occurrences. Empty if there are no occurrences in the specified time frame.
     @_disfavoredOverload
     public func occurrences(in range: Range<Date>) -> [Occurrence] {
@@ -356,7 +354,7 @@ extension ILSchedule {
 }
 
 
-extension ILSchedule: CustomStringConvertible {
+extension Schedule: CustomStringConvertible {
     public var description: String {
         """
         Schedule(\

@@ -11,13 +11,13 @@ import SwiftUI
 
 public struct InstructionsTile<Header: View, Info: View>: View {
     private let alignment: HorizontalAlignment
-    private let event: ILEvent
+    private let event: Event
     private let header: Header
     private let actionClosure: (() -> Void)?
     private let moreInformation: Info
     private let customActionLabel: Text?
 
-    @Environment(ILScheduler.self)
+    @Environment(Scheduler.self)
     private var scheduler
 
     @State private var presentingMoreInformation: Bool = false
@@ -97,7 +97,7 @@ public struct InstructionsTile<Header: View, Info: View>: View {
     }
 
     public init(
-        _ event: ILEvent,
+        _ event: Event,
         alignment: HorizontalAlignment = .leading,
         actionLabel customActionLabel: Text? = nil,
         @ViewBuilder header: () -> Header,
@@ -113,7 +113,7 @@ public struct InstructionsTile<Header: View, Info: View>: View {
     }
 
     public init(
-        _ event: ILEvent,
+        _ event: Event,
         alignment: HorizontalAlignment = .leading,
         @ViewBuilder header: () -> Header,
         @ViewBuilder more: () -> Info = { EmptyView() }
@@ -127,7 +127,7 @@ public struct InstructionsTile<Header: View, Info: View>: View {
     }
 
     public init(
-        _ event: ILEvent,
+        _ event: Event,
         alignment: HorizontalAlignment = .leading,
         actionLabel customActionLabel: Text? = nil,
         @ViewBuilder more: () -> Info = { EmptyView() },
@@ -144,7 +144,7 @@ public struct InstructionsTile<Header: View, Info: View>: View {
     }
 
     public init(
-        _ event: ILEvent,
+        _ event: Event,
         alignment: HorizontalAlignment = .leading,
         @ViewBuilder more: () -> Info = { EmptyView() }
     ) where Header == DefaultTileHeader {

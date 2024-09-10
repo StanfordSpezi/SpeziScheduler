@@ -13,7 +13,33 @@ import SwiftData
 
 /// The outcome of an event.
 ///
-/// Describes a  outcomes of an ``Event`` of a ``Task``.
+/// Each ``Event`` of a ``Task`` might be completed by supplying an `Outcome`.
+/// There might always just be a single outcome associated with a single event.
+///
+/// ### Storing Additional Information
+///
+/// An outcome supports storing additional metadata information (e.g., the measurement value or medication).
+///
+/// - Tip: Refer to the ``Property()`` macro on how to create new data types that can be stored alongside an outcome.
+///
+/// You provide the additional outcome values upon completion of an event (see ``Event/complete(with:)``.
+/// Below is a short code example that sets a custom `measurement` property to the weight measurement that was received
+/// from a connected weight scale.
+///
+/// ```swift
+/// event.complete { outcome in
+///     outcome.measurement = weightMeasurement
+/// }
+/// ```
+///
+/// ## Topics
+///
+/// ### Properties
+/// - ``id``
+/// - ``completionDate``
+/// - ``occurrence``
+/// - ``event``
+/// - ``task``
 @Model
 public final class Outcome {
     #Index<Outcome>([\.id], [\.occurrenceStartDate])
@@ -32,7 +58,7 @@ public final class Outcome {
     private(set) var occurrenceStartDate: Date
 
     /// The associated task of the outcome.
-    public private(set) var task: ILTask
+    public private(set) var task: Task
 
     /// The occurrence of the event the outcome is associated with.
     public var occurrence: Occurrence {
@@ -42,15 +68,15 @@ public final class Outcome {
     }
 
     /// The associated event for this outcome.
-    public var event: ILEvent {
-        ILEvent(task: task, occurrence: occurrence, outcome: .value(self))
+    public var event: Event {
+        Event(task: task, occurrence: occurrence, outcome: .value(self))
     }
 
     /// Additional userInfo stored alongside the outcome.
     private var userInfo = UserInfoStorage<OutcomeAnchor>()
     @Transient private var userInfoCache = UserInfoStorage<OutcomeAnchor>.RepositoryCache()
 
-    init(task: ILTask, occurrence: Occurrence) {
+    init(task: Task, occurrence: Occurrence) {
         self.id = UUID()
         self.completionDate = .now
         self.task = task
@@ -61,11 +87,27 @@ public final class Outcome {
 
 extension Outcome {
     /// Retrieve or set the value for a given storage key.
-    /// - Parameter source: The outcome storage key.
-    /// - Returns: The value for the outcome storage key, if it is present.
+    /// - Parameter source: The storage key.
+    /// - Returns: The value or `nil` if there isn't currently a value stored in the outcome.
+    @_documentation(visibility: internal)
     public subscript<Source: OutcomeStorageKey>(_ source: Source.Type) -> Source.Value? {
         get {
             userInfo.get(source, cache: &userInfoCache)
+        }
+        set {
+            userInfo.set(source, value: newValue, cache: &userInfoCache)
+        }
+    }
+
+    /// Retrieve or set the value for a given storage key.
+    /// - Parameters:
+    ///   - source: The storage key type.
+    ///   - defaultValue: A default value that is returned if there isn't a value stored.
+    /// - Returns: The value or the default value if there isn't currently a value stored in the context.
+    @_documentation(visibility: internal)
+    public subscript<Source: OutcomeStorageKey>(_ source: Source.Type, default defaultValue: @autoclosure () -> Source.Value) -> Source.Value {
+        get {
+            userInfo.get(source, cache: &userInfoCache) ?? defaultValue()
         }
         set {
             userInfo.set(source, value: newValue, cache: &userInfoCache)

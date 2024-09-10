@@ -9,11 +9,11 @@
 import SwiftUI
 
 
-public struct CompletedTile<Title: View, Description: View>: View {
+struct CompletedTile<Title: View, Description: View>: View {
     private let title: Title
     private let description: Description
 
-    public var body: some View {
+    var body: some View {
         if Description.self == EmptyView.self {
             SimpleTile {
                 header
@@ -46,7 +46,7 @@ public struct CompletedTile<Title: View, Description: View>: View {
         }
     }
 
-    public init(@ViewBuilder title: () -> Title, @ViewBuilder description: () -> Description = { EmptyView() }) {
+    init(@ViewBuilder title: () -> Title, @ViewBuilder description: () -> Description = { EmptyView() }) {
         self.title = title()
         self.description = description()
     }

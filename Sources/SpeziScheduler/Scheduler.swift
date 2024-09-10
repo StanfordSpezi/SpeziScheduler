@@ -1,272 +1,554 @@
 //
 // This source file is part of the Stanford Spezi open-source project
 //
-// SPDX-FileCopyrightText: 2022 Stanford University and the project authors (see CONTRIBUTORS.md)
+// SPDX-FileCopyrightText: 2024 Stanford University and the project authors (see CONTRIBUTORS.md)
 //
 // SPDX-License-Identifier: MIT
 //
 
+import Combine
 import Foundation
-import OSLog
 import Spezi
+import SpeziLocalStorage
+import SwiftData
 import SwiftUI
-@preconcurrency import UserNotifications
+
+// TODO: can we formulate 5pm every Friday that "adjusts" to the timezone? some might want to have a fixed time?
+//  => is auto updating current the solution? => make that an issue
+// TODO: allow to specify "text" LocalizationValue (e.g., Breakfast, Lunch, etc), otherwise we use the time (and date?)?
+//  => make that an issue (a view that accepts multiple events!) => Checklist style view?
+// TODO: support showing tasks as overdue! => issue!
+// TODO: easy "mark deleted" method (that creates a new tombstone= task version with no events in the schedule). => create an issue
+// TODO: bring back support for notifications => issue!
 
 
-/// Schedule and observe `Task` according to a specified `Schedule`.
+// TODO: UI test the following things for @EventQuery:
+//  - update if there is a new version of a Task inserted (via scheduler, via task directly)
+//  - update if the outcome is added to a task version
+
+
+/// Schedule and query tasks and their events.
 ///
-/// The `Scheduler` module helps with scheduling and observation ``Task``s according to the specified ``Schedule``.
+/// ## Topics
 ///
-/// Use the ``Scheduler/init(prescheduleNotificationLimit:tasks:)`` initializer or the ``Scheduler/schedule(task:)`` function
-/// to schedule tasks that you can obtain using the ``Scheduler/tasks`` property.
-/// You can use the ``Scheduler`` as an `ObservableObject` to automatically update your SwiftUI views when new events are emitted or events change.
+/// ### Configuration
+/// - ``init()``
+///
+/// ### Creating Tasks
+/// - ``createOrUpdateTask(id:title:instructions:category:schedule:tags:effectiveFrom:with:)``
+///
+/// ### Query Tasks
+/// - ``queryTasks(for:predicate:sortBy:prefetchOutcomes:)-f7se``
+/// - ``queryTasks(for:predicate:sortBy:prefetchOutcomes:)-583yk``
+///
+/// ### Query Events
+/// - ``queryEvents(for:predicate:)``
+///
+/// ### Permanently delete a Task version
+/// - ``deleteTasks(_:)-d90p``
+/// - ``deleteTasks(_:)-2prl9``
 @MainActor
-public final class Scheduler<Context: Codable & Sendable>: Module, EnvironmentAccessible, DefaultInitializable, NotificationHandler, Sendable {
-    private let logger = Logger(subsystem: "edu.stanford.spezi.scheduler", category: "Scheduler")
+public final class Scheduler { // TODO: more extensive docs
+    @Application(\.logger)
+    private var logger
 
-    @AppStorage("Spezi.Scheduler.firstlaunch")
-    @MainActor private var firstLaunch = true
-    private let initialTasks: [Task<Context>]
-    private let prescheduleNotificationLimit: Int
+    @Dependency(LocalStorage.self)
+    private var localStorage
 
-    @MainActor private var taskList: TaskList<Context> {
-        storage.taskList
-    }
+    private var _container: Result<ModelContainer, Error>?
 
-    @MainActor  public var tasks: [Task<Context>] {
-        taskList.tasks
-    }
-
-
-    @Dependency(SchedulerStorage<Context>.self)
-    private var storage
-
-    @Modifier private var modifier = SchedulerLifecycle<Context>()
-
-
-    /// Indicates whether the necessary authorization to deliver local notifications is already granted.
-    public var localNotificationAuthorization: Bool {
-        get async {
-            await UNUserNotificationCenter.current().notificationSettings().authorizationStatus == .authorized
-        }
-    }
-    
-    
-    /// Creates a new ``Scheduler`` module.
-    /// - Parameter prescheduleNotificationLimit: The number of prescheduled notifications that should be registered.
-    ///                               Must be bigger than 1 and smaller than the limit of 64 local notifications at a time.
-    ///                               We recommend setting the limit to a value lower than 64, e.g., 56, to ensure room inaccuracies in the iOS scheduling APIs.
-    ///                               The default value is `56`.
-    /// - Parameter initialTasks: The initial set of ``Task``s.
-    public nonisolated init(prescheduleNotificationLimit: Int = 56, tasks initialTasks: [Task<Context>] = []) {
-        assert(
-            prescheduleNotificationLimit >= 1 && prescheduleNotificationLimit <= 64,
-            "The prescheduleLimit must be bigger than 1 and smaller than the limit of 64 local notifications at a time"
-        )
-        
-        self.prescheduleNotificationLimit = prescheduleNotificationLimit
-        self.initialTasks = initialTasks
-        
-        // Only run the notification setup when not running unit tests:
-        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil {
-            let notificationCenter = UNUserNotificationCenter.current()
-            if _firstLaunch.wrappedValue {
-                notificationCenter.removeAllDeliveredNotifications()
-                notificationCenter.removeAllPendingNotificationRequests()
-                _firstLaunch.wrappedValue = false
+    private var container: ModelContainer {
+        get throws {
+            guard let container = _container else {
+                throw DataError.invalidContainer(nil)
             }
+            return try container.get()
         }
     }
 
-    public nonisolated required convenience init() {
-        self.init(tasks: [])
+    var context: ModelContext {
+        get throws {
+            try container.mainContext
+        }
     }
+
+
+    /// A task that slightly delays saving tasks.
+    private var saveTask: _Concurrency.Task<Void, Never>?
+
+    /// Configure the Scheduler.
+    public nonisolated init() {}
+
     
-    
+    /// Configure the Scheduler with a pre-populated model container.
+    /// - Parameter testingContainer: The model container that is preconfigured with the ``Task`` and ``Outcome`` models.
+    @_spi(TestingSupport)
+    public init(testingContainer: ModelContainer) {
+        self._container = .success(testingContainer)
+    }
+
+    /// Configure the Scheduler module.
+    @_documentation(visibility: internal)
     public func configure() {
-        _Concurrency.Task {
-            let storage = storage
-            let storedTasks = await storage.loadTasks()
-
-            await schedule(tasks: storedTasks ?? initialTasks)
-        }
-    }
-    
-    
-    /// Presents the system authentication UI to send local notifications if the application is not yet permitted to send local notifications.
-    public func requestLocalNotificationAuthorization() async throws {
-        if await !localNotificationAuthorization {
-            try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
-            
-            // now we have permissions, schedule all notifications now
-            await updateScheduleNotifications()
-        }
-    }
-    
-    /// Schedule a new ``Task`` in the ``Scheduler`` module.
-    /// - Parameter task: The new ``Task`` instance that should be scheduled.
-    @MainActor
-    public func schedule(task: Task<Context>) async {
-        taskList.append(task)
-
-        for event in task.events { // make sure all events have a reference to the storage
-            event.storage = storage
+        guard _container == nil else {
+            return // we have a container injected for testing purposes
         }
 
-        self.scheduleTasks()
-        if task.notifications {
-            await self.updateScheduleNotifications()
+        let configuration: ModelConfiguration
+#if targetEnvironment(simulator)
+        configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+#else
+        let storageUrl = URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite")
+        configuration = ModelConfiguration(url: storageUrl)
+#endif
+        do {
+            _container = .success(try ModelContainer(for: Task.self, Outcome.self, configurations: configuration))
+        } catch {
+            logger.error("Failed to initializer scheduler model container: \(error)")
+            _container = .failure(error)
         }
-        let storage = storage
-        await storage.storeTasks() // we store the added tasks
-    }
-    
-    
-    @MainActor
-    func handleActiveScenePhase() {
-        logger.debug("Scene entered foreground. Scheduling Tasks...")
-        self.scheduleTasks()
-        _Concurrency.Task {
-            await updateScheduleNotifications()
+
+
+        // This is a really good article explaining some of the concurrency considerations with SwiftData
+        // https://medium.com/@samhastingsis/use-swiftdata-like-a-boss-92c05cba73bf
+        // It also makes it easier to understand the SwiftData-related infrastructure around Spezi Scheduler.
+        // One could think that Apple could have provided a lot of this information in their documentation.
+
+
+        // the legacy scheduler 1.0 used to store tasks at this location. We don't support migration, so just remove it.
+        do {
+            try localStorage.delete(storageKey: Constants.taskStorageKey)
+        } catch {
+            logger.warning("Failed to remove legacy scheduler task storage: \(error)")
         }
     }
 
 
-    @MainActor
-    func handleApplicationWillTerminate() {
-        _Concurrency.Task {
-            let storage = storage
-            await storage.storeTasks()
+    /// Schedules a new save.
+    ///
+    /// When we add a new task we want to instantly save it to disk. This helps to, e.g., make sure a `@EventQuery` receives the update by subscribing to the
+    /// `didSave` notification. We delay saving the context by a bit, by queuing a task for the next possible execution. This helps to avoid that adding a new task model
+    /// blocks longer than needed and makes sure that creating multiple tasks in sequence (which happens at startup) doesn't call `save()` more often than required.
+    private func scheduleSave(for context: ModelContext) {
+        guard saveTask == nil else {
+            return // se docs above
         }
-    }
-    
-    
-    // MARK: - Notification Center
-    public func receiveIncomingNotification(_ notification: UNNotification) async -> UNNotificationPresentationOptions? {
-        let id = notification.request.identifier
-        let isSchedulerNotification = taskList.contains { task in
-            task.events.contains { event in
-                event.notification?.uuidString == id
+
+        saveTask = _Concurrency.Task { [logger] in
+            defer {
+                saveTask = nil
+            }
+
+            do {
+                try context.save()
+            } catch {
+                logger.error("Failed to save the scheduler model context: \(error)")
             }
         }
-
-        guard isSchedulerNotification else {
-            return nil // we don't decide for notifications we didn't schedule
-        }
-
-        return [.badge, .banner, .sound, .list]
     }
 
     
-    // MARK: - Helper Methods
-    private func schedule(tasks: [Task<Context>]) async {
-        for task in tasks {
-            await schedule(task: task)
-        }
-    }
-    
-
-    /// Schedules all tasks.
+    /// Add a new task or update its content if it exists and its properties changed.
     ///
-    /// This method triggers the due timer. This ensures that all events are marked
-    /// due once they pass their scheduled date.
-    @MainActor
-    private func scheduleTasks() {
-        for task in taskList {
-            task.scheduleTasks()
+    /// This method will check if the task with the specified `id` is already present in the model container. If not, it inserts a new instance of this task.
+    /// If the task already exists in the store, this method checks if the contents of task are up to date. If not, a new version is created with the updated values.
+    ///
+    /// - Parameters:
+    ///   - id: The identifier of the task.
+    ///   - title: The user-visible task title.
+    ///   - instructions: The user-visible instructions for the task.
+    ///   - category: The user-visible category information of a task.
+    ///   - schedule: The schedule for the events of this task.
+    ///   - tags: Custom tags associated with the task.
+    ///   - effectiveFrom: The date from which this version of the task is effective. You typically do not want to modify this parameter.
+    ///     If you do specify a custom value, make sure to specify it relative to `now`.
+    ///   - contextClosure: The closure that allows to customize the ``Task/Context`` that is stored with the task.
+    /// - Returns: Returns the latest version of the `task` and if the task was updated or created indicated by `didChange`.
+    @discardableResult
+    public func createOrUpdateTask( // swiftlint:disable:this function_default_parameter_at_end
+        id: String,
+        title: String.LocalizationValue,
+        instructions: String.LocalizationValue,
+        category: Task.Category? = nil,
+        schedule: Schedule,
+        tags: [String]? = nil, // swiftlint:disable:this discouraged_optional_collection
+        effectiveFrom: Date = .now,
+        with contextClosure: ((inout Task.Context) -> Void)? = nil
+    ) throws -> (task: Task, didChange: Bool) {
+        let context = try context
+
+        let predicate: Predicate<Task> = #Predicate { task in
+            task.id == id && task.nextVersion == nil
+        }
+        let results = try context.fetch(FetchDescriptor<Task>(predicate: predicate))
+
+        if let existingTask = results.first {
+            let descriptor = FetchDescriptor<Outcome>(
+                predicate: #Predicate { outcome in
+                    predicate.evaluate(outcome.task) // ensure we use the same predicate
+                        && outcome.occurrenceStartDate >= effectiveFrom
+                }
+            )
+            let outcomesThatWouldBeShadowed = try context.fetchCount(descriptor)
+
+            if outcomesThatWouldBeShadowed > 0 {
+                // an updated task cannot shadow already recorded outcomes of a previous task version
+                throw Scheduler.DataError.shadowingPreviousOutcomes
+            }
+
+            // while this is throwing, it won't really throw for us, as we do all the checks beforehand
+            let result = try existingTask.createUpdatedVersion(
+                skipShadowCheck: true, // we perform the check much more efficient with the query above and do not require fetching all outcomes
+                title: title,
+                instructions: instructions,
+                category: category,
+                schedule: schedule,
+                tags: tags,
+                effectiveFrom: effectiveFrom,
+                with: contextClosure
+            )
+
+            if result.didChange {
+                scheduleSave(for: context)
+            }
+
+            return result
+        } else {
+            let task = Task(
+                id: id,
+                title: title,
+                instructions: instructions,
+                category: category,
+                schedule: schedule,
+                tags: tags ?? [],
+                effectiveFrom: effectiveFrom,
+                with: contextClosure ?? { _ in }
+            )
+            context.insert(task)
+            scheduleSave(for: context)
+            return (task, true)
         }
     }
     
+    /// Delete a task from the store.
+    ///
+    /// This permanently deletes a task (version) from the store.
+    /// - Important: This will only delete this particular version of the Task and outcomes that are associated with this version of the task!
+    ///   It will not delete previous versions of the task. Deleting a version of a task might reactive the schedule from the previous version.
+    ///
+    /// - Tip: If you want to stop a task from reoccurring, simply create a new version of a task with an appropriate ``Task/effectiveFrom`` date and make sure
+    ///     that the ``Task/schedule`` doesn't produce any more occurrences.
+    ///
+    /// - Parameter tasks: The variadic list of task to delete.
+    public func deleteTasks(_ tasks: Task...) {
+        self.deleteTasks(tasks)
+    }
 
-    @MainActor
-    private func updateScheduleNotifications() async {
-        // Disable notification center interaction when running unit tests:
-        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else {
+    func addOutcome(_ outcome: Outcome) {
+        let context: ModelContext
+        do {
+            context = try self.context
+        } catch {
+            logger.error("Failed to persist outcome for task \(outcome.task.id): \(error)")
             return
         }
 
-        // Get all tasks that have notifications enabled and that have events in the future that are not yet complete.
-        // Same as below, but there is a Swift compiler bug that is causing a crash using Swift 5.9 when archiving in a release build.
-        // Check with newer Swift versions:
-        // ```swift
-        // let numberOfTasksWithNotifications = max(
-        //     1,
-        //     tasks.filter { $0.notifications && !$0.events(from: .now, complete: false).contains(where: { !$0.complete }) }.count
-        // )
-        // ```
-        var numberOfTasksWithNotificationsCounter: Int = 0
-        for task in taskList where task.notifications {
-            let events = task.events(from: .now)
-
-            guard events.contains(where: { !$0.complete }) else {
-                continue
-            }
-
-            numberOfTasksWithNotificationsCounter += 1
-        }
-
-        // First, remove all notifications from past events that are be complete.
-        for task in self.taskList {
-            for event in task.events {
-                event.cancelNotification()
-            }
-        }
-
-
-        let limit = await currentPerTaskNotificationLimit(numberOfTasksWithNotificationsCount: numberOfTasksWithNotificationsCounter)
-
-        for task in taskList {
-            await task.scheduleNotifications(limit)
-        }
+        context.insert(outcome)
+        scheduleSave(for: context)
     }
 
-
-    @MainActor
-    private func currentPerTaskNotificationLimit(numberOfTasksWithNotificationsCount: Int) async -> Int {
-        let numberOfTasksWithNotifications = max(1, numberOfTasksWithNotificationsCount)
-
-        let notificationCenter = UNUserNotificationCenter.current()
-
-        if self.prescheduleNotificationLimit < numberOfTasksWithNotifications {
-            logger.error("The preschedule notification limit \(self.prescheduleNotificationLimit) is smaller than the number of tasks with active notifications: \(numberOfTasksWithNotifications).")
-            assertionFailure("Please ensure that your preschedule notification limit is bigger than the tasks with active notifications")
+    /// Delete a task from the store.
+    ///
+    /// This permanently deletes a task (version) from the store.
+    /// - Important: This will only delete this particular version of the Task and outcomes that are associated with this version of the task!
+    ///   It will not delete previous versions of the task. Deleting a version of a task might reactive the schedule from the previous version.
+    ///
+    /// - Tip: If you want to stop a task from reoccurring, simply create a new version of a task with an appropriate ``Task/effectiveFrom`` date and make sure
+    ///     that the ``Task/schedule`` doesn't produce any more occurrences.
+    ///
+    /// - Parameter tasks: The list of task to delete.
+    public func deleteTasks(_ tasks: [Task]) {
+        guard let context = try? context else {
+            logger.error("Failed to delete tasks as container failed to be configured: \(tasks.map { $0.id }.joined(separator: ", "))")
+            return
         }
 
-        let deliveredNotifications = await notificationCenter.deliveredNotifications().sorted(by: { $0.date < $1.date })
-        let prescheduleNotificationLimit = max(self.prescheduleNotificationLimit - deliveredNotifications.count, 1)
+        for task in tasks {
+            context.delete(task)
+        }
+    }
+    
+    /// Query the list of tasks.
+    ///
+    /// This method queries all tasks (and task versions) for the specified parameters.
+    /// Tasks are stored in an append-only format. When you modify a Task, it is added as a new version (entry) to the store with an updated ``Task/effectiveFrom`` date.
+    /// This query method returns all task and task versions that are valid in the provided `range`. This could return multiple versions of the same task, if the date it got changed
+    /// is contained in the queried `range`.
+    ///
+    /// - Parameters:
+    ///   - range: The closed date range in which queried task versions need to be effective.
+    ///   - predicate: Specify additional conditions to filter the list of task that is fetched from the store.
+    ///   - sortDescriptors: Additionally sort descriptors. The list of task is always sorted by its ``Task/effectiveFrom``.
+    ///   - prefetchOutcomes: Flag to indicate if the ``Task/outcomes`` relationship should be pre-fetched. By default this is `false` and relationship data is loaded lazily.
+    /// - Returns: The list of `Task` that are effective in the specified date range and match the specified `predicate`. The result is ordered by the specified `sortDescriptors`.
+    public func queryTasks(
+        for range: ClosedRange<Date>,
+        predicate: Predicate<Task> = #Predicate { _ in true },
+        sortBy sortDescriptors: [SortDescriptor<Task>] = [],
+        prefetchOutcomes: Bool = false
+    ) throws -> [Task] {
+        try queryTask(with: inClosedRangePredicate(for: range), combineWith: predicate, sortBy: sortDescriptors, prefetchOutcomes: prefetchOutcomes)
+    }
 
-        if prescheduleNotificationLimit < numberOfTasksWithNotifications {
-            logger.error("The number of available notification slots is smaller than the number of tasks with active notifications: \(numberOfTasksWithNotifications), removing the oldest \(numberOfTasksWithNotifications - prescheduleNotificationLimit) notifications.")
+    
+    /// Query the list of tasks.
+    ///
+    /// This method queries all tasks (and task versions) for the specified parameters.
+    /// Tasks are stored in an append-only format. When you modify a Task, it is added as a new version (entry) to the store with an updated ``Task/effectiveFrom`` date.
+    /// This query method returns all task and task versions that are valid in the provided `range`. This could return multiple versions of the same task, if the date it got changed
+    /// is contained in the queried `range`.
+    ///
+    /// - Parameters:
+    ///   - range: The date range in which queried task versions need to be effective.
+    ///   - predicate: Specify additional conditions to filter the list of task that is fetched from the store.
+    ///   - sortDescriptors: Additionally sort descriptors. The list of task is always sorted by its ``Task/effectiveFrom``.
+    ///   - prefetchOutcomes: Flag to indicate if the ``Task/outcomes`` relationship should be pre-fetched. By default this is `false` and relationship data is loaded lazily.
+    /// - Returns: The list of `Task` that are effective in the specified date range and match the specified `predicate`. The result is ordered by the specified `sortDescriptors`.
+    public func queryTasks(
+        for range: Range<Date>,
+        predicate: Predicate<Task> = #Predicate { _ in true },
+        sortBy sortDescriptors: [SortDescriptor<Task>] = [],
+        prefetchOutcomes: Bool = false
+    ) throws -> [Task] {
+        try queryTask(with: inRangePredicate(for: range), combineWith: predicate, sortBy: sortDescriptors, prefetchOutcomes: prefetchOutcomes)
+    }
 
-            // Same as but there is a Swift compiler bug that is causing a crash using Swift 5.9 when archiving in a release build.
-            // Check with newer Swift versions:
-            // ```swift
-            // let notificationsToBeRemoved = Array(deliveredNotifications
-            //     .map(\.request.identifier)
-            //     .filter { identifier in
-            //         tasks.contains { task in
-            //             task.contains(scheduledNotificationWithId: identifier)
-            //         }
-            //     }
-            //     .prefix(max(0, numberOfTasksWithNotifications - prescheduleNotificationLimit)))
+    /// Query the list of events.
+    ///
+    /// This method fetches all tasks that are effective in the specified `range` and fulfill the additional `taskPredicate` (if specified).
+    /// For these tasks, the list of outcomes are fetched (if they exist), which had their occurrence start in the provided `range`. These two list are then merged into a list of ``Event``s
+    /// that is sorted by its ``Event/occurrence`` in ascending order.
+    ///
+    /// This method queries all tasks for the specified parameters, fetches their list of outcomes to produce a list of events.
+    ///
+    /// - Parameters:
+    ///   - range: A date range that must contain the effective task versions and the start date of the event ``Occurrence``.
+    ///   - taskPredicate: An additional predicate that allows to pre-filter the list of task that should be considered.
+    /// - Returns: The list of events that occurred in the given date `range` for tasks that fulfill the provided `taskPredicate` returned as a list that is sorted by the events
+    ///     ``Event/occurrence`` in ascending order.
+    public func queryEvents(
+        for range: Range<Date>,
+        predicate taskPredicate: Predicate<Task> = #Predicate { _ in true }
+    ) throws -> [Event] {
+        let tasks = try queryTasks(for: range, predicate: taskPredicate)
+        let outcomes = try queryOutcomes(for: range, predicate: taskPredicate)
 
-            var notificationsThatMayBeRemovedIdentifiers: [String] = []
-            for deliveredNotification in deliveredNotifications {
-                let identifier = deliveredNotification.request.identifier
+        let outcomesByOccurrence = outcomes.reduce(into: [:]) { partialResult, outcome in
+            partialResult[outcome.occurrenceStartDate] = outcome
+        }
 
-                // Only remove notifications that have been scheduled by a task in the Scheduler module:
-                for task in taskList where task.contains(scheduledNotificationWithId: identifier) {
-                    notificationsThatMayBeRemovedIdentifiers.append(identifier)
-                    break // Continue to the next deliveredNotification.
+        return tasks
+            .flatMap { task in
+                // If there is a newer task version, we only calculate the events till that the current task is effective.
+                // Otherwise, use the upperBound from the range.
+                let upperBound: Date
+                // Accessing `nextVersion` is is vital for the `EventQuery`. The property will be tracked using observation.
+                // Inserting (or removing) a new task version will, therefore, instantly cause a view refresh and updating the query results.
+                if let effectiveFrom = task.nextVersion?.effectiveFrom {
+                    upperBound = min(effectiveFrom, range.upperBound) // the range might end before the next version is effective
+                } else {
+                    upperBound = range.upperBound
+                }
+
+                let lowerBound: Date
+                if task.previousVersion != nil {
+                    // if there is a previous version, the previous version is responsible should the lowerBound be less than the
+                    // date that this version of this task is effective from
+                    lowerBound = max(task.effectiveFrom, range.lowerBound)
+                } else {
+                    lowerBound = range.lowerBound
+                }
+
+                return task.schedule
+                    .occurrences(in: lowerBound..<upperBound)
+                    .map { occurrence in
+                        if let outcome = outcomesByOccurrence[occurrence.start] {
+                            Event(task: task, occurrence: occurrence, outcome: .value(outcome))
+                        } else {
+                            Event(task: task, occurrence: occurrence, outcome: .createWith(self))
+                        }
+                    }
+            }
+            .sorted { lhs, rhs in
+                lhs.occurrence < rhs.occurrence
+            }
+    }
+
+    func queryEventsAnchor(
+        for range: Range<Date>,
+        predicate taskPredicate: Predicate<Task> = #Predicate { _ in true }
+    ) throws -> Set<PersistentIdentifier> {
+        let taskIdentifier = try queryTaskIdentifiers(with: inRangePredicate(for: range), combineWith: taskPredicate)
+        let outcomeIdentifiers = try queryOutcomeIdentifiers(for: range, predicate: taskPredicate)
+
+        return taskIdentifier.union(outcomeIdentifiers)
+    }
+
+    func sinkDidSavePublisher(into consume: @escaping (Notification) -> Void) throws -> AnyCancellable {
+        let context = try context
+
+        return NotificationCenter.default.publisher(for: ModelContext.didSave, object: context)
+            .sink { notification in
+                // We use the mainContext. Therefore, the vent will always be called from the main actor
+                MainActor.assumeIsolated {
+                    consume(notification)
                 }
             }
-            let notificationsToBeRemovedIdentifier = Array(
-                notificationsThatMayBeRemovedIdentifiers.prefix(upTo: max(0, numberOfTasksWithNotifications - prescheduleNotificationLimit))
-            )
-
-            notificationCenter.removeDeliveredNotifications(withIdentifiers: notificationsToBeRemovedIdentifier)
-        }
-
-        return prescheduleNotificationLimit / numberOfTasksWithNotifications
     }
 }
+
+
+extension Scheduler: Module, EnvironmentAccessible, Sendable {}
+
+// MARK: - Fetch Implementations
+
+extension Scheduler {
+    private func queryTask(
+        with basePredicate: Predicate<Task>,
+        combineWith userPredicate: Predicate<Task>,
+        sortBy sortDescriptors: [SortDescriptor<Task>],
+        prefetchOutcomes: Bool
+    ) throws -> [Task] {
+        var descriptor = FetchDescriptor<Task>(
+            predicate: #Predicate { task in
+                basePredicate.evaluate(task) && userPredicate.evaluate(task)
+            },
+            sortBy: sortDescriptors
+        )
+        descriptor.sortBy.append(SortDescriptor(\.effectiveFrom, order: .forward))
+
+        // make sure querying the next version is always efficient
+        descriptor.relationshipKeyPathsForPrefetching = [\.nextVersion]
+
+        if prefetchOutcomes {
+            descriptor.relationshipKeyPathsForPrefetching.append(\.outcomes)
+        }
+
+        return try context.fetch(descriptor)
+    }
+
+    private func queryOutcomes(for range: Range<Date>, predicate taskPredicate: Predicate<Task>) throws -> [Outcome] {
+        let descriptor = FetchDescriptor<Outcome>(
+            predicate: #Predicate { outcome in
+                range.contains(outcome.occurrenceStartDate) && taskPredicate.evaluate(outcome.task)
+            }
+        )
+
+        return try context.fetch(descriptor)
+    }
+
+    private func queryTaskIdentifiers(
+        with basePredicate: Predicate<Task>,
+        combineWith userPredicate: Predicate<Task>
+    ) throws -> Set<PersistentIdentifier> {
+        let descriptor = FetchDescriptor<Task>(
+            predicate: #Predicate { task in
+                basePredicate.evaluate(task) && userPredicate.evaluate(task)
+            }
+        )
+
+        return try Set(context.fetchIdentifiers(descriptor))
+    }
+
+    private func queryOutcomeIdentifiers(for range: Range<Date>, predicate taskPredicate: Predicate<Task>) throws -> Set<PersistentIdentifier> {
+        let descriptor = FetchDescriptor<Outcome>(
+            predicate: #Predicate { outcome in
+                range.contains(outcome.occurrenceStartDate) && taskPredicate.evaluate(outcome.task)
+            }
+        )
+
+        return try Set(context.fetchIdentifiers(descriptor))
+    }
+}
+
+// MARK: - Predicate Creation
+
+extension Scheduler {
+    private func inRangePredicate(for range: Range<Date>) -> Predicate<Task> {
+        #Predicate<Task> { task in
+            if let effectiveTo = task.nextVersion?.effectiveFrom {
+                // This basically boils down to
+                // let taskRange = task.effectiveFrom...<effectiveTo
+                // return taskRange.overlaps(range)
+
+                task.effectiveFrom < range.upperBound
+                    && range.lowerBound < effectiveTo
+            } else {
+                // task lifetime is effectively an `PartialRangeFrom`. So all we do is to check if the `range` overlaps with the lower bound
+                task.effectiveFrom < range.upperBound
+            }
+        }
+    }
+
+    private func inClosedRangePredicate(for range: ClosedRange<Date>) -> Predicate<Task> {
+        // see comments above for an explanation
+        #Predicate<Task> { task in
+            if let effectiveTo = task.nextVersion?.effectiveFrom {
+                task.effectiveFrom <= range.upperBound
+                    && range.lowerBound < effectiveTo
+            } else {
+                // task lifetime is effectively an `PartialRangeFrom`. So all we do is to check if the closed `range` overlaps with the lower bound
+                task.effectiveFrom <= range.upperBound
+            }
+        }
+    }
+}
+
+
+// MARK: - Error
+
+extension Scheduler {
+    public enum DataError: Error {
+        /// No model container present.
+        ///
+        /// The container failed to initialize at startup. The `underlying` error is the error occurred when trying to initialize the container.
+        /// The `underlying` is `nil` if the container was accessed before ``Scheduler/configure()`` was called.
+        case invalidContainer(_ underlying: (any Error)?)
+        /// An updated Task cannot shadow the outcomes of a previous task version.
+        ///
+        /// Make sure the ``Task/effectiveFrom`` date is larger than the start that of the latest completed event.
+        case shadowingPreviousOutcomes
+        /// Trying to modify a task that is already super-seeded by a newer version.
+        ///
+        /// This error is thrown if you are trying to modify a task version that is already outdated. Make sure to always apply updates to the newest version of a task.
+        case nextVersionAlreadyPresent
+    }
+}
+
+
+extension Scheduler.DataError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .invalidContainer:
+            String(localized: "Invalid Container")
+        case .shadowingPreviousOutcomes:
+            String(localized: "Shadowing previous Outcomes")
+        case .nextVersionAlreadyPresent:
+            String(localized: "Outdated Task")
+        }
+    }
+
+    public var failureReason: String? {
+        switch self {
+        case .invalidContainer:
+            String(localized: "The underlying storage container failed to initialize.")
+        case .shadowingPreviousOutcomes:
+            String(localized: "An updated Task cannot shadow the outcomes of a previous task version.")
+        case .nextVersionAlreadyPresent:
+            String(localized: "Only the latest version of a task can be changed.")
+        }
+    }
+}
+
+
+// swiftlint:disable:this file_length

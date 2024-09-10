@@ -23,9 +23,25 @@ import SwiftData
 /// and set the ``effectiveFrom`` to indicate the date and time at which the updated version becomes effective. Only the newest task version can be modified.
 /// You can retrieve the chain of versions using the ``previousVersion`` and ``nextVersion`` properties.
 ///
-/// ### Additional Information
+/// ### Storing Additional Information
 ///
-/// Tasks support storing additional metadata information. 
+/// Tasks support storing additional metadata information.
+///
+/// - Tip: Refer to the ``Property()`` macro on how to create new data types that can be stored alongside a task.
+///
+/// You can set additional information by supplying an additional closure that modifies the ``Context`` when creating or updating a task.
+/// The code example below assume that the `measurementType` exists to store the type of measurement the user should record to complete the task.
+///
+/// ```swift
+/// try scheduler.createOrUpdateTask(
+///     id: "record-measurement",
+///     title: "Weight Measurement",
+///     instructions: "Perform a new weight measurement with your bluetooth scale.",
+///     schedule: .daily(hour: 8, minute: 30, startingAt: .today)
+/// ) { context in
+///     context.measurementType = .weight
+/// }
+/// ```
 ///
 /// ## Topics
 /// ### Properties
@@ -34,10 +50,12 @@ import SwiftData
 /// - ``instructions``
 /// - ``category``
 /// - ``schedule``
+/// - ``tags``
+/// - ``outcomes``
 ///
-/// ### Modify a task
-/// - ``ILScheduler/createOrUpdateTask(id:title:instructions:schedule:effectiveFrom:with:)``
-/// - ``createUpdatedVersion(title:instructions:schedule:effectiveFrom:with:)``
+/// ### Modifying a task
+/// - ``Scheduler/createOrUpdateTask(id:title:instructions:category:schedule:tags:effectiveFrom:with:)``
+/// - ``createUpdatedVersion(title:instructions:category:schedule:tags:effectiveFrom:with:)``
 ///
 /// ### Storing additional information
 /// - ``Context``
@@ -47,17 +65,18 @@ import SwiftData
 /// - ``effectiveFrom``
 /// - ``nextVersion``
 /// - ``previousVersion``
+/// - ``isLatestVersion``
 @Model
 @dynamicMemberLookup
-public final class ILTask { // TODO: complete Additional Information chapter once that is fully thought out!
+public final class Task {
     /// The `nextVersion` must be unique. `id` must be unique in combination with the `nextVersion` (e.g., no two task with the same id that have a next version of `nil`).
-    #Unique<ILTask>([\.nextVersion], [\.id, \.nextVersion])
+    #Unique<Task>([\.nextVersion], [\.id, \.nextVersion])
 
     /// Create an index for efficient queries.
     ///
     /// - Index on `id`.
     /// - Index on `effectiveFrom` and `nextVersion` (used for queryTask(...)).
-    #Index<ILTask>([\.id], [\.effectiveFrom], [\.effectiveFrom, \.nextVersion])
+    #Index<Task>([\.id], [\.effectiveFrom], [\.effectiveFrom, \.nextVersion])
 
     /// The identifier for this task.
     ///
@@ -76,9 +95,13 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
     public private(set) var category: Category?
 
     /// The schedule for the events of this Task.
-    public private(set) var schedule: ILSchedule
+    public private(set) var schedule: Schedule
 
-    // TODO: should we support tags?
+    /// Tags associated with the task.
+    ///
+    /// This is a custom list of tags that can be useful to categorize or group tasks and make it easier to query
+    /// a certain set of related tasks.
+    public private(set) var tags: [String]
 
     /// The list of outcomes associated with this Task.
     ///
@@ -99,13 +122,13 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
     ///
     /// The ``effectiveFrom`` date specifies when the previous task is considered outdated and
     /// is replaced by this task.
-    @Relationship(inverse: \ILTask.nextVersion)
-    public private(set) var previousVersion: ILTask?
+    @Relationship(inverse: \Task.nextVersion)
+    public private(set) var previousVersion: Task?
     /// A reference to a new version of this task.
     ///
     /// If not `nil`, this reference specifies the next version of this task.
     @Relationship(deleteRule: .deny)
-    public private(set) var nextVersion: ILTask?
+    public private(set) var nextVersion: Task?
 
     /// Additional userInfo stored alongside the task.
     private(set) var userInfo: UserInfoStorage<TaskAnchor>
@@ -116,7 +139,8 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
         title: String.LocalizationValue,
         instructions: String.LocalizationValue,
         category: Category?,
-        schedule: ILSchedule,
+        schedule: Schedule,
+        tags: [String],
         effectiveFrom: Date,
         context: Context
     ) {
@@ -126,6 +150,7 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
         self.category = category
         self.schedule = schedule
         self.outcomes = []
+        self.tags = tags
         self.effectiveFrom = effectiveFrom
         self.userInfo = context.userInfo
         self.userInfoCache = context.userInfoCache
@@ -136,7 +161,8 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
         title: String.LocalizationValue,
         instructions: String.LocalizationValue,
         category: Category?,
-        schedule: ILSchedule,
+        schedule: Schedule,
+        tags: [String],
         effectiveFrom: Date,
         with contextClosure: (inout Context) -> Void = { _ in }
     ) {
@@ -149,6 +175,7 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
             instructions: instructions,
             category: category,
             schedule: schedule,
+            tags: tags,
             effectiveFrom: effectiveFrom,
             context: context
         )
@@ -160,7 +187,9 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
     /// - Parameters:
     ///   - title: The updated title or `nil` if the title should not be updated.
     ///   - instructions: The updated instructions or `nil` if the instructions should not be updated.
+    ///   - category: The user-visible category information of a task.
     ///   - schedule: The updated schedule or `nil` if the schedule should not be updated.
+    ///   - tags: Custom tags associated with the task.
     ///   - effectiveFrom: The date this update is effective from.
     ///   - contextClosure: The updated context or `nil` if the context should not be updated.
     /// - Returns: Returns the latest version of the `task` and if the task was updated or created indicated by `didChange`.
@@ -168,10 +197,11 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
         title: String.LocalizationValue? = nil,
         instructions: String.LocalizationValue? = nil,
         category: Category? = nil,
-        schedule: ILSchedule? = nil,
+        schedule: Schedule? = nil,
+        tags: [String]? = nil, // swiftlint:disable:this discouraged_optional_collection
         effectiveFrom: Date = .now,
         with contextClosure: ((inout Context) -> Void)? = nil
-    ) throws -> (task: ILTask, didChange: Bool) {
+    ) throws -> (task: Task, didChange: Bool) {
         try createUpdatedVersion(
             skipShadowCheck: false,
             title: title,
@@ -188,10 +218,11 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
         title: String.LocalizationValue? = nil,
         instructions: String.LocalizationValue? = nil,
         category: Category? = nil,
-        schedule: ILSchedule? = nil,
+        schedule: Schedule? = nil,
+        tags: [String]? = nil, // swiftlint:disable:this discouraged_optional_collection
         effectiveFrom: Date = .now,
         with contextClosure: ((inout Context) -> Void)? = nil
-    ) throws -> (task: ILTask, didChange: Bool) {
+    ) throws -> (task: Task, didChange: Bool) {
         let context: Context?
         if let contextClosure {
             var context0 = Context()
@@ -201,7 +232,7 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
             context = nil
         }
 
-        func didChange<V: Equatable>(_ value: V?, for keyPath: KeyPath<ILTask, V>) -> Bool {
+        func didChange<V: Equatable>(_ value: V?, for keyPath: KeyPath<Task, V>) -> Bool {
             value != nil && value != self[keyPath: keyPath]
         }
 
@@ -209,12 +240,13 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
                 || didChange(instructions, for: \.instructions)
                 || didChange(category, for: \.category)
                 || didChange(schedule, for: \.schedule)
+                || didChange(tags, for: \.tags)
                 || didChange(context?.userInfo, for: \.userInfo) else {
             return (self, false) // nothing changed
         }
 
         if nextVersion != nil {
-            throw ILScheduler.DataError.nextVersionAlreadyPresent
+            throw Scheduler.DataError.nextVersionAlreadyPresent
         }
 
         // Caller signaled it already performed this check. Great to avoid lazily loading ALL associated outcomes.
@@ -223,16 +255,17 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
                 outcome.occurrenceStartDate < effectiveFrom
             }) else {
                 // an updated task cannot shadow already recorded outcomes of a previous task version
-                throw ILScheduler.DataError.shadowingPreviousOutcomes
+                throw Scheduler.DataError.shadowingPreviousOutcomes
             }
         }
 
-        let newVersion = ILTask(
+        let newVersion = Task(
             id: id,
             title: title ?? self.title,
             instructions: instructions ?? self.instructions,
             category: category ?? self.category,
             schedule: schedule ?? self.schedule,
+            tags: tags ?? self.tags,
             effectiveFrom: effectiveFrom,
             context: context ?? Context()
         )
@@ -262,7 +295,7 @@ public final class ILTask { // TODO: complete Additional Information chapter onc
 }
 
 
-extension ILTask {
+extension Task {
     /// Additional context information stored alongside the task.
     public struct Context {
         private class Box {
@@ -286,9 +319,10 @@ extension ILTask {
             self.box = Box(userInfoCache: userInfoCache)
         }
 
-        /// Retrieve the value for a given task storage key.
+        /// Retrieve or set the value for a given storage key.
         /// - Parameter source: The storage key type.
         /// - Returns: The value or `nil` if there isn't currently a value stored in the context.
+        @_documentation(visibility: internal)
         public subscript<Source: TaskStorageKey>(_ source: Source.Type) -> Source.Value? {
             get {
                 userInfo.get(source, cache: &box.userInfoCache)
@@ -297,12 +331,27 @@ extension ILTask {
                 userInfo.set(source, value: newValue, cache: &box.userInfoCache)
             }
         }
-        // TODO: overload for computed, default providing knowledge sources etc?
+
+
+        /// Retrieve or set the value for a given storage key.
+        /// - Parameters:
+        ///   - source: The storage key type.
+        ///   - defaultValue: A default value that is returned if there isn't a value stored.
+        /// - Returns: The value or the default value if there isn't currently a value stored in the context.
+        @_documentation(visibility: internal)
+        public subscript<Source: TaskStorageKey>(_ source: Source.Type, default defaultValue: @autoclosure () -> Source.Value) -> Source.Value {
+            get {
+                userInfo.get(source, cache: &box.userInfoCache) ?? defaultValue()
+            }
+            set {
+                userInfo.set(source, value: newValue, cache: &box.userInfoCache)
+            }
+        }
     }
 }
 
 
-extension ILTask: CustomStringConvertible {
+extension Task: CustomStringConvertible {
     public var description: String {
         """
         Task(\

@@ -14,7 +14,7 @@ import SwiftUI
 
 /// Query events in your SwiftUI view.
 ///
-/// Use this property wrapper in your SwiftUI view to query a list of ``ILEvent``s for a given date range.
+/// Use this property wrapper in your SwiftUI view to query a list of ``Event``s for a given date range.
 ///
 /// ```swift
 /// struct EventList: View {
@@ -45,7 +45,7 @@ import SwiftUI
 public struct EventQuery {
     private struct Configuration {
         let range: Range<Date>
-        let taskPredicate: Predicate<ILTask>
+        let taskPredicate: Predicate<Task>
     }
 
     @Observable
@@ -54,7 +54,7 @@ public struct EventQuery {
         var viewUpdate: UInt64 = 0
         @ObservationIgnored var cancelable: AnyCancellable?
 
-        @ObservationIgnored var fetchedEvents: [ILEvent] = []
+        @ObservationIgnored var fetchedEvents: [Event] = []
         @ObservationIgnored var fetchedIdentifiers: Set<PersistentIdentifier> = []
     }
 
@@ -82,7 +82,7 @@ public struct EventQuery {
     }
 
 
-    @Environment(ILScheduler.self)
+    @Environment(Scheduler.self)
     private var scheduler
 
     private let configuration: Configuration
@@ -93,7 +93,7 @@ public struct EventQuery {
     ///
     /// If the most recent fetch failed due to a ``Binding/fetchError``, this property hold the results from the last successful fetch. If the first fetch attempt fails,
     /// an empty array is returned.
-    public var wrappedValue: [ILEvent] {
+    public var wrappedValue: [Event] {
         _ = storage.viewUpdate // access the viewUpdate to make sure the view is tied to this observable
         return storage.fetchedEvents
     }
@@ -108,10 +108,10 @@ public struct EventQuery {
     /// Create a new event query.
     /// - Parameters:
     ///   - range: The date range to query events for.
-    ///   - predicate: An additional ``ILTask`` predicate.
+    ///   - predicate: An additional ``Task`` predicate.
     public init(
         in range: Range<Date>,
-        predicate: Predicate<ILTask> = #Predicate { _ in true }
+        predicate: Predicate<Task> = #Predicate { _ in true }
     ) {
         self.configuration = Configuration(range: range, taskPredicate: predicate)
     }
@@ -160,6 +160,8 @@ extension EventQuery: DynamicProperty {
                 try scheduler.queryEventsAnchor(for: configuration.range, predicate: configuration.taskPredicate)
             }
 
+            print("Queried \(anchor.count) event anchors!: \(anchor.map { $0.entityName }.joined(separator: ", "))")
+
             guard anchor != storage.fetchedIdentifiers else {
                 return
             }
@@ -172,6 +174,8 @@ extension EventQuery: DynamicProperty {
                 // type of the property wrapper to return a collection of type `FetchResultsCollection`.
                 try scheduler.queryEvents(for: configuration.range, predicate: configuration.taskPredicate)
             }
+
+            print("Queried \(events.count) events!")
 
             storage.fetchedEvents = events
             storage.fetchedIdentifiers = anchor
@@ -194,7 +198,7 @@ func measure<T, C: Clock>(
     let start = clock.now
     let result = try action()
     let end = clock.now
-    logger.debug("Performing \(name()) took \(end.duration(to: start))")
+    logger.debug("Performing \(name()) took \(start.duration(to: end))")
     return result
     #else
     try action()

@@ -7,6 +7,7 @@
 //
 
 import SpeziScheduler
+import SpeziViews
 import SwiftUI
 
 
@@ -15,7 +16,11 @@ struct ScheduleView: View {
     @EventQuery(in: Date.today..<Date.tomorrow)
     private var events
 
+    @Environment(SchedulerModel.self)
+    private var model
+
     var body: some View {
+        @Bindable var model = model
         NavigationStack {
             Group {
                 if events.isEmpty {
@@ -25,24 +30,14 @@ struct ScheduleView: View {
                         description: Text("Currently there are no upcoming events.")
                     )
                 } else {
-                    // TODO: today and tomorrow headings!
+                    // TODO: today and tomorrow headings!?
                     List(events) { event in
                         InstructionsTile(event)
-                        // TODO: completing event is not really great!
-
-                        /*
-                        CompletedTile {
-                            Text(event.task.title)
-                                .font(.headline)
-                        } description: {
-                            // TODO: completed description?
-                            Text(event.task.instructions)
-                                .font(.callout)
-                        }*/
                     }
                 }
             }
                 .navigationTitle("Schedule")
+                .viewStateAlert(state: $model.viewState)
         }
     }
 }
@@ -51,5 +46,6 @@ struct ScheduleView: View {
 #if DEBUG
 #Preview {
     ScheduleView()
+        .environment(SchedulerModel())
 }
 #endif

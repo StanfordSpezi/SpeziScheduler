@@ -14,7 +14,7 @@ import XCTSpezi
 final class ScheduleTests: XCTestCase {
     func testOnceSchedule() throws {
         let startDate: Date = try .withTestDate(hour: 9, minute: 23, second: 25)
-        let schedule: ILSchedule = .once(at: startDate, duration: .hours(2))
+        let schedule: Schedule = .once(at: startDate, duration: .hours(2))
 
         let occurrences = schedule.occurrences()
         var iterator = occurrences.makeIterator()
@@ -28,7 +28,7 @@ final class ScheduleTests: XCTestCase {
 
     func testDailyScheduleWithThreeOccurrences() throws {
         let startDate: Date = try .withTestDate(hour: 9, minute: 23, second: 25)
-        let schedule: ILSchedule = .daily(hour: 12, minute: 35, startingAt: startDate, end: .afterOccurrences(3), duration: .minutes(30))
+        let schedule: Schedule = .daily(hour: 12, minute: 35, startingAt: startDate, end: .afterOccurrences(3), duration: .minutes(30))
 
         let occurrences = schedule.occurrences()
         var iterator = occurrences.makeIterator()
@@ -51,7 +51,7 @@ final class ScheduleTests: XCTestCase {
     func testDailyScheduleWithDateEnd() throws {
         let startDate: Date = try .withTestDate(hour: 9, minute: 23, second: 25)
         let endDate = startDate.addingTimeInterval(Double(Duration.seconds(16 * 24 * 60 * 60).components.seconds))
-        let schedule: ILSchedule = .weekly(
+        let schedule: Schedule = .weekly(
             weekday: .sunday,
             hour: 12,
             minute: 35,

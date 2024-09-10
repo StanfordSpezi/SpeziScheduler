@@ -10,9 +10,21 @@ import Foundation
 
 
 /// Describes a single event of a Task.
-public struct ILEvent {
+///
+/// ## Topics
+///
+/// ### Properties
+/// - ``occurrence``
+/// - ``task``
+/// - ``outcome``
+/// - ``completed``
+///
+/// ### Completing an Event
+/// - ``complete()``
+/// - ``complete(with:)``
+public struct Event {
     enum OutcomeValue {
-        case createWith(ILScheduler)
+        case createWith(Scheduler)
         case value(Outcome)
 
         var value: Outcome? {
@@ -34,7 +46,7 @@ public struct ILEvent {
     }
 
     /// The task the event is associated with.
-    public let task: ILTask
+    public let task: Task
     /// Information about when this event occurs.
     public let occurrence: Occurrence
 
@@ -57,7 +69,7 @@ public struct ILEvent {
         outcome != nil
     }
 
-    init(task: ILTask, occurrence: Occurrence, outcome: OutcomeValue) {
+    init(task: Task, occurrence: Occurrence, outcome: OutcomeValue) {
         self.task = task
         self.occurrence = occurrence
         self.outcomeState = State(outcome)
@@ -74,7 +86,7 @@ public struct ILEvent {
     /// Complete the event with additional information.
     ///
     /// ```swift
-    /// var event: ILEvent
+    /// var event: Event
     ///
     /// event.complete {
     ///     event.myCustomData = "..."
@@ -104,12 +116,12 @@ public struct ILEvent {
 }
 
 
-extension ILEvent: Identifiable {
+extension Event: Identifiable {
     public struct ID {
-        private let taskId: ILTask.ID
+        private let taskId: Task.ID
         private let occurrenceData: Date
 
-        fileprivate init(taskId: ILTask.ID, occurrenceData: Date) {
+        fileprivate init(taskId: Task.ID, occurrenceData: Date) {
             self.taskId = taskId
             self.occurrenceData = occurrenceData
         }
@@ -121,10 +133,10 @@ extension ILEvent: Identifiable {
 }
 
 
-extension ILEvent.ID: Hashable, Sendable {}
+extension Event.ID: Hashable, Sendable {}
 
 
-extension ILEvent: CustomStringConvertible {
+extension Event: CustomStringConvertible {
     public var description: String {
         """
         Event(\

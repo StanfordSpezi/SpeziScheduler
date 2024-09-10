@@ -9,7 +9,7 @@
 import Foundation
 
 
-extension ILTask {
+extension Task {
     /// User-visible category information of a task.
     public struct Category { // TODO: make category its own model, reuse information and allow to easily migrate data!
         private let categoryLabel: String.LocalizationValue
@@ -33,10 +33,10 @@ extension ILTask {
 }
 
 
-extension ILTask.Category: Sendable, Equatable, Codable {}
+extension Task.Category: Sendable, Equatable, Codable {}
 
 
-extension ILTask.Category: ExpressibleByStringInterpolation {
+extension Task.Category: ExpressibleByStringInterpolation {
     public init(stringLiteral value: String) {
         self.init(String.LocalizationValue(stringLiteral: value))
     }

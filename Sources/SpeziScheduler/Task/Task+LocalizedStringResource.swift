@@ -43,4 +43,4 @@ extension _LocalizedStringResourceAccessors {
 // `title` and `instructions` are of type String.LocalizationValue which the SwiftUI text initializer doesn't support.
 // With this small trick we added two `title` and `instructions` property overloads with type `LocalizedStringResource`
 // which can be used with several SwiftUI initializers.
-extension ILTask: _LocalizedStringResourceAccessors {}
+extension Task: _LocalizedStringResourceAccessors {}

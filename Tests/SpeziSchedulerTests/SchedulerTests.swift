@@ -14,13 +14,12 @@ import SpeziSecureStorage
 import XCTest
 import XCTSpezi
 
-import SwiftUI // TODO: remove?
 
-final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_length
+final class SchedulerTests: XCTestCase {
     @MainActor
     func testScheduler() {
         // test simple scheduler initialization test
-        let module = ILScheduler()
+        let module = Scheduler()
         withDependencyResolution {
             module
         }
@@ -40,12 +39,12 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
 
     @MainActor
     func testSimpleTaskCreation() throws {
-        let module = ILScheduler()
+        let module = Scheduler()
         withDependencyResolution {
             module
         }
 
-        let schedule: ILSchedule = .daily(hour: 8, minute: 35, startingAt: .today)
+        let schedule: Schedule = .daily(hour: 8, minute: 35, startingAt: .today)
 
         let result = try module.createOrUpdateTask(
             id: "test-task",
@@ -77,7 +76,7 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
 
     @MainActor
     func testSimpleTaskVersioning() throws { // swiftlint:disable:this function_body_length
-        let module = ILScheduler()
+        let module = Scheduler()
         withDependencyResolution {
             module
         }
@@ -88,7 +87,7 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
         let end = try XCTUnwrap(Calendar.current.date(from: DateComponents(year: 2024, month: 9, day: 6, hour: 17, minute: 0, second: 0)))
 
         // a schedule that happens every hour at half past, starting from `date0`
-        let schedule = ILSchedule(startingAt: date0, recurrence: .hourly(calendar: .current, minutes: [30]))
+        let schedule = Schedule(startingAt: date0, recurrence: .hourly(calendar: .current, minutes: [30]))
 
         let firstVersion = try module.createOrUpdateTask(
             id: "test-task",
@@ -185,7 +184,7 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
     func testSchedulerSampleData() throws {
         let container = try SchedulerSampleData.makeSharedContext()
 
-        let scheduler = ILScheduler(testingContainer: container)
+        let scheduler = Scheduler(testingContainer: container)
         withDependencyResolution {
             scheduler
         }

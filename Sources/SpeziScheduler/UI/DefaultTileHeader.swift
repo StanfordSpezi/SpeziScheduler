@@ -12,7 +12,7 @@ import SwiftUI
 
 public struct DefaultTileHeader: View {
     private let alignment: HorizontalAlignment
-    private let event: ILEvent
+    private let event: Event
 
     public var body: some View {
         TileHeader(alignment: alignment) {
@@ -38,14 +38,14 @@ public struct DefaultTileHeader: View {
     }
 
 
-    init(_ event: ILEvent, alignment: HorizontalAlignment = .leading) {
+    init(_ event: Event, alignment: HorizontalAlignment = .leading) {
         self.event = event
         self.alignment = alignment
     }
 
 
     @ViewBuilder
-    private func subheadline(with category: ILTask.Category) -> some View {
+    private func subheadline(with category: Task.Category) -> some View {
         if alignment == .center {
             VStack(alignment: .center) {
                 Text(category.label)

@@ -14,7 +14,7 @@ import SwiftSyntaxMacrosTestSupport
 import XCTest
 
 let testMacros: [String: any Macro.Type] = [
-    "TestMacro": UserStorageEntryMacro.self // TODO: update name!
+    "Property": UserStorageEntryMacro.self
 ]
 
 
@@ -22,13 +22,26 @@ final class UserStorageEntryMacroTests: XCTestCase {
     func testExampleMacro() {
         assertMacroExpansion(
             """
-            extension ILTask.Context {
-                @TestMacro var testMacro: String?
+            extension Task.Context {
+                @Property var testMacro: String?
             }
             """,
             expandedSource:
             """
+            extension Task.Context {
+                var testMacro: String? {
+                    get {
+                        self[__Key_testMacro.self]
+                    }
+                    set {
+                        self[__Key_testMacro.self] = newValue
+                    }
+                }
             
+                private struct __Key_testMacro: TaskStorageKey {
+                    typealias Value = String
+                }
+            }
             """,
             macros: testMacros
         )
