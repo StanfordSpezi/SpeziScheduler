@@ -13,18 +13,11 @@ import SpeziLocalStorage
 import SwiftData
 import SwiftUI
 
-// TODO: can we formulate 5pm every Friday that "adjusts" to the timezone? some might want to have a fixed time?
-//  => is auto updating current the solution? => make that an issue
-// TODO: allow to specify "text" LocalizationValue (e.g., Breakfast, Lunch, etc), otherwise we use the time (and date?)?
-//  => make that an issue (a view that accepts multiple events!) => Checklist style view?
-// TODO: support showing tasks as overdue! => issue!
-// TODO: easy "mark deleted" method (that creates a new tombstone= task version with no events in the schedule). => create an issue
-// TODO: bring back support for notifications => issue!
-
 
 // TODO: UI test the following things for @EventQuery:
 //  - update if there is a new version of a Task inserted (via scheduler, via task directly)
 //  - update if the outcome is added to a task version
+// TODO: snapshot tests with different alignments + info button + with/without category
 
 
 /// Schedule and query tasks and their events.

@@ -58,7 +58,8 @@ let package = Package(
         .target(
             name: "SpeziSchedulerUI",
             dependencies: [
-                .target(name: "SpeziScheduler")
+                .target(name: "SpeziScheduler"),
+                .product(name: "SpeziViews", package: "SpeziViews")
             ],
             plugins: [] + swiftLintPlugin()
         ),

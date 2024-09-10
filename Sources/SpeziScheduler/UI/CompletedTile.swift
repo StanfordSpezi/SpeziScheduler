@@ -8,7 +8,10 @@
 
 import SwiftUI
 
+// TODO: make separate UI target
 
+
+// TODO: could be moved to SpeziViews?
 struct CompletedTile<Title: View, Description: View>: View {
     private let title: Title
     private let description: Description

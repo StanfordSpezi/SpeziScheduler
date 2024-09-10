@@ -13,7 +13,9 @@ import SwiftData
 extension Task {
     /// User-visible category information of a task.
     @Model
-    public final class Category { // TODO: make category its own model, reuse information and allow to easily migrate data!
+    public final class Category {
+        // TODO: we should build infrastructure around category creation, if we want to keep it as a model!
+        //  => maybe just an approach, where you create an category identifier and associate all the data at runtime, no need to persists visuals!
         var categoryLabel: String.LocalizationValue
         var systemName: String?
 
@@ -27,7 +29,7 @@ extension Task {
         /// - Parameters:
         ///   - label: The localized label for the category.
         ///   - systemName: An optional system image that represents the category.
-        public init(_ label: String.LocalizationValue, systemName: String? = nil) { // TODO: how to support any images?
+        public init(_ label: String.LocalizationValue, systemName: String? = nil) { // TODO: how to support regular images
             self.categoryLabel = label
             self.systemName = systemName
         }
