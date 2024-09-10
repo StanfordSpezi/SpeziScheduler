@@ -38,7 +38,7 @@ public struct DefaultTileHeader: View {
     }
 
 
-    init(_ event: Event, alignment: HorizontalAlignment = .leading) {
+    public init(_ event: Event, alignment: HorizontalAlignment = .leading) {
         self.event = event
         self.alignment = alignment
     }

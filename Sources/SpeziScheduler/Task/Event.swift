@@ -37,7 +37,8 @@ public struct Event {
         }
     }
 
-    private class State {
+    @Observable
+    fileprivate class State {
         var outcome: OutcomeValue
 
         init(_ outcome: OutcomeValue) {
@@ -79,7 +80,8 @@ public struct Event {
     ///
     /// Does nothing if the event is already completed.
     @MainActor
-    public func complete() {
+    @discardableResult
+    public func complete() -> Outcome {
         self.complete { _ in }
     }
     
@@ -97,7 +99,8 @@ public struct Event {
     ///
     /// - Parameter closure: A closure that allows setting properties of the outcome.
     @MainActor
-    public func complete(with closure: (Outcome) -> Void) {
+    @discardableResult
+    public func complete(with closure: (Outcome) -> Void) -> Outcome {
         switch outcomeState.outcome {
         case let .createWith(scheduler):
             let outcome = Outcome(task: task, occurrence: occurrence)
@@ -108,9 +111,11 @@ public struct Event {
             // Makes sure this is saved instantly. Only after models are fully saved, they are made available in the `outcomes`
             // property of the task. Also saving makes sure an @EventQuery would be instantly refreshed.
             scheduler.addOutcome(outcome)
+            return outcome
         case let .value(outcome):
             // allows to merge additional properties
             closure(outcome)
+            return outcome
         }
     }
 }

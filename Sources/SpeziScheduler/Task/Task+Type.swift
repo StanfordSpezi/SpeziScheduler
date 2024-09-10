@@ -7,13 +7,15 @@
 //
 
 import Foundation
+import SwiftData
 
 
 extension Task {
     /// User-visible category information of a task.
-    public struct Category { // TODO: make category its own model, reuse information and allow to easily migrate data!
-        private let categoryLabel: String.LocalizationValue
-        let systemName: String?
+    @Model
+    public final class Category { // TODO: make category its own model, reuse information and allow to easily migrate data!
+        var categoryLabel: String.LocalizationValue
+        var systemName: String?
 
         /// The localized category label.
         public var label: LocalizedStringResource {
@@ -33,15 +35,15 @@ extension Task {
 }
 
 
-extension Task.Category: Sendable, Equatable, Codable {}
+extension Task.Category: Equatable {}
 
 
 extension Task.Category: ExpressibleByStringInterpolation {
-    public init(stringLiteral value: String) {
+    public convenience init(stringLiteral value: String) {
         self.init(String.LocalizationValue(stringLiteral: value))
     }
 
-    public init(stringInterpolation: String.LocalizationValue.StringInterpolation) {
+    public convenience init(stringInterpolation: String.LocalizationValue.StringInterpolation) {
         self.init(String.LocalizationValue(stringInterpolation: stringInterpolation))
     }
 }

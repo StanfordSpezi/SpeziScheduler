@@ -160,8 +160,6 @@ extension EventQuery: DynamicProperty {
                 try scheduler.queryEventsAnchor(for: configuration.range, predicate: configuration.taskPredicate)
             }
 
-            print("Queried \(anchor.count) event anchors!: \(anchor.map { $0.entityName }.joined(separator: ", "))")
-
             guard anchor != storage.fetchedIdentifiers else {
                 return
             }
@@ -174,8 +172,6 @@ extension EventQuery: DynamicProperty {
                 // type of the property wrapper to return a collection of type `FetchResultsCollection`.
                 try scheduler.queryEvents(for: configuration.range, predicate: configuration.taskPredicate)
             }
-
-            print("Queried \(events.count) events!")
 
             storage.fetchedEvents = events
             storage.fetchedIdentifiers = anchor

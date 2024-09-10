@@ -36,9 +36,16 @@ final class TestAppScheduler: Module {
                 id: "test-task",
                 title: "Social Support Questionnaire",
                 instructions: "Please fill out the Social Support Questionnaire every day.",
+                category: Task.Category("Questionnaire", systemName: "list.clipboard.fill"),
                 schedule: .daily(hour: 16, minute: 0, startingAt: .today),
                 effectiveFrom: .today
-            )
+            ) { context in
+                context.about = """
+                                The Social Support Questionnaire (SSQ) measures the availability and satisfaction of a person’s social support. \
+                                It helps assess the strength of social networks, which are crucial for mental health, stress reduction, \
+                                and overall well-being.
+                                """
+            }
         } catch {
             model.viewState = .error(AnyLocalizedError(
                 error: error,

@@ -52,6 +52,7 @@ public struct InstructionsTile<Header: View, Info: View>: View {
             }
         }
             .buttonStyle(.borderless)
+            .accessibilityLabel("More Information")
     }
 
     public var body: some View {
@@ -93,16 +94,28 @@ public struct InstructionsTile<Header: View, Info: View>: View {
                 .sheet(isPresented: $presentingMoreInformation) {
                     moreInformation
                 }
+                .accessibilityAction(named: Text("More Information")) {
+                    presentingMoreInformation = true
+                }
         }
     }
-
+    
+    /// Create a new instructions tile with an action button, custom header view and optional details view.
+    /// - Parameters:
+    ///   - event: The event instance.
+    ///   - alignment: The horizontal alignment of the tile.
+    ///   - customActionLabel: A custom label for the action button. Otherwise, a generic default value will be used.
+    ///   - header: A custom header that is shown on the top of the tile. You can use the ``TileHeader`` view as a basis for your implementation.
+    ///   - more: An optional view that is presented as a sheet if the user presses the "more information" button. The view can be used to provide additional explanation or instructions
+    ///         for a task.
+    ///   - action: The closure that is executed if the action button is pressed.
     public init(
         _ event: Event,
         alignment: HorizontalAlignment = .leading,
         actionLabel customActionLabel: Text? = nil,
         @ViewBuilder header: () -> Header,
         @ViewBuilder more: () -> Info = { EmptyView() },
-        perform action: @escaping () -> Void
+        action: @escaping () -> Void
     ) {
         self.alignment = alignment
         self.event = event
@@ -111,7 +124,14 @@ public struct InstructionsTile<Header: View, Info: View>: View {
         self.actionClosure = action
         self.customActionLabel = customActionLabel
     }
-
+    
+    /// Create a new instructions tile with a custom header and an optional details view.
+    /// - Parameters:
+    ///   - event: The event instance.
+    ///   - alignment: The horizontal alignment of the tile.
+    ///   - header: A custom header that is shown on the top of the tile. You can use the ``TileHeader`` view as a basis for your implementation.
+    ///   - more: An optional view that is presented as a sheet if the user presses the "more information" button. The view can be used to provide additional explanation or instructions
+    ///         for a task.
     public init(
         _ event: Event,
         alignment: HorizontalAlignment = .leading,
@@ -125,13 +145,23 @@ public struct InstructionsTile<Header: View, Info: View>: View {
         self.actionClosure = nil
         self.customActionLabel = nil
     }
-
+    
+    /// Create a new instructions tile with an action button and optional details view.
+    ///
+    /// This initializers uses the ``DefaultTileHeader``.
+    /// - Parameters:
+    ///   - event: The event instance.
+    ///   - alignment: The horizontal alignment of the tile.
+    ///   - customActionLabel: A custom label for the action button. Otherwise, a generic default value will be used.
+    ///   - more: An optional view that is presented as a sheet if the user presses the "more information" button. The view can be used to provide additional explanation or instructions
+    ///         for a task.
+    ///   - action: The closure that is executed if the action button is pressed.
     public init(
         _ event: Event,
         alignment: HorizontalAlignment = .leading,
         actionLabel customActionLabel: Text? = nil,
         @ViewBuilder more: () -> Info = { EmptyView() },
-        perform action: @escaping () -> Void
+        action: @escaping () -> Void
     ) where Header == DefaultTileHeader {
         self.init(
             event,
@@ -139,10 +169,18 @@ public struct InstructionsTile<Header: View, Info: View>: View {
             actionLabel: customActionLabel,
             header: { DefaultTileHeader(event, alignment: alignment) },
             more: more,
-            perform: action
+            action: action
         )
     }
-
+    
+    /// Create a new instructions tile with an optional details view.
+    ///
+    /// This initializers uses the ``DefaultTileHeader``.
+    /// - Parameters:
+    ///   - event: The event instance.
+    ///   - alignment: The horizontal alignment of the tile.
+    ///   - more: An optional view that is presented as a sheet if the user presses the "more information" button. The view can be used to provide additional explanation or instructions
+    ///         for a task.
     public init(
         _ event: Event,
         alignment: HorizontalAlignment = .leading,
@@ -181,7 +219,7 @@ public struct InstructionsTile<Header: View, Info: View>: View {
         List {
             InstructionsTile(first, alignment: .center) {
                 Text("More information about the task!")
-            } perform: {
+            } action: {
                 first.complete()
             }
         }

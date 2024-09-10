@@ -15,6 +15,7 @@
 		2FE0B6E72A14C65900818AE9 /* SpeziScheduler in Frameworks */ = {isa = PBXBuildFile; productRef = 2FE0B6E62A14C65900818AE9 /* SpeziScheduler */; };
 		2FE0B6EA2A14D82600818AE9 /* XCTestExtensions in Frameworks */ = {isa = PBXBuildFile; productRef = 2FE0B6E92A14D82600818AE9 /* XCTestExtensions */; };
 		A98B09C42C90913F0076E99A /* TestAppScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98B09C32C9091390076E99A /* TestAppScheduler.swift */; };
+		A98B09C62C90B02B0076E99A /* Task+About.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98B09C52C90B0260076E99A /* Task+About.swift */; };
 		A9C2951D2C899FA10038EF1B /* ScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C2951C2C899FA10038EF1B /* ScheduleView.swift */; };
 /* End PBXBuildFile section */
 
@@ -38,6 +39,7 @@
 		2FB0758A299DDB9000C0B37F /* TestApp.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = TestApp.xctestplan; sourceTree = "<group>"; };
 		2FE0B6E52A14C64E00818AE9 /* SpeziScheduler */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = SpeziScheduler; path = ../..; sourceTree = "<group>"; };
 		A98B09C32C9091390076E99A /* TestAppScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestAppScheduler.swift; sourceTree = "<group>"; };
+		A98B09C52C90B0260076E99A /* Task+About.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Task+About.swift"; sourceTree = "<group>"; };
 		A9C2951C2C899FA10038EF1B /* ScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -86,6 +88,7 @@
 		2F6D139428F5F384007C25D6 /* TestApp */ = {
 			isa = PBXGroup;
 			children = (
+				A98B09C52C90B0260076E99A /* Task+About.swift */,
 				A98B09C32C9091390076E99A /* TestAppScheduler.swift */,
 				A9C2951C2C899FA10038EF1B /* ScheduleView.swift */,
 				2FA7382B290ADFAA007ACEB9 /* TestApp.swift */,
@@ -220,6 +223,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2F9F4D8529B80A1500ABE259 /* TestAppDelegate.swift in Sources */,
+				A98B09C62C90B02B0076E99A /* Task+About.swift in Sources */,
 				A98B09C42C90913F0076E99A /* TestAppScheduler.swift in Sources */,
 				A9C2951D2C899FA10038EF1B /* ScheduleView.swift in Sources */,
 				2FA7382C290ADFAA007ACEB9 /* TestApp.swift in Sources */,

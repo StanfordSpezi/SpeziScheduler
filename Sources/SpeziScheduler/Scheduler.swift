@@ -477,10 +477,6 @@ extension Scheduler {
     private func inRangePredicate(for range: Range<Date>) -> Predicate<Task> {
         #Predicate<Task> { task in
             if let effectiveTo = task.nextVersion?.effectiveFrom {
-                // This basically boils down to
-                // let taskRange = task.effectiveFrom...<effectiveTo
-                // return taskRange.overlaps(range)
-
                 task.effectiveFrom < range.upperBound
                     && range.lowerBound < effectiveTo
             } else {
@@ -491,7 +487,6 @@ extension Scheduler {
     }
 
     private func inClosedRangePredicate(for range: ClosedRange<Date>) -> Predicate<Task> {
-        // see comments above for an explanation
         #Predicate<Task> { task in
             if let effectiveTo = task.nextVersion?.effectiveFrom {
                 task.effectiveFrom <= range.upperBound
