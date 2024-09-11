@@ -132,39 +132,21 @@ extension UserStorageEntryMacro: PeerMacro {
             }
         }
 
-        let modifier: TokenSyntax? = variableDeclaration.modifiers
-            .compactMap { (modifier: DeclModifierSyntax) -> TokenSyntax? in
-                guard case let .keyword(keyword) = modifier.name.tokenKind else {
-                    return nil
-                }
-
-                switch keyword {
-                case .internal, .private, .fileprivate, .public:
-                    return .keyword(keyword)
-                default:
-                    return nil
-                }
-            }
-            .first // there is only ever one
-
-        let rawModifier = modifier.map { $0.text + " " } ?? ""
-
         let key = StructDeclSyntax(
-            modifiers: modifier.map { [DeclModifierSyntax(name: $0)] } ?? [],
+            modifiers: [DeclModifierSyntax(name: "private")],
             name: "__Key_\(identifier)",
             inheritanceClause: InheritanceClauseSyntax(inheritedTypes: InheritedTypeListSyntax {
                 InheritedTypeSyntax(type: IdentifierTypeSyntax(name: keyProtocol))
             })
         ) {
             TypeAliasDeclSyntax(
-                modifiers: modifier.map { [DeclModifierSyntax(name: $0)] } ?? [],
                 name: "Value",
                 initializer: TypeInitializerClauseSyntax(value: valueTypeInitializer),
                 trailingTrivia: .newlines(2)
             )
 
             """
-            \(raw: rawModifier)static let identifier: String = "\(identifier)"
+            static let identifier: String = "\(identifier)"
             """
         }
 
