@@ -57,7 +57,7 @@ extension UserStorageEntryMacro: AccessorMacro {
 
 
 extension UserStorageEntryMacro: PeerMacro {
-    public static func expansion( // swiftlint:disable:this function_body_length cyclomatic_complexity
+    public static func expansion( // swiftlint:disable:this function_body_length
         of node: AttributeSyntax,
         providingPeersOf declaration: some DeclSyntaxProtocol,
         in context: some MacroExpansionContext

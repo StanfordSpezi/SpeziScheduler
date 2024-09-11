@@ -15,6 +15,7 @@ import PackageDescription
 
 let package = Package(
     name: "SpeziScheduler",
+    defaultLocalization: "en",
     platforms: [
         .iOS(.v18),
         .macOS(.v15),
@@ -22,12 +23,13 @@ let package = Package(
         .watchOS(.v11)
     ],
     products: [
-        .library(name: "SpeziScheduler", targets: ["SpeziScheduler"])
+        .library(name: "SpeziScheduler", targets: ["SpeziScheduler"]),
+        .library(name: "SpeziSchedulerUI", targets: ["SpeziSchedulerUI"])
     ],
     dependencies: [
         .package(url: "https://github.com/StanfordSpezi/SpeziFoundation", from: "2.0.0-beta.2"),
         .package(url: "https://github.com/StanfordSpezi/Spezi", from: "1.7.0"),
-        .package(url: "https://github.com/StanfordSpezi/SpeziViews", from: "1.6.0"),
+        .package(url: "https://github.com/StanfordSpezi/SpeziViews", branch: "feature/additional-infrastructure"),
         .package(url: "https://github.com/StanfordSpezi/SpeziStorage", from: "1.1.2"),
         .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0-prerelease-2024-08-14")
     ] + swiftLintPackage(),
@@ -50,9 +52,6 @@ let package = Package(
                 .product(name: "SpeziViews", package: "SpeziViews"),
                 .product(name: "SpeziLocalStorage", package: "SpeziStorage")
             ],
-            resources: [
-                .process("Resources")
-            ],
             plugins: [] + swiftLintPlugin()
         ),
         .target(
@@ -60,6 +59,9 @@ let package = Package(
             dependencies: [
                 .target(name: "SpeziScheduler"),
                 .product(name: "SpeziViews", package: "SpeziViews")
+            ],
+            resources: [
+                .process("Resources")
             ],
             plugins: [] + swiftLintPlugin()
         ),

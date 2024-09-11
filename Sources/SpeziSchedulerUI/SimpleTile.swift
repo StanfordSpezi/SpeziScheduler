@@ -12,13 +12,16 @@ import SwiftUI
 struct TileAction<Label: View> {
     let action: () -> Void
     let label: Label
+    let disabled: Bool
 
-    init(action: @escaping () -> Void, label: Label) {
+    init(action: @escaping () -> Void, label: Label, disabled: Bool = false) {
         self.action = action
         self.label = label
+        self.disabled = disabled
     }
 
-    init(action: @escaping () -> Void, @ViewBuilder label: () -> Label) {
+    init(disabled: Bool = false, action: @escaping () -> Void, @ViewBuilder label: () -> Label) {
+        self.disabled = disabled
         self.action = action
         self.label = label()
     }
@@ -40,6 +43,7 @@ struct SimpleTile<Header: View, Footer: View, ActionLabel: View>: View {
                     action.label
                         .frame(maxWidth: .infinity, minHeight: 30)
                 }
+                    .disabled(action.disabled)
                     .buttonStyle(.borderedProminent)
                     .padding(.top, 8)
             }

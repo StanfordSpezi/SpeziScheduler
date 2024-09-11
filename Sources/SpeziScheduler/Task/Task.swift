@@ -54,8 +54,8 @@ import SwiftData
 /// - ``outcomes``
 ///
 /// ### Modifying a task
-/// - ``Scheduler/createOrUpdateTask(id:title:instructions:category:schedule:tags:effectiveFrom:with:)``
-/// - ``createUpdatedVersion(title:instructions:category:schedule:tags:effectiveFrom:with:)``
+/// - ``Scheduler/createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)``
+/// - ``createUpdatedVersion(title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)``
 ///
 /// ### Storing additional information
 /// - ``Context``
@@ -96,6 +96,9 @@ public final class Task {
 
     /// The schedule for the events of this Task.
     public private(set) var schedule: Schedule
+
+    /// The policy to decide when an event can be completed by the user.
+    public private(set) var completionPolicy: AllowedCompletionPolicy
 
     /// Tags associated with the task.
     ///
@@ -140,6 +143,7 @@ public final class Task {
         instructions: String.LocalizationValue,
         category: Category?,
         schedule: Schedule,
+        completionPolicy: AllowedCompletionPolicy,
         tags: [String],
         effectiveFrom: Date,
         context: Context
@@ -149,6 +153,7 @@ public final class Task {
         self.instructions = instructions
         self.category = category
         self.schedule = schedule
+        self.completionPolicy = completionPolicy
         self.outcomes = []
         self.tags = tags
         self.effectiveFrom = effectiveFrom
@@ -162,6 +167,7 @@ public final class Task {
         instructions: String.LocalizationValue,
         category: Category?,
         schedule: Schedule,
+        completionPolicy: AllowedCompletionPolicy,
         tags: [String],
         effectiveFrom: Date,
         with contextClosure: (inout Context) -> Void = { _ in }
@@ -175,6 +181,7 @@ public final class Task {
             instructions: instructions,
             category: category,
             schedule: schedule,
+            completionPolicy: completionPolicy,
             tags: tags,
             effectiveFrom: effectiveFrom,
             context: context
@@ -183,12 +190,16 @@ public final class Task {
 
     /// Create a new version of this task if any of the provided values differ.
     ///
+    /// - Warning: `title` and `instructions` are localizable strings. If you change any of these properties, make sure to maintain the previous
+    ///     keys in your String catalog to make sure that previous versions maintain to get displayed for existing users of your application.
+    ///
     /// A new version of this task is created, if any of the provided parameters differs from the current value of this version of the task.
     /// - Parameters:
     ///   - title: The updated title or `nil` if the title should not be updated.
     ///   - instructions: The updated instructions or `nil` if the instructions should not be updated.
     ///   - category: The user-visible category information of a task.
     ///   - schedule: The updated schedule or `nil` if the schedule should not be updated.
+    ///   - completionPolicy: The policy to decide when an event can be completed by the user.
     ///   - tags: Custom tags associated with the task.
     ///   - effectiveFrom: The date this update is effective from.
     ///   - contextClosure: The updated context or `nil` if the context should not be updated.
@@ -198,6 +209,7 @@ public final class Task {
         instructions: String.LocalizationValue? = nil,
         category: Category? = nil,
         schedule: Schedule? = nil,
+        completionPolicy: AllowedCompletionPolicy? = nil,
         tags: [String]? = nil, // swiftlint:disable:this discouraged_optional_collection
         effectiveFrom: Date = .now,
         with contextClosure: ((inout Context) -> Void)? = nil
@@ -208,6 +220,7 @@ public final class Task {
             instructions: instructions,
             category: category,
             schedule: schedule,
+            completionPolicy: completionPolicy,
             effectiveFrom: effectiveFrom,
             with: contextClosure
         )
@@ -219,6 +232,7 @@ public final class Task {
         instructions: String.LocalizationValue? = nil,
         category: Category? = nil,
         schedule: Schedule? = nil,
+        completionPolicy: AllowedCompletionPolicy? = nil,
         tags: [String]? = nil, // swiftlint:disable:this discouraged_optional_collection
         effectiveFrom: Date = .now,
         with contextClosure: ((inout Context) -> Void)? = nil
@@ -240,6 +254,7 @@ public final class Task {
                 || didChange(instructions, for: \.instructions)
                 || didChange(category, for: \.category)
                 || didChange(schedule, for: \.schedule)
+                || didChange(completionPolicy, for: \.completionPolicy)
                 || didChange(tags, for: \.tags)
                 || didChange(context?.userInfo, for: \.userInfo) else {
             return (self, false) // nothing changed
@@ -265,6 +280,7 @@ public final class Task {
             instructions: instructions ?? self.instructions,
             category: category ?? self.category,
             schedule: schedule ?? self.schedule,
+            completionPolicy: completionPolicy ?? self.completionPolicy,
             tags: tags ?? self.tags,
             effectiveFrom: effectiveFrom,
             context: context ?? Context()

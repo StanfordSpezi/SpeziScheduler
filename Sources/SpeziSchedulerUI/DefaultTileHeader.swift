@@ -6,6 +6,8 @@
 // SPDX-License-Identifier: MIT
 //
 
+@_spi(TestingSupport)
+import SpeziScheduler
 import SpeziViews
 import SwiftUI
 
@@ -14,11 +16,15 @@ public struct DefaultTileHeader: View {
     private let alignment: HorizontalAlignment
     private let event: Event
 
+    @Environment(\.taskCategoryAppearances)
+    private var taskCategoryAppearances
+
     public var body: some View {
         TileHeader(alignment: alignment) {
             if let category = event.task.category,
-               let imageName = category.systemName {
-                Image(systemName: imageName)
+               let appearance = taskCategoryAppearances[category],
+               let image = appearance.image?.image {
+                image
                     .foregroundColor(.accentColor)
                     .accessibilityHidden(true)
                     .font(.custom("Task Icon", size: alignment == .center ? 40 : 30, relativeTo: .headline))
@@ -29,8 +35,9 @@ public struct DefaultTileHeader: View {
         } title: {
             Text(event.task.title)
         } subheadline: {
-            if let category = event.task.category {
-                subheadline(with: category)
+            if let category = event.task.category,
+               let appearance = taskCategoryAppearances[category] {
+                subheadline(with: appearance)
             } else {
                 dateSubheadline()
             }
@@ -45,23 +52,23 @@ public struct DefaultTileHeader: View {
 
 
     @ViewBuilder
-    private func subheadline(with category: Task.Category) -> some View {
+    private func subheadline(with appearance: Task.Category.Appearance) -> some View {
         if alignment == .center {
             VStack(alignment: .center) {
-                Text(category.label)
+                Text(appearance.label)
                 dateSubheadline()
             }
         } else {
             ViewThatFits(in: .horizontal) {
                 HStack {
-                    Text(category.label)
+                    Text(appearance.label)
                     Spacer()
                     dateSubheadline()
                 }
                 .accessibilityElement(children: .combine)
                 .lineLimit(1)
                 VStack(alignment: .leading) {
-                    Text(category.label)
+                    Text(appearance.label)
                     dateSubheadline()
                 }
                 .accessibilityElement(children: .combine)

@@ -6,7 +6,49 @@
 // SPDX-License-Identifier: MIT
 //
 
+import Combine
+@_spi(TestingSupport)
+import SpeziScheduler
 import SwiftUI
+
+
+@Observable
+class UIUpdate { // TODO: move to SpeziViews!
+    @MainActor private var dateTimer: Timer? {
+        willSet {
+            dateTimer?.invalidate()
+        }
+    }
+
+    nonisolated init() {}
+
+    @MainActor
+    func scheduleUpdate(at date: Date) {
+        @MainActor
+        struct WeakSendingSelf: Sendable { // assumeIsolated requires a @Sendable closure, so we need to pass self via a Sendable type
+            weak var value: UIUpdate?
+
+            init(_ value: UIUpdate) {
+                self.value = value
+            }
+        }
+
+        let sendingSelf = WeakSendingSelf(self)
+
+        let timer = Timer(fire: date, interval: 0, repeats: false) { [sendingSelf] _ in
+            MainActor.assumeIsolated { [sendingSelf] in
+                sendingSelf.value?.dateTimer = nil // triggers observable mutation
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+
+        self.dateTimer = timer // triggers observable access
+    }
+
+    deinit {
+        _dateTimer?.invalidate()
+    }
+}
 
 
 public struct InstructionsTile<Header: View, Info: View>: View {
@@ -19,12 +61,15 @@ public struct InstructionsTile<Header: View, Info: View>: View {
 
     @Environment(Scheduler.self)
     private var scheduler
+    @Environment(\.taskCategoryAppearances)
+    private var taskCategoryAppearances
 
     @State private var presentingMoreInformation: Bool = false
+    @State private var actionDisabledUpdate = UIUpdate()
 
     private var action: TileAction<some View>? {
         if let actionClosure {
-            TileAction(action: actionClosure, label: actionLabel)
+            TileAction(action: actionClosure, label: actionLabel, disabled: actionDisabled)
         } else {
             nil
         }
@@ -33,11 +78,30 @@ public struct InstructionsTile<Header: View, Info: View>: View {
     private var actionLabel: some View {
         if let customActionLabel {
             customActionLabel
-        } else if let category = event.task.category {
-            Text("Complete \(category.label)", bundle: .module, comment: "category label")
+        } else if let category = event.task.category,
+                  let appearance = taskCategoryAppearances[category] {
+            Text("Complete \(Text(appearance.label))", bundle: .module, comment: "category label")
         } else {
             Text("Complete", bundle: .module)
         }
+    }
+
+    private var actionDisabled: Bool {
+        let policy = event.task.completionPolicy
+
+        let now = Date.now
+        let disabled = policy.isAllowedToComplete(event: event, now: now)
+        if disabled {
+            if let uiUpdate = policy.dateOnceCompletionIsAllowed(for: event, now: now) {
+                actionDisabledUpdate.scheduleUpdate(at: uiUpdate)
+            }
+        } else {
+            if let uiUpdate = policy.dateOnceCompletionBecomesDisallowed(for: event, now: now) {
+                actionDisabledUpdate.scheduleUpdate(at: uiUpdate)
+            }
+        }
+
+        return false
     }
 
     private var moreInfoButton: some View {

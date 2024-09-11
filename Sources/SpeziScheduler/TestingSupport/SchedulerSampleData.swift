@@ -23,8 +23,9 @@ public struct SchedulerSampleData: PreviewModifier {
             id: "example-task",
             title: "Social Support Questionnaire",
             instructions: "Please fill out the Social Support Questionnaire every day.",
-            category: .init("Questionnaire", systemName: "list.bullet.clipboard"),
+            category: .questionnaire,
             schedule: .daily(hour: 17, minute: 0, startingAt: .today),
+            completionPolicy: .sameDay,
             tags: [],
             effectiveFrom: .today // make sure test task always starts from the start of today
         )
@@ -37,6 +38,7 @@ public struct SchedulerSampleData: PreviewModifier {
 
     public func body(content: Content, context: ModelContainer) -> some View {
         content
+            .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.bullet.clipboard"))
             .previewWith {
                 Scheduler(testingContainer: context)
             }

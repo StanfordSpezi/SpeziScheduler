@@ -60,12 +60,6 @@ between two date components, and the definition of the end of the schedule using
 - ``Outcome``
 - ``Property()``
 
-### UI
-
-- ``InstructionsTile``
-- ``TileHeader``
-- ``DefaultTileHeader``
-
 ### Date Accessors
 
 - ``Foundation/Date/today``

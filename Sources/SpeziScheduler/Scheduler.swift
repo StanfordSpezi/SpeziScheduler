@@ -22,13 +22,51 @@ import SwiftUI
 
 /// Schedule and query tasks and their events.
 ///
+/// A ``Task`` is an potentially repeated action or work that a user is supposed to perform. An ``Event`` represents a single
+/// occurrence of a task, that is derived from its ``Schedule``.
+///
+/// You use the `Scheduler` module to manage the persistence store of your tasks. It provides a versioned, append-only store
+/// for tasks. It allows to modify the properties (e.g., schedule) of future events without affecting occurrences of the past.
+///
+/// You create and automatically update your tasks
+/// using the ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)``.
+///
+/// Below is a example on how to create your own [`Module`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/module)
+/// to manage your tasks and ensure they are always up to date.
+///
+/// ```swift
+/// import Spezi
+/// import SpeziScheduler
+///
+/// class MySchedulerModule: Module {
+///     @Dependency(Scheduler.self)
+///     private var scheduler
+///
+///     init() {}
+///
+///     func configure() {
+///         do {
+///             try scheduler.createOrUpdateTask(
+///                 id: "my-daily-task",
+///                 title: "Daily Questionnaire",
+///             	instructions: "Please fill out the Questionnaire every day.",
+///                 category: Task.Category("Questionnaire", systemName: "list.clipboard.fill"),
+///                 schedule: .daily(hour: 9, minute: 0, startingAt: .today)
+///             )
+///         } catch {
+///             // handle error (e.g., visualize in your UI)
+///         }
+///     }
+/// }
+/// ```
+///
 /// ## Topics
 ///
 /// ### Configuration
 /// - ``init()``
 ///
 /// ### Creating Tasks
-/// - ``createOrUpdateTask(id:title:instructions:category:schedule:tags:effectiveFrom:with:)``
+/// - ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)``
 ///
 /// ### Query Tasks
 /// - ``queryTasks(for:predicate:sortBy:prefetchOutcomes:)-f7se``
@@ -41,7 +79,7 @@ import SwiftUI
 /// - ``deleteTasks(_:)-d90p``
 /// - ``deleteTasks(_:)-2prl9``
 @MainActor
-public final class Scheduler { // TODO: more extensive docs
+public final class Scheduler {
     @Application(\.logger)
     private var logger
 
@@ -146,12 +184,16 @@ public final class Scheduler { // TODO: more extensive docs
     /// This method will check if the task with the specified `id` is already present in the model container. If not, it inserts a new instance of this task.
     /// If the task already exists in the store, this method checks if the contents of task are up to date. If not, a new version is created with the updated values.
     ///
+    /// - Warning: `title` and `instructions` are localizable strings. If you change any of these properties, make sure to maintain the previous
+    ///     keys in your String catalog to make sure that previous versions maintain to get displayed for existing users of your application.
+    ///
     /// - Parameters:
     ///   - id: The identifier of the task.
     ///   - title: The user-visible task title.
     ///   - instructions: The user-visible instructions for the task.
     ///   - category: The user-visible category information of a task.
     ///   - schedule: The schedule for the events of this task.
+    ///   - completionPolicy: The policy to decide when an event can be completed by the user.
     ///   - tags: Custom tags associated with the task.
     ///   - effectiveFrom: The date from which this version of the task is effective. You typically do not want to modify this parameter.
     ///     If you do specify a custom value, make sure to specify it relative to `now`.
@@ -164,6 +206,7 @@ public final class Scheduler { // TODO: more extensive docs
         instructions: String.LocalizationValue,
         category: Task.Category? = nil,
         schedule: Schedule,
+        completionPolicy: AllowedCompletionPolicy = .sameDay,
         tags: [String]? = nil, // swiftlint:disable:this discouraged_optional_collection
         effectiveFrom: Date = .now,
         with contextClosure: ((inout Task.Context) -> Void)? = nil
@@ -196,6 +239,7 @@ public final class Scheduler { // TODO: more extensive docs
                 instructions: instructions,
                 category: category,
                 schedule: schedule,
+                completionPolicy: completionPolicy,
                 tags: tags,
                 effectiveFrom: effectiveFrom,
                 with: contextClosure
@@ -213,6 +257,7 @@ public final class Scheduler { // TODO: more extensive docs
                 instructions: instructions,
                 category: category,
                 schedule: schedule,
+                completionPolicy: completionPolicy,
                 tags: tags ?? [],
                 effectiveFrom: effectiveFrom,
                 with: contextClosure ?? { _ in }
