@@ -391,7 +391,7 @@ extension Task: CustomStringConvertible {
         id: \(id), \
         title: \(title), \
         instructions: \(instructions), \
-        category: \(category.map { $0.description } ?? nil), \
+        category: \(category.map { $0.description } ?? "nil"), \
         schedule: \(schedule), \
         completionPolicy: \(completionPolicy), \
         tags: \(tags), \
