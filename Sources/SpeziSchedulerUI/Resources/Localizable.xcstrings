@@ -28,6 +28,9 @@
         }
       }
     },
+    "An unknown error occurred." : {
+
+    },
     "Complete" : {
       "localizations" : {
         "de" : {
@@ -78,6 +81,9 @@
         }
       }
     },
+    "Failed to fetch Events" : {
+
+    },
     "More Information" : {
       "localizations" : {
         "de" : {
@@ -93,6 +99,18 @@
           }
         }
       }
+    },
+    "No Events Today" : {
+
+    },
+    "Retry" : {
+
+    },
+    "There are no events scheduled for today." : {
+
+    },
+    "Today" : {
+
     }
   },
   "version" : "1.0"

@@ -22,39 +22,11 @@ struct ScheduleView: View {
     var body: some View {
         @Bindable var model = model
         NavigationStack {
-            Group {
-                if events.isEmpty {
-                    ContentUnavailableView(
-                        "No Events",
-                        systemImage: "pencil.and.list.clipboard",
-                        description: Text("Currently there are no upcoming events.")
-                    )
-                } else {
-                    // TODO: reusable list!
-                    // TODO: today and tomorrow headings!?
-                    List {
-                        Section {
-                            Text("Today")
-                                .foregroundStyle(.secondary)
-                                .listRowInsets(.init(top: 0, leading: 0, bottom: 0, trailing: 0))
-                                .listRowBackground(Color.clear)
-                                .font(.title)
-                                .fontDesign(.rounded)
-                                .fontWeight(.bold)
-                        }
-
-
-                        ForEach(events) { event in
-                            Section {
-                                InstructionsTile(event) {
-                                    QuestionnaireEventDetailView(event)
-                                } action: {
-                                    event.complete()
-                                }
-                            }
-                        }
-                    }
-                        .listSectionSpacing(.compact)
+            TodayList { event in
+                InstructionsTile(event) {
+                    QuestionnaireEventDetailView(event)
+                } action: {
+                    event.complete()
                 }
             }
                 .navigationTitle("Schedule")

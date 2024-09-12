@@ -193,6 +193,6 @@ final class SchedulerTests: XCTestCase {
         XCTAssertEqual(results.count, 1, "Received unexpected amount of tasks in query.")
 
         let events = try scheduler.queryEvents(for: Date.yesterday..<Date.tomorrow)
-        print(events) // TODO: what?
+        XCTAssertEqual(events.count, 1, "Received unexpected amount of events in query.")
     }
 }

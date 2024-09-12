@@ -161,6 +161,7 @@ extension EventQuery: DynamicProperty {
             }
 
             guard anchor != storage.fetchedIdentifiers else {
+                binding.fetchError = nil
                 return
             }
 
@@ -175,6 +176,7 @@ extension EventQuery: DynamicProperty {
 
             storage.fetchedEvents = events
             storage.fetchedIdentifiers = anchor
+            binding.fetchError = nil
         } catch {
             binding.fetchError = error
         }
