@@ -52,9 +52,6 @@ final class SpeziSchedulerUITests: XCTestCase {
     func testInstructionsTile() {
         let event = SchedulerSampleData.makeTestEvent()
 
-        // TODO: with info, without, all alignments
-
-        // TODO: with with action
         let tileLeading = InstructionsTile(event, alignment: .leading)
         let tileCenter = InstructionsTile(event, alignment: .center)
         let tileTrailing = InstructionsTile(event, alignment: .trailing)
@@ -87,7 +84,7 @@ final class SpeziSchedulerUITests: XCTestCase {
     }
 
     @MainActor
-    func testInstructionsTileWithCategoryApperance() {
+    func testInstructionsTileWithCategoryAppearance() {
         let event = SchedulerSampleData.makeTestEvent()
 
         let tileLeading = InstructionsTile(event, alignment: .leading)

@@ -7,6 +7,7 @@
 //
 
 import SpeziScheduler
+import SpeziSchedulerUI
 import SpeziViews
 import SwiftUI
 

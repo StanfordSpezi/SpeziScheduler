@@ -14,6 +14,7 @@
 		2FA7382C290ADFAA007ACEB9 /* TestApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FA7382B290ADFAA007ACEB9 /* TestApp.swift */; };
 		2FE0B6E72A14C65900818AE9 /* SpeziScheduler in Frameworks */ = {isa = PBXBuildFile; productRef = 2FE0B6E62A14C65900818AE9 /* SpeziScheduler */; };
 		2FE0B6EA2A14D82600818AE9 /* XCTestExtensions in Frameworks */ = {isa = PBXBuildFile; productRef = 2FE0B6E92A14D82600818AE9 /* XCTestExtensions */; };
+		A977F6732C92F4C00071A1D1 /* SpeziSchedulerUI in Frameworks */ = {isa = PBXBuildFile; productRef = A977F6722C92F4C00071A1D1 /* SpeziSchedulerUI */; };
 		A98B09C42C90913F0076E99A /* TestAppScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98B09C32C9091390076E99A /* TestAppScheduler.swift */; };
 		A98B09C62C90B02B0076E99A /* Task+About.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98B09C52C90B0260076E99A /* Task+About.swift */; };
 		A98B09C82C90C8E40076E99A /* QuestionnaireEventDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98B09C72C90C8E30076E99A /* QuestionnaireEventDetailView.swift */; };
@@ -51,6 +52,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2F68C3C8292EA52000B3E12C /* Spezi in Frameworks */,
+				A977F6732C92F4C00071A1D1 /* SpeziSchedulerUI in Frameworks */,
 				2FE0B6E72A14C65900818AE9 /* SpeziScheduler in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -135,6 +137,7 @@
 			packageProductDependencies = (
 				2F68C3C7292EA52000B3E12C /* Spezi */,
 				2FE0B6E62A14C65900818AE9 /* SpeziScheduler */,
+				A977F6722C92F4C00071A1D1 /* SpeziSchedulerUI */,
 			);
 			productName = Example;
 			productReference = 2F6D139228F5F384007C25D6 /* TestApp.app */;
@@ -555,6 +558,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 2FE0B6E82A14D82600818AE9 /* XCRemoteSwiftPackageReference "XCTestExtensions" */;
 			productName = XCTestExtensions;
+		};
+		A977F6722C92F4C00071A1D1 /* SpeziSchedulerUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SpeziSchedulerUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
