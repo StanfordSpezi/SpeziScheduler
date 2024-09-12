@@ -57,7 +57,7 @@ extension Task.Category {
 extension Task.Category.Appearance: Sendable, Equatable {}
 
 
-extension TaskCategoryAppearances: Sendable {}
+extension TaskCategoryAppearances: Sendable, Equatable {}
 
 
 extension EnvironmentValues {

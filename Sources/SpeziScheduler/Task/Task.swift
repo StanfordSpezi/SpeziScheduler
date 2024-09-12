@@ -88,11 +88,28 @@ public final class Task {
     ///
     /// Instructions might describe the purpose for this task.
     public private(set) var instructions: String.LocalizationValue
+
+    /// For whatever reason, if we make it type `Category`, SwiftData fails to stored the category.
+    /// You save the model, deinit the model class, query the model again and then the category property would just be gone.
+    private var categoryValue: String?
+
     /// The user-visible category of a task.
     ///
     /// Tasks can optionally provide a user-visible category to more clearly communicate the type of task to the user.
     /// UI components can use the category to
-    public private(set) var category: Category?
+    public var category: Category? {
+        @storageRestrictions(initializes: _categoryValue, accesses: _$backingData)
+        init(initialValue) {
+            _categoryValue = .init()
+            _$backingData.setValue(forKey: \.categoryValue, to: initialValue?.rawValue)
+        }
+        get {
+            categoryValue.map { Category(rawValue: $0) }
+        }
+        set {
+            categoryValue = newValue?.rawValue
+        }
+    }
 
     /// The schedule for the events of this Task.
     public private(set) var schedule: Schedule
@@ -374,7 +391,10 @@ extension Task: CustomStringConvertible {
         id: \(id), \
         title: \(title), \
         instructions: \(instructions), \
+        category: \(category.map { $0.description } ?? nil), \
         schedule: \(schedule), \
+        completionPolicy: \(completionPolicy), \
+        tags: \(tags), \
         outcomes: <redacted for performance reasons>, \
         effectiveFrom: \(effectiveFrom), \
         hasPreviousVersion: \(previousVersion != nil), \

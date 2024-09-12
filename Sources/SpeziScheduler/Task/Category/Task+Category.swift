@@ -33,6 +33,13 @@ extension Task {
 extension Task.Category: Hashable, Sendable, RawRepresentable, Codable {}
 
 
+extension Task.Category: CustomStringConvertible {
+    public var description: String {
+        rawValue
+    }
+}
+
+
 extension Task.Category {
     /// Questionnaire category.
     public static var questionnaire: Task.Category {
