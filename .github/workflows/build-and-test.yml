@@ -16,6 +16,17 @@ on:
   workflow_dispatch:
 
 jobs:
+  determine_macos_version: # Currently some runners still run on macOS 14
+    name: Determine macOS version
+    runs-on: ["macOS", "self-hosted"]
+    outputs:
+      macos_major_version: ${{ steps.get_version.outputs.major_version }}
+    steps:
+      - name: Get macOS major version
+        id: get_version
+        run: |
+          VERSION=$(sw_vers -productVersion | cut -d '.' -f 1)
+          echo "::set-output name=major_version::$VERSION"
   buildandtest_ios:
     name: Build and Test Swift Package
     uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
@@ -47,7 +58,9 @@ jobs:
       artifactname: SpeziScheduler-visionOS.xcresult
   buildandtest_macos:
     name: Build and Test Swift Package macOS
+    needs: determine_macos_version
     uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
+    if: ${{ needs.determine_macos_version.outputs.macos_major_version >= 15 }}
     with:
       runsonlabels: '["macOS", "self-hosted"]'
       scheme: SpeziScheduler-Package
