@@ -18,5 +18,4 @@ UI components provided for SpeziScheduler.
 ### Card Layouts
 
 - ``InstructionsTile``
-- ``TileHeader``
 - ``DefaultTileHeader``

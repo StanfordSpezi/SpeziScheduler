@@ -6,49 +6,10 @@
 // SPDX-License-Identifier: MIT
 //
 
-import Combine
 @_spi(TestingSupport)
 import SpeziScheduler
+import SpeziViews
 import SwiftUI
-
-
-@Observable
-class UIUpdate { // TODO: move to SpeziViews!
-    @MainActor private var dateTimer: Timer? {
-        willSet {
-            dateTimer?.invalidate()
-        }
-    }
-
-    nonisolated init() {}
-
-    @MainActor
-    func scheduleUpdate(at date: Date) {
-        @MainActor
-        struct WeakSendingSelf: Sendable { // assumeIsolated requires a @Sendable closure, so we need to pass self via a Sendable type
-            weak var value: UIUpdate?
-
-            init(_ value: UIUpdate) {
-                self.value = value
-            }
-        }
-
-        let sendingSelf = WeakSendingSelf(self)
-
-        let timer = Timer(fire: date, interval: 0, repeats: false) { [sendingSelf] _ in
-            MainActor.assumeIsolated { [sendingSelf] in
-                sendingSelf.value?.dateTimer = nil // triggers observable mutation
-            }
-        }
-        RunLoop.main.add(timer, forMode: .common)
-
-        self.dateTimer = timer // triggers observable access
-    }
-
-    deinit {
-        _dateTimer?.invalidate()
-    }
-}
 
 
 public struct InstructionsTile<Header: View, Info: View>: View {
@@ -63,15 +24,8 @@ public struct InstructionsTile<Header: View, Info: View>: View {
     private var taskCategoryAppearances
 
     @State private var presentingMoreInformation: Bool = false
-    @State private var actionDisabledUpdate = UIUpdate()
 
-    private var action: TileAction<some View>? {
-        if let actionClosure {
-            TileAction(action: actionClosure, label: actionLabel, disabled: actionDisabled)
-        } else {
-            nil
-        }
-    }
+    @ManagedViewUpdate private var actionUpdate
 
     private var actionLabel: some View {
         if let customActionLabel {
@@ -90,16 +44,29 @@ public struct InstructionsTile<Header: View, Info: View>: View {
         let now = Date.now
         let disabled = policy.isAllowedToComplete(event: event, now: now)
         if disabled {
-            if let uiUpdate = policy.dateOnceCompletionIsAllowed(for: event, now: now) {
-                actionDisabledUpdate.scheduleUpdate(at: uiUpdate)
+            if let completionAllowed = policy.dateOnceCompletionIsAllowed(for: event, now: now) {
+                actionUpdate.schedule(at: completionAllowed)
             }
         } else {
-            if let uiUpdate = policy.dateOnceCompletionBecomesDisallowed(for: event, now: now) {
-                actionDisabledUpdate.scheduleUpdate(at: uiUpdate)
+            if let completionDisallowed = policy.dateOnceCompletionBecomesDisallowed(for: event, now: now) {
+                actionUpdate.schedule(at: completionDisallowed)
             }
         }
 
         return false
+    }
+
+    @ViewBuilder private var actionButton: some View {
+        if let actionClosure {
+            Button(action: actionClosure) {
+                actionLabel
+                    .frame(maxWidth: .infinity, minHeight: 30)
+            }
+                .disabled(actionDisabled)
+                .buttonStyle(.borderedProminent)
+        } else {
+            EmptyView()
+        }
     }
 
     private var moreInfoButton: some View {
@@ -119,19 +86,20 @@ public struct InstructionsTile<Header: View, Info: View>: View {
 
     public var body: some View {
         if event.completed {
-            CompletedTile {
-                Text(event.task.title)
-                    .font(.headline)
-            } description: {
+            SimpleTile {
+                CompletedTileHeader {
+                    Text(event.task.title)
+                }
+            } footer: {
                 Text(event.task.instructions)
                     .font(.callout)
             }
         } else {
-            SimpleTile(alignment: alignment, action: action) {
+            SimpleTile(alignment: alignment) {
                 if Info.self != EmptyView.self {
                     let layout = alignment == .center
-                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-                        : AnyLayout(HStackLayout(alignment: .center))
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                    : AnyLayout(HStackLayout(alignment: .center))
 
                     layout {
                         header
@@ -152,9 +120,11 @@ public struct InstructionsTile<Header: View, Info: View>: View {
                 } else {
                     header
                 }
-            } footer: {
+            } body: {
                 Text(event.task.instructions)
                     .font(.callout)
+            } footer: {
+                actionButton
             }
                 .sheet(isPresented: $presentingMoreInformation) {
                     moreInformation
@@ -170,7 +140,8 @@ public struct InstructionsTile<Header: View, Info: View>: View {
     ///   - event: The event instance.
     ///   - alignment: The horizontal alignment of the tile.
     ///   - customActionLabel: A custom label for the action button. Otherwise, a generic default value will be used.
-    ///   - header: A custom header that is shown on the top of the tile. You can use the ``TileHeader`` view as a basis for your implementation.
+    ///   - header: A custom header that is shown on the top of the tile. You can use the [`TileHeader`](https://swiftpackageindex.com/stanfordspezi/speziviews/documentation/speziviews/tileheader)
+    ///     view as a basis for your implementation.
     ///   - more: An optional view that is presented as a sheet if the user presses the "more information" button. The view can be used to provide additional explanation or instructions
     ///         for a task.
     ///   - action: The closure that is executed if the action button is pressed.
@@ -194,7 +165,8 @@ public struct InstructionsTile<Header: View, Info: View>: View {
     /// - Parameters:
     ///   - event: The event instance.
     ///   - alignment: The horizontal alignment of the tile.
-    ///   - header: A custom header that is shown on the top of the tile. You can use the ``TileHeader`` view as a basis for your implementation.
+    ///   - header: A custom header that is shown on the top of the tile. You can use the [`TileHeader`](https://swiftpackageindex.com/stanfordspezi/speziviews/documentation/speziviews/tileheader)
+    ///     view as a basis for your implementation.
     ///   - more: An optional view that is presented as a sheet if the user presses the "more information" button. The view can be used to provide additional explanation or instructions
     ///         for a task.
     public init(
@@ -273,6 +245,7 @@ public struct InstructionsTile<Header: View, Info: View>: View {
         ProgressView()
     }
 }
+
 
 #Preview(traits: .schedulerSampleData) {
     @EventQuery(in: .sampleEventRange)
