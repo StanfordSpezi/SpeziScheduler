@@ -21,7 +21,7 @@ jobs:
     uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
     with:
       runsonlabels: '["macOS", "self-hosted"]'
-      scheme: SpeziScheduler
+      scheme: SpeziScheduler-Package
       xcodeversion: latest
       resultBundle: SpeziScheduler-iOS.xcresult
       artifactname: SpeziScheduler-iOS.xcresult
@@ -30,7 +30,7 @@ jobs:
     uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
     with:
       runsonlabels: '["macOS", "self-hosted"]'
-      scheme: SpeziScheduler
+      scheme: SpeziScheduler-Package
       destination: 'platform=watchOS Simulator,name=Apple Watch Series 9 (45mm)'
       xcodeversion: latest
       resultBundle: SpeziScheduler-watchOS.xcresult
@@ -40,7 +40,7 @@ jobs:
     uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
     with:
       runsonlabels: '["macOS", "self-hosted"]'
-      scheme: SpeziScheduler
+      scheme: SpeziScheduler-Package
       destination: 'platform=visionOS Simulator,name=Apple Vision Pro'
       xcodeversion: latest
       resultBundle: SpeziScheduler-visionOS.xcresult
@@ -50,7 +50,7 @@ jobs:
     uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
     with:
       runsonlabels: '["macOS", "self-hosted"]'
-      scheme: SpeziScheduler
+      scheme: SpeziScheduler-Package
       destination: 'platform=macOS,arch=arm64'
       xcodeversion: latest
       resultBundle: SpeziScheduler-macOS.xcresult
