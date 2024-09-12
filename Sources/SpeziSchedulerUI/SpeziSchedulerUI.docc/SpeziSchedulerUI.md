@@ -19,3 +19,7 @@ UI components provided for SpeziScheduler.
 
 - ``InstructionsTile``
 - ``DefaultTileHeader``
+
+### Displaying Events
+
+- ``TodayList``
