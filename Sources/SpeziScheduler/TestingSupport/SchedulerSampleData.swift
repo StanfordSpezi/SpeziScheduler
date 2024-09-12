@@ -15,11 +15,8 @@ import SwiftUI
 public struct SchedulerSampleData: PreviewModifier {
     public init() {}
 
-    public static func makeSharedContext() throws -> ModelContainer {
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: Task.self, Outcome.self, configurations: configuration)
-
-        let task = Task(
+    public static func makeTestTask() -> Task {
+        Task(
             id: "example-task",
             title: "Social Support Questionnaire",
             instructions: "Please fill out the Social Support Questionnaire every day.",
@@ -29,6 +26,23 @@ public struct SchedulerSampleData: PreviewModifier {
             tags: [],
             effectiveFrom: .today // make sure test task always starts from the start of today
         )
+    }
+
+    public static func makeTestEvent() -> Event {
+        let task = makeTestTask()
+
+        guard let occurrence = task.schedule.occurrences(inDay: .today).first else {
+            preconditionFailure("Failed to retrieve occurrences for today.")
+        }
+
+        return Event(task: task, occurrence: occurrence, outcome: .mocked)
+    }
+
+    public static func makeSharedContext() throws -> ModelContainer {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: Task.self, Outcome.self, configurations: configuration)
+
+        let task = makeTestTask()
 
         container.mainContext.insert(task)
         try container.mainContext.save()

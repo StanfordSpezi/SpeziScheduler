@@ -26,12 +26,14 @@ public struct Event {
     enum OutcomeValue {
         case createWith(Scheduler)
         case value(Outcome)
+        /// For testing support to avoid associating a scheduler.
+        case mocked
 
         var value: Outcome? {
             switch self {
             case let .value(value):
                 value
-            case .createWith:
+            case .createWith, .mocked:
                 nil
             }
         }
@@ -103,20 +105,28 @@ public struct Event {
     public func complete(with closure: (Outcome) -> Void) -> Outcome {
         switch outcomeState.outcome {
         case let .createWith(scheduler):
-            let outcome = Outcome(task: task, occurrence: occurrence)
-            closure(outcome)
-
-            self.outcomeState.outcome = .value(outcome)
+            let outcome = createNewOutCome(with: closure)
 
             // Makes sure this is saved instantly. Only after models are fully saved, they are made available in the `outcomes`
             // property of the task. Also saving makes sure an @EventQuery would be instantly refreshed.
             scheduler.addOutcome(outcome)
+
             return outcome
         case let .value(outcome):
             // allows to merge additional properties
             closure(outcome)
             return outcome
+        case .mocked:
+            return createNewOutCome(with: closure)
         }
+    }
+
+    private func createNewOutCome(with closure: (Outcome) -> Void) -> Outcome {
+        let outcome = Outcome(task: task, occurrence: occurrence)
+        closure(outcome)
+        self.outcomeState.outcome = .value(outcome)
+
+        return outcome
     }
 }
 

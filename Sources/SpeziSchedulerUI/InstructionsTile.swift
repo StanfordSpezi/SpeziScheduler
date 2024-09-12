@@ -59,8 +59,6 @@ public struct InstructionsTile<Header: View, Info: View>: View {
     private let moreInformation: Info
     private let customActionLabel: Text?
 
-    @Environment(Scheduler.self)
-    private var scheduler
     @Environment(\.taskCategoryAppearances)
     private var taskCategoryAppearances
 
@@ -143,6 +141,9 @@ public struct InstructionsTile<Header: View, Info: View>: View {
                                 .labelStyle(.titleAndIcon)
                                 .font(.footnote)
                         } else {
+                            if alignment == .leading {
+                                Spacer()
+                            }
                             moreInfoButton
                                 .labelStyle(.iconOnly)
                                 .font(.title3)

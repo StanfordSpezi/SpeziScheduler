@@ -18,7 +18,7 @@ let testMacros: [String: any Macro.Type] = [
 ]
 
 
-final class UserStorageEntryMacroTests: XCTestCase {
+final class UserStorageEntryMacroTests: XCTestCase { // swiftlint:disable:this type_body_length
     func testOptionalProperty() {
         assertMacroExpansion(
             """
@@ -169,7 +169,7 @@ final class UserStorageEntryMacroTests: XCTestCase {
         )
     }
 
-    func testBindingDiagnostics() {
+    func testBindingDiagnostics() { // swiftlint:disable:this function_body_length
         assertMacroExpansion(
             """
             extension Task.Context {
@@ -238,7 +238,7 @@ final class UserStorageEntryMacroTests: XCTestCase {
         )
     }
 
-    func testLexicalContext() {
+    func testLexicalContext() { // swiftlint:disable:this function_body_length
         assertMacroExpansion(
             """
             extension NotAllowed {

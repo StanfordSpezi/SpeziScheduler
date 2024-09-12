@@ -31,7 +31,8 @@ let package = Package(
         .package(url: "https://github.com/StanfordSpezi/Spezi", from: "1.7.0"),
         .package(url: "https://github.com/StanfordSpezi/SpeziViews", branch: "feature/additional-infrastructure"),
         .package(url: "https://github.com/StanfordSpezi/SpeziStorage", from: "1.1.2"),
-        .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0-prerelease-2024-08-14")
+        .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0-prerelease-2024-08-14"),
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", from: "1.17.2")
     ] + swiftLintPackage(),
     targets: [
         .macro(
@@ -71,6 +72,15 @@ let package = Package(
                 .target(name: "SpeziScheduler"),
                 .product(name: "XCTSpezi", package: "Spezi"),
                 .product(name: "SpeziLocalStorage", package: "SpeziStorage")
+            ],
+            plugins: [] + swiftLintPlugin()
+        ),
+        .testTarget(
+            name: "SpeziSchedulerUITests",
+            dependencies: [
+                .target(name: "SpeziScheduler"),
+                .target(name: "SpeziSchedulerUI"),
+                .product(name: "SnapshotTesting", package: "swift-snapshot-testing")
             ],
             plugins: [] + swiftLintPlugin()
         ),

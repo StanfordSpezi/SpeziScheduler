@@ -60,28 +60,36 @@ public struct DefaultTileHeader: View {
             }
         } else {
             ViewThatFits(in: .horizontal) {
-                HStack {
+                if alignment == .trailing {
+                    if let subheadline = dateSubheadline() {
+                        Text("\(appearance.label), \(subheadline)", bundle: .module)
+                    } else {
+                        Text(appearance.label) // alignment is done by the parent VStack
+                    }
+                } else {
+                    HStack {
+                        Text(appearance.label)
+                        Spacer()
+                        dateSubheadline()
+                    }
+                        .accessibilityElement(children: .combine)
+                        .lineLimit(1)
+                }
+
+                VStack(alignment: alignment) {
                     Text(appearance.label)
-                    Spacer()
                     dateSubheadline()
                 }
-                .accessibilityElement(children: .combine)
-                .lineLimit(1)
-                VStack(alignment: .leading) {
-                    Text(appearance.label)
-                    dateSubheadline()
-                }
-                .accessibilityElement(children: .combine)
-                .lineLimit(1)
+                    .accessibilityElement(children: .combine)
+                    .lineLimit(1)
             }
         }
     }
 
-    @ViewBuilder
-    private func dateSubheadline() -> some View {
+    private func dateSubheadline() -> Text? {
         switch event.occurrence.schedule.duration {
         case .allDay:
-            EmptyView()
+            nil
         case .tillEndOfDay:
             Text(event.occurrence.start, style: .time)
         case .duration:

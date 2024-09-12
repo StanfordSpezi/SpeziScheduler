@@ -14,12 +14,6 @@ import SwiftData
 import SwiftUI
 
 
-// TODO: UI test the following things for @EventQuery:
-//  - update if there is a new version of a Task inserted (via scheduler, via task directly)
-//  - update if the outcome is added to a task version
-// TODO: snapshot tests with different alignments + info button + with/without category
-
-
 /// Schedule and query tasks and their events.
 ///
 /// A ``Task`` is an potentially repeated action or work that a user is supposed to perform. An ``Event`` represents a single
