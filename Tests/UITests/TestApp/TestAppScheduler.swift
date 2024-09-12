@@ -20,12 +20,22 @@ final class SchedulerModel {
     nonisolated init() {}
 }
 
+struct TaskCategoryAppearances: ViewModifier {
+    nonisolated init() {}
+
+    func body(content: Content) -> some View {
+        content
+            .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
+    }
+}
+
 
 final class TestAppScheduler: Module {
     @Dependency(Scheduler.self)
     private var scheduler
 
     @Model private var model = SchedulerModel()
+    @Modifier private var modifier = TaskCategoryAppearances()
 
     init() {}
 
@@ -36,7 +46,7 @@ final class TestAppScheduler: Module {
                 id: "test-task",
                 title: "Social Support Questionnaire",
                 instructions: "Please fill out the Social Support Questionnaire every day.",
-                category: Task.Category("Questionnaire", systemName: "list.clipboard.fill"),
+                category: .questionnaire,
                 schedule: .daily(hour: 16, minute: 0, startingAt: .today),
                 effectiveFrom: .today
             ) { context in
