@@ -74,6 +74,9 @@ import SwiftUI
 /// - ``deleteTasks(_:)-2prl9``
 @MainActor
 public final class Scheduler {
+    /// We disable that for now. We might need to restore some information to cancel notifications.
+    private static let purgeLegacyStorage = false
+
     @Application(\.logger)
     private var logger
 
@@ -140,11 +143,13 @@ public final class Scheduler {
         // One could think that Apple could have provided a lot of this information in their documentation.
 
 
-        // the legacy scheduler 1.0 used to store tasks at this location. We don't support migration, so just remove it.
-        do {
-            try localStorage.delete(storageKey: Constants.taskStorageKey)
-        } catch {
-            logger.warning("Failed to remove legacy scheduler task storage: \(error)")
+        if Self.purgeLegacyStorage {
+            // the legacy scheduler 1.0 used to store tasks at this location. We don't support migration, so just remove it.
+            do {
+                try localStorage.delete(storageKey: Constants.taskStorageKey)
+            } catch {
+                logger.warning("Failed to remove legacy scheduler task storage: \(error)")
+            }
         }
     }
 
