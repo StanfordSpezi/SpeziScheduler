@@ -80,6 +80,7 @@ let package = Package(
             dependencies: [
                 .target(name: "SpeziScheduler"),
                 .target(name: "SpeziSchedulerUI"),
+                .product(name: "XCTSpezi", package: "Spezi"),
                 .product(name: "SnapshotTesting", package: "swift-snapshot-testing")
             ],
             plugins: [] + swiftLintPlugin()

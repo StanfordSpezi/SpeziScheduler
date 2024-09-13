@@ -6,8 +6,13 @@
 // SPDX-License-Identifier: MIT
 //
 
+@_spi(TestingSupport)
+import SpeziScheduler
+@_spi(TestingSupport)
 @testable import SpeziSchedulerUI
 import XCTest
+import XCTSpezi
+
 
 final class SchedulerSampleDataTests: XCTestCase {
     @MainActor
