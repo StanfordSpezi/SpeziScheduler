@@ -117,6 +117,8 @@ public final class Task {
     /// The policy to decide when an event can be completed by the user.
     public private(set) var completionPolicy: AllowedCompletionPolicy
 
+    public private(set) var scheduleNotifications: Bool
+
     /// Tags associated with the task.
     ///
     /// This is a custom list of tags that can be useful to categorize or group tasks and make it easier to query
@@ -161,6 +163,7 @@ public final class Task {
         category: Category?,
         schedule: Schedule,
         completionPolicy: AllowedCompletionPolicy,
+        scheduleNotifications: Bool,
         tags: [String],
         effectiveFrom: Date,
         context: Context
@@ -171,6 +174,7 @@ public final class Task {
         self.category = category
         self.schedule = schedule
         self.completionPolicy = completionPolicy
+        self.scheduleNotifications = scheduleNotifications
         self.outcomes = []
         self.tags = tags
         self.effectiveFrom = effectiveFrom
@@ -187,6 +191,7 @@ public final class Task {
         category: Category?,
         schedule: Schedule,
         completionPolicy: AllowedCompletionPolicy,
+        scheduleNotifications: Bool,
         tags: [String],
         effectiveFrom: Date,
         with contextClosure: (inout Context) -> Void = { _ in }
@@ -201,6 +206,7 @@ public final class Task {
             category: category,
             schedule: schedule,
             completionPolicy: completionPolicy,
+            scheduleNotifications: scheduleNotifications,
             tags: tags,
             effectiveFrom: effectiveFrom,
             context: context
@@ -229,6 +235,7 @@ public final class Task {
         category: Category? = nil,
         schedule: Schedule? = nil,
         completionPolicy: AllowedCompletionPolicy? = nil,
+        scheduleNotifications: Bool? = nil, // swiftlint:disable:this discouraged_optional_boolean
         tags: [String]? = nil, // swiftlint:disable:this discouraged_optional_collection
         effectiveFrom: Date = .now,
         with contextClosure: ((inout Context) -> Void)? = nil
@@ -240,6 +247,7 @@ public final class Task {
             category: category,
             schedule: schedule,
             completionPolicy: completionPolicy,
+            scheduleNotifications: scheduleNotifications,
             effectiveFrom: effectiveFrom,
             with: contextClosure
         )
@@ -252,6 +260,7 @@ public final class Task {
         category: Category? = nil,
         schedule: Schedule? = nil,
         completionPolicy: AllowedCompletionPolicy? = nil,
+        scheduleNotifications: Bool? = nil, // swiftlint:disable:this discouraged_optional_boolean
         tags: [String]? = nil, // swiftlint:disable:this discouraged_optional_collection
         effectiveFrom: Date = .now,
         with contextClosure: ((inout Context) -> Void)? = nil
@@ -275,6 +284,7 @@ public final class Task {
                 || didChange(schedule, for: \.schedule)
                 || didChange(completionPolicy, for: \.completionPolicy)
                 || didChange(tags, for: \.tags)
+                || didChange(scheduleNotifications, for: \.scheduleNotifications)
                 || didChange(context?.userInfo, for: \.userInfo) else {
             return (self, false) // nothing changed
         }
@@ -300,6 +310,7 @@ public final class Task {
             category: category ?? self.category,
             schedule: schedule ?? self.schedule,
             completionPolicy: completionPolicy ?? self.completionPolicy,
+            scheduleNotifications: scheduleNotifications ?? self.scheduleNotifications,
             tags: tags ?? self.tags,
             effectiveFrom: effectiveFrom,
             context: context ?? Context()
