@@ -19,7 +19,16 @@ UI components provided for SpeziScheduler.
 
 - ``InstructionsTile``
 - ``DefaultTileHeader``
+- ``EventActionButton``
 
 ### Displaying Events
 
 - ``TodayList``
+
+### Category Appearance
+Control how the category information of a task should be rendered to the user.
+
+- ``SpeziScheduler/Task/Category/Appearance``
+- ``SwiftUICore/View/taskCategoryAppearance(for:label:image:)``
+- ``SwiftUICore/EnvironmentValues/taskCategoryAppearances``
+- ``TaskCategoryAppearances``

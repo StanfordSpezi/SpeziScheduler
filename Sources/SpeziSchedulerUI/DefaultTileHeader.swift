@@ -12,6 +12,7 @@ import SpeziViews
 import SwiftUI
 
 
+/// A default design for a tile that displays information about an event.
 public struct DefaultTileHeader: View {
     private let alignment: HorizontalAlignment
     private let event: Event

@@ -10,34 +10,49 @@ SPDX-License-Identifier: MIT
              
 -->
 
-Allows you to schedule and observe tasks for your users to complete, such as taking surveys.
+Schedule and observe tasks for your users to complete, such as taking surveys or taking measurements.
 
 ## Overview
 
 The Scheduler module allows the scheduling and observation of ``Task``s adhering to a specific ``Schedule``.
 
-### Old Scheduling A Task article
+A ``Task`` is an potentially repeated action or work that a user is supposed to perform. An ``Event`` represents a single
+occurrence of a task, that is derived from its ``Schedule``.
 
-The Scheduler module can be used to create and schedule tasks for your users to complete.
+You use the `Scheduler` module to manage the persistence store of your tasks. It provides a versioned, append-only store
+for tasks. It allows to modify the properties (e.g., schedule) of future events without affecting occurrences of the past.
 
-In the following example, we will create a task for a survey to be taken daily, starting now, for 7 days.
+You create and automatically update your tasks
+using the ``Scheduler/createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)``.
+
+Below is a example on how to create your own [`Module`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/module)
+to manage your tasks and ensure they are always up to date.
 
 ```swift
-let surveyTask = Task(
-    title: "Survey",
-    description: "Take a survey",
-    schedule: Schedule(
-        start: .now,
-        repetition: .matching(.init(day: 1)), // daily
-        end: .numberOfEvents(7)
-    ),
-    context: "This is a test context"
-)
+import Spezi
+import SpeziScheduler
+
+class MySchedulerModule: Module {
+    @Dependency(Scheduler.self)
+    private var scheduler
+
+    init() {}
+
+    func configure() {
+        do {
+            try scheduler.createOrUpdateTask(
+                id: "my-daily-task",
+                title: "Daily Questionnaire",
+                instructions: "Please fill out the Questionnaire every day.",
+                category: Task.Category("Questionnaire", systemName: "list.clipboard.fill"),
+                schedule: .daily(hour: 9, minute: 0, startingAt: .today)
+            )
+        } catch {
+            // handle error (e.g., visualize in your UI)
+        }
+    }
+}
 ```
-
-The ``Schedule`` type also allows the customization of the repetition using the ``Schedule/Repetition-swift.enum`` type including the randomization
-between two date components, and the definition of the end of the schedule using the ``Schedule/End-swift.enum`` type.
-
 
 ## Topics
 

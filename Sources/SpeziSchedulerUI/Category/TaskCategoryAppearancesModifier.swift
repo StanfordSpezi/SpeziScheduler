@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+import SpeziScheduler
 import SpeziViews
 import SwiftUI
 
@@ -36,7 +37,7 @@ extension View {
     ///   - category: The task category to define a new appearance for.
     ///   - label: The user-visible, localized label that refers to the category.
     ///   - image: An optional image resource that refers to the category.
-    /// - Returns: Returns the modified view, with the specified entry added to the ``TaskCategoryAppearances`` storage.
+    /// - Returns: Returns the modified view, with the specified entry added to the ``SwiftUICore/EnvironmentValues/taskCategoryAppearances`` storage.
     public func taskCategoryAppearance(for category: Task.Category, label: LocalizedStringResource, image: ImageReference? = nil) -> some View {
         modifier(TaskCategoryAppearancesModifier(category: category, appearance: .init(label: label, image: image)))
     }

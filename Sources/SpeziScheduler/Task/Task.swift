@@ -178,7 +178,9 @@ public final class Task {
         self.userInfoCache = context.userInfoCache
     }
 
-    convenience init(
+    /// Internal convenience init.
+    @_spi(Internal)
+    public convenience init(
         id: String,
         title: String.LocalizationValue,
         instructions: String.LocalizationValue,

@@ -7,6 +7,9 @@
 //
 
 import Spezi
+@_spi(Internal)
+@_spi(TestingSupport)
+import SpeziScheduler
 import SwiftData
 import SwiftUI
 

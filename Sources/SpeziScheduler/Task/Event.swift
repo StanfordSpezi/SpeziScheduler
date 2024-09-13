@@ -23,8 +23,12 @@ import Foundation
 /// - ``complete()``
 /// - ``complete(with:)``
 public struct Event {
-    enum OutcomeValue {
+    /// The outcome value.
+    @_spi(Internal)
+    public enum OutcomeValue {
+        /// Create outcome with the associated scheduler instance.
         case createWith(Scheduler)
+        /// Outcome value.
         case value(Outcome)
         /// For testing support to avoid associating a scheduler.
         case mocked
@@ -71,8 +75,14 @@ public struct Event {
     public var completed: Bool {
         outcome != nil
     }
-
-    init(task: Task, occurrence: Occurrence, outcome: OutcomeValue) {
+    
+    /// Create new event.
+    /// - Parameters:
+    ///   - task: The task instance.
+    ///   - occurrence: The occurrence description.
+    ///   - outcome: The internal outcome value.
+    @_spi(Internal)
+    public init(task: Task, occurrence: Occurrence, outcome: OutcomeValue) {
         self.task = task
         self.occurrence = occurrence
         self.outcomeState = State(outcome)

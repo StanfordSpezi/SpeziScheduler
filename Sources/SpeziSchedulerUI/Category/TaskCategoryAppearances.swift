@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import SpeziScheduler
 import SpeziViews
 import SwiftUI
 
@@ -39,7 +40,7 @@ public struct TaskCategoryAppearances {
 
 
 extension Task.Category {
-    /// Visuals cues on how to render a task category to the user.
+    /// Visual cues on how to render a task category to the user.
     public struct Appearance {
         /// The user-visible, localized label.
         public let label: LocalizedStringResource
