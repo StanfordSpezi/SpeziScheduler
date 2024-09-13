@@ -53,6 +53,9 @@ public struct Schedule {
 
     private var recurrenceRule: Data?
 
+    // TODO: add a notification interval hint? => wee need DateComponents (=> we can provide that for daily and weekly?)
+    // TODO: we can only do that if we are post the startDate (e.g., daily but only starting next week) =>
+
     /// The duration of a single occurrence.
     ///
     /// If the duration is `nil`, the schedule provides a start date only. The end date will be automatically chosen to be end of day.

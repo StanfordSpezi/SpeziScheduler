@@ -86,10 +86,13 @@ public final class Scheduler {
     private static let purgeLegacyStorage = false
 
     @Application(\.logger)
-    private var logger
+    var logger
 
     @Dependency(LocalStorage.self)
     private var localStorage
+
+    @Dependency(LocalNotifications.self)
+    var notifications
 
     private var _container: Result<ModelContainer, Error>?
 
@@ -226,6 +229,7 @@ public final class Scheduler {
         category: Task.Category? = nil,
         schedule: Schedule,
         completionPolicy: AllowedCompletionPolicy = .sameDay,
+        scheduleNotifications: Bool = false,
         tags: [String]? = nil, // swiftlint:disable:this discouraged_optional_collection
         effectiveFrom: Date = .now,
         with contextClosure: ((inout Task.Context) -> Void)? = nil
@@ -259,6 +263,7 @@ public final class Scheduler {
                 category: category,
                 schedule: schedule,
                 completionPolicy: completionPolicy,
+                scheduleNotifications: scheduleNotifications,
                 tags: tags,
                 effectiveFrom: effectiveFrom,
                 with: contextClosure
@@ -277,6 +282,7 @@ public final class Scheduler {
                 category: category,
                 schedule: schedule,
                 completionPolicy: completionPolicy,
+                scheduleNotifications: scheduleNotifications,
                 tags: tags ?? [],
                 effectiveFrom: effectiveFrom,
                 with: contextClosure ?? { _ in }
