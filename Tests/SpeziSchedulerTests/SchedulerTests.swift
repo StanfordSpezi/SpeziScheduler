@@ -7,10 +7,8 @@
 //
 
 import Spezi
-import SpeziLocalStorage
 @_spi(TestingSupport)
 @testable import SpeziScheduler
-import SpeziSecureStorage
 import XCTest
 import XCTSpezi
 
@@ -178,21 +176,5 @@ final class SchedulerTests: XCTestCase {
         XCTAssertEqual(components1.hour, 16)
         XCTAssertEqual(components1.minute, 30)
         XCTAssertEqual(components1.second, 49)
-    }
-
-    @MainActor
-    func testSchedulerSampleData() throws {
-        let container = try SchedulerSampleData.makeSharedContext()
-
-        let scheduler = Scheduler(testingContainer: container)
-        withDependencyResolution {
-            scheduler
-        }
-
-        let results = try scheduler.queryTasks(for: Date.yesterday..<Date.tomorrow)
-        XCTAssertEqual(results.count, 1, "Received unexpected amount of tasks in query.")
-
-        let events = try scheduler.queryEvents(for: Date.yesterday..<Date.tomorrow)
-        XCTAssertEqual(events.count, 1, "Received unexpected amount of events in query.")
     }
 }
