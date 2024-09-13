@@ -7,8 +7,8 @@
 //
 
 import SnapshotTesting
-@_spi(TestingSupport)
 import SpeziScheduler
+@_spi(TestingSupport)
 import SpeziSchedulerUI
 import SwiftUI
 import XCTest
