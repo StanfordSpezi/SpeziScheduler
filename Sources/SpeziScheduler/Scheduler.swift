@@ -9,7 +9,6 @@
 import Combine
 import Foundation
 import Spezi
-import SpeziLocalStorage
 import SwiftData
 import SwiftUI
 
@@ -86,13 +85,10 @@ public final class Scheduler {
     private static let purgeLegacyStorage = false
 
     @Application(\.logger)
-    var logger
+    private var logger
 
-    @Dependency(LocalStorage.self)
-    private var localStorage
-
-    @Dependency(LocalNotifications.self)
-    var notifications
+    @Dependency(SchedulerNotifications.self)
+    private var notifications
 
     private var _container: Result<ModelContainer, Error>?
 
@@ -161,14 +157,11 @@ public final class Scheduler {
         // It also makes it easier to understand the SwiftData-related infrastructure around Spezi Scheduler.
         // One could think that Apple could have provided a lot of this information in their documentation.
 
-
-        if Self.purgeLegacyStorage {
-            // the legacy scheduler 1.0 used to store tasks at this location. We don't support migration, so just remove it.
-            do {
-                try localStorage.delete(storageKey: Constants.taskStorageKey)
-            } catch {
-                logger.warning("Failed to remove legacy scheduler task storage: \(error)")
+        notifications.registerProcessingTask { [weak self] task in
+            guard let self else {
+                return
             }
+            notifications.handleNotificationsRefresh(for: task, using: self)
         }
     }
 
