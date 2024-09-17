@@ -264,7 +264,15 @@ public final class Scheduler {
 
             if result.didChange {
                 scheduleSave(for: context)
+
+                if Task.requiresNotificationRescheduling(previous: existingTask, updated: result.task) {
+                    // TODO: we could just run the algorithm for this single task!
+                    _Concurrency.Task { @MainActor in
+                        try await notifications.updateNotifications(using: self) // TODO: handle errors!
+                    }
+                }
             }
+
 
             return result
         } else {
@@ -282,6 +290,11 @@ public final class Scheduler {
             )
             context.insert(task)
             scheduleSave(for: context)
+
+            // TODO: we could just run the algorithm for this single task!
+            _Concurrency.Task { @MainActor in
+                try await notifications.updateNotifications(using: self) // TODO: handle errors!
+            }
             return (task, true)
         }
     }
@@ -388,7 +401,7 @@ public final class Scheduler {
         sortBy sortDescriptors: [SortDescriptor<Task>] = [],
         prefetchOutcomes: Bool = false
     ) throws -> [Task] {
-        try queryTask(with: inClosedRangePredicate(for: range), combineWith: predicate, sortBy: sortDescriptors, prefetchOutcomes: prefetchOutcomes)
+        try queryTasks(with: inClosedRangePredicate(for: range), combineWith: predicate, sortBy: sortDescriptors, prefetchOutcomes: prefetchOutcomes)
     }
 
     
@@ -411,7 +424,16 @@ public final class Scheduler {
         sortBy sortDescriptors: [SortDescriptor<Task>] = [],
         prefetchOutcomes: Bool = false
     ) throws -> [Task] {
-        try queryTask(with: inRangePredicate(for: range), combineWith: predicate, sortBy: sortDescriptors, prefetchOutcomes: prefetchOutcomes)
+        try queryTasks(with: inRangePredicate(for: range), combineWith: predicate, sortBy: sortDescriptors, prefetchOutcomes: prefetchOutcomes)
+    }
+
+    func queryTasks(
+        for range: PartialRangeFrom<Date>,
+        predicate: Predicate<Task> = #Predicate { _ in true },
+        sortBy sortDescriptors: [SortDescriptor<Task>] = [],
+        prefetchOutcomes: Bool = false
+    ) throws -> [Task] {
+        try queryTasks(with: inPartialRangeFromPredicate(for: range), combineWith: predicate, sortBy: sortDescriptors, prefetchOutcomes: prefetchOutcomes)
     }
 
     /// Query the list of events.
@@ -434,6 +456,34 @@ public final class Scheduler {
         let tasks = try queryTasks(for: range, predicate: taskPredicate)
         let outcomes = try queryOutcomes(for: range, predicate: taskPredicate)
 
+        return assembleEvents(for: range, tasks: tasks, outcomes: outcomes)
+    }
+
+    func queryEventsWithoutOutcomes(
+        for range: Range<Date>,
+        predicate taskPredicate: Predicate<Task> = #Predicate { _ in true }
+    ) throws -> [Event] {
+        let tasks = try queryTasks(for: range, predicate: taskPredicate)
+        // TODO: mark the events as incomplete to make sure you can' accidentally add outcome
+        return assembleEvents(for: range, tasks: tasks, outcomes: [])
+    }
+
+    func hasTasksWithNotifications(for range: PartialRangeFrom<Date>) throws -> Bool { // TODO: maybe not needed?
+        let rangePredicate = inPartialRangeFromPredicate(for: range)
+        let descriptor = FetchDescriptor<Task>(
+            predicate: #Predicate { task in
+                rangePredicate.evaluate(task) && task.scheduleNotifications
+            }
+        )
+
+        return try context.fetchCount(descriptor) > 0
+    }
+
+    private func assembleEvents(
+        for range: Range<Date>,
+        tasks: [Task],
+        outcomes: [Outcome]
+    ) -> [Event] {
         let outcomesByOccurrence = outcomes.reduce(into: [:]) { partialResult, outcome in
             partialResult[outcome.occurrenceStartDate] = outcome
         }
@@ -504,7 +554,7 @@ extension Scheduler: Module, EnvironmentAccessible, Sendable {}
 // MARK: - Fetch Implementations
 
 extension Scheduler {
-    private func queryTask(
+    private func queryTasks(
         with basePredicate: Predicate<Task>,
         combineWith userPredicate: Predicate<Task>,
         sortBy sortDescriptors: [SortDescriptor<Task>],
@@ -573,6 +623,17 @@ extension Scheduler {
             } else {
                 // task lifetime is effectively an `PartialRangeFrom`. So all we do is to check if the `range` overlaps with the lower bound
                 task.effectiveFrom < range.upperBound
+            }
+        }
+    }
+
+    private func inPartialRangeFromPredicate(for range: PartialRangeFrom<Date>) -> Predicate<Task> {
+        #Predicate<Task> { task in
+            if let effectiveTo = task.nextVersion?.effectiveFrom {
+                task.effectiveFrom <= range.lowerBound
+                    && range.lowerBound < effectiveTo
+            } else {
+                task.effectiveFrom <= range.lowerBound
             }
         }
     }
