@@ -11,14 +11,24 @@ import UserNotifications
 
 
 extension Schedule {
-    static var defaultNotificationTime: (hour: Int, minute: Int, second: Int) { // swiftlint:disable:this large_tuple
-        // default to 9am // TODO: customize that?
-        (9, 0, 0)
+    enum NotificationMatchingHint: Codable, Sendable, Hashable {
+        case components(DateComponents)
+        case allDayNotification(weekday: Int?)
+
+        func dateComponents(calendar: Calendar, allDayNotificationTime: NotificationTime) -> DateComponents {
+            switch self {
+            case let .components(dateComponents):
+                return dateComponents
+            case let .allDayNotification(weekday):
+                let time = allDayNotificationTime
+                return DateComponents(calendar: calendar, hour: time.hour, minute: time.minute, second: time.second, weekday: weekday)
+            }
+        }
     }
 
-    static func notificationTime(for start: Date, duration: Duration) -> Date {
+    static func notificationTime(for start: Date, duration: Duration, allDayNotificationTime: NotificationTime) -> Date {
         if duration.isAllDay {
-            let time = defaultNotificationTime
+            let time = allDayNotificationTime
             guard let morning = Calendar.current.date(bySettingHour: time.hour, minute: time.minute, second: time.second, of: start) else {
                 preconditionFailure("Failed to set hour of start date \(start)")
             }
@@ -28,7 +38,7 @@ extension Schedule {
         }
     }
 
-    static func notificationIntervalHint( // swiftlint:disable:this function_parameter_count function_default_parameter_at_end
+    static func notificationMatchingHint( // swiftlint:disable:this function_parameter_count function_default_parameter_at_end
         forMatchingInterval interval: Int,
         calendar: Calendar,
         hour: Int,
@@ -36,21 +46,20 @@ extension Schedule {
         second: Int,
         weekday: Int? = nil,
         consider duration: Duration
-    ) -> DateComponents? {
+    ) -> NotificationMatchingHint? {
         guard interval == 1 else {
             return nil
         }
 
         if duration.isAllDay {
-            let time = defaultNotificationTime
-            return DateComponents(calendar: calendar, hour: time.hour, minute: time.minute, second: time.second, weekday: weekday)
+            return .allDayNotification(weekday: weekday)
         } else {
-            return DateComponents(calendar: calendar, hour: hour, minute: minute, second: second, weekday: weekday)
+            return .components(DateComponents(calendar: calendar, hour: hour, minute: minute, second: second, weekday: weekday))
         }
     }
 
-    func canBeScheduledAsCalendarTrigger(now: Date = .now) -> Bool {
-        guard let notificationMatchingHint, recurrence != nil else {
+    func canBeScheduledAsRepeatingCalendarTrigger(allDayNotificationTime: NotificationTime, now: Date = .now) -> Bool {
+        guard let notificationMatchingHint, let recurrence else {
             return false // needs to be repetitive and have a interval hint
         }
 
@@ -59,21 +68,23 @@ extension Schedule {
         }
 
         // otherwise, check if it still works (e.g., we have Monday, start date is Wednesday and schedule reoccurs every Friday).
-        let trigger = UNCalendarNotificationTrigger(dateMatching: notificationMatchingHint, repeats: true)
+        let components = notificationMatchingHint.dateComponents(calendar: recurrence.calendar, allDayNotificationTime: allDayNotificationTime)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
         guard let nextDate = trigger.nextTriggerDate() else {
             return false
         }
 
-        guard let nextOccurrence = nextOccurrence(in: now...) else {
+        let nextOccurrences = nextOccurrences(in: now..., count: 2)
+        guard let nextOccurrence = nextOccurrences.first,
+              nextOccurrences.count >= 2 else {
+            // we require at least two next occurrences to justify a **repeating** calendar-based trigger
             return false
         }
-
-        // TODO: do not schedule as calendar trigger if this is the last event occurring!
 
         if duration.isAllDay {
             // we deliver notifications for all day occurrences at a different time
 
-            let time = Self.defaultNotificationTime
+            let time = allDayNotificationTime
             guard let modifiedOccurrence = Calendar.current.date(
                 bySettingHour: time.hour,
                 minute: time.minute,

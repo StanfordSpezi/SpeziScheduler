@@ -10,7 +10,7 @@ import Foundation
 
 
 extension Locale.Weekday {
-    var ordinal: Int { // TODO: this is what we want right
+    var ordinal: Int {
         switch self {
         case .sunday:
             1

@@ -116,7 +116,11 @@ public final class Task {
 
     /// The policy to decide when an event can be completed by the user.
     public private(set) var completionPolicy: AllowedCompletionPolicy
-
+    
+    /// Automatically schedule notifications for upcoming events.
+    ///
+    /// If this flag is set to `true`, the ``SchedulerNotifications`` will automatically schedule notifications for the upcoming
+    /// events of this task. Refer to the documentation of `SchedulerNotifications` for all necessary steps and configuration in order to use this feature.
     public private(set) var scheduleNotifications: Bool
 
     /// Tags associated with the task.
@@ -225,6 +229,7 @@ public final class Task {
     ///   - category: The user-visible category information of a task.
     ///   - schedule: The updated schedule or `nil` if the schedule should not be updated.
     ///   - completionPolicy: The policy to decide when an event can be completed by the user.
+    ///   - scheduleNotifications: Automatically schedule notifications for upcoming events.
     ///   - tags: Custom tags associated with the task.
     ///   - effectiveFrom: The date this update is effective from.
     ///   - contextClosure: The updated context or `nil` if the context should not be updated.
