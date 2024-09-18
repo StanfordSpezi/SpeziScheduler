@@ -215,7 +215,7 @@ public final class Scheduler {
     ///   - contextClosure: The closure that allows to customize the ``Task/Context`` that is stored with the task.
     /// - Returns: Returns the latest version of the `task` and if the task was updated or created indicated by `didChange`.
     @discardableResult
-    public func createOrUpdateTask( // swiftlint:disable:this function_default_parameter_at_end
+    public func createOrUpdateTask( // swiftlint:disable:this function_default_parameter_at_end function_body_length
         id: String,
         title: String.LocalizationValue,
         instructions: String.LocalizationValue,
@@ -431,9 +431,16 @@ public final class Scheduler {
         for range: PartialRangeFrom<Date>,
         predicate: Predicate<Task> = #Predicate { _ in true },
         sortBy sortDescriptors: [SortDescriptor<Task>] = [],
+        fetchLimit: Int? = nil,
         prefetchOutcomes: Bool = false
     ) throws -> [Task] {
-        try queryTasks(with: inPartialRangeFromPredicate(for: range), combineWith: predicate, sortBy: sortDescriptors, prefetchOutcomes: prefetchOutcomes)
+        try queryTasks(
+            with: inPartialRangeFromPredicate(for: range),
+            combineWith: predicate,
+            sortBy: sortDescriptors,
+            fetchLimit: fetchLimit, // TODO: support fetchLimit with the others as well
+            prefetchOutcomes: prefetchOutcomes
+        )
     }
 
     /// Query the list of events.
@@ -458,31 +465,17 @@ public final class Scheduler {
 
         return assembleEvents(for: range, tasks: tasks, outcomes: outcomes)
     }
+}
 
-    func queryEventsWithoutOutcomes(
+
+extension Scheduler: Module, EnvironmentAccessible, Sendable {}
+
+
+extension Scheduler {
+    func assembleEvents<S: Sequence<Task>>(
         for range: Range<Date>,
-        predicate taskPredicate: Predicate<Task> = #Predicate { _ in true }
-    ) throws -> [Event] {
-        let tasks = try queryTasks(for: range, predicate: taskPredicate)
-        // TODO: mark the events as incomplete to make sure you can' accidentally add outcome
-        return assembleEvents(for: range, tasks: tasks, outcomes: [])
-    }
-
-    func hasTasksWithNotifications(for range: PartialRangeFrom<Date>) throws -> Bool { // TODO: maybe not needed?
-        let rangePredicate = inPartialRangeFromPredicate(for: range)
-        let descriptor = FetchDescriptor<Task>(
-            predicate: #Predicate { task in
-                rangePredicate.evaluate(task) && task.scheduleNotifications
-            }
-        )
-
-        return try context.fetchCount(descriptor) > 0
-    }
-
-    private func assembleEvents(
-        for range: Range<Date>,
-        tasks: [Task],
-        outcomes: [Outcome]
+        tasks: S,
+        outcomes: [Outcome] // TODO: mark the events as incomplete to make sure you can' accidentally add outcome
     ) -> [Event] {
         let outcomesByOccurrence = outcomes.reduce(into: [:]) { partialResult, outcome in
             partialResult[outcome.occurrenceStartDate] = outcome
@@ -548,16 +541,25 @@ public final class Scheduler {
     }
 }
 
-
-extension Scheduler: Module, EnvironmentAccessible, Sendable {}
-
 // MARK: - Fetch Implementations
 
 extension Scheduler {
-    private func queryTasks(
+    func hasTasksWithNotifications(for range: PartialRangeFrom<Date>) throws -> Bool {
+        let rangePredicate = inPartialRangeFromPredicate(for: range)
+        let descriptor = FetchDescriptor<Task>(
+            predicate: #Predicate { task in
+                rangePredicate.evaluate(task) && task.scheduleNotifications
+            }
+        )
+
+        return try context.fetchCount(descriptor) > 0
+    }
+
+    private func queryTasks( // swiftlint:disable:this function_default_parameter_at_end
         with basePredicate: Predicate<Task>,
         combineWith userPredicate: Predicate<Task>,
         sortBy sortDescriptors: [SortDescriptor<Task>],
+        fetchLimit: Int? = nil,
         prefetchOutcomes: Bool
     ) throws -> [Task] {
         var descriptor = FetchDescriptor<Task>(
@@ -566,6 +568,7 @@ extension Scheduler {
             },
             sortBy: sortDescriptors
         )
+        descriptor.fetchLimit = fetchLimit
         descriptor.sortBy.append(SortDescriptor(\.effectiveFrom, order: .forward))
 
         // make sure querying the next version is always efficient

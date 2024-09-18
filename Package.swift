@@ -31,6 +31,7 @@ let package = Package(
         .package(url: "https://github.com/StanfordSpezi/Spezi", from: "1.8.0"),
         .package(url: "https://github.com/StanfordSpezi/SpeziViews", from: "1.7.0"),
         .package(url: "https://github.com/StanfordSpezi/SpeziStorage", from: "1.1.2"),
+        .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
         .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0-prerelease-2024-08-14"),
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", from: "1.17.2")
     ] + swiftLintPackage(),
@@ -51,7 +52,8 @@ let package = Package(
                 .product(name: "SpeziFoundation", package: "SpeziFoundation"),
                 .product(name: "Spezi", package: "Spezi"),
                 .product(name: "SpeziViews", package: "SpeziViews"),
-                .product(name: "SpeziLocalStorage", package: "SpeziStorage")
+                .product(name: "SpeziLocalStorage", package: "SpeziStorage"),
+                .product(name: "Algorithms", package: "swift-algorithms")
             ],
             plugins: [] + swiftLintPlugin()
         ),

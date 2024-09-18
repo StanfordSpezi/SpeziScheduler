@@ -30,4 +30,11 @@ extension Date {
         }
         return tomorrow
     }
+
+    public static var nextWeek: Date {
+        guard let nextWeek = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: .today) else {
+            preconditionFailure("Failed to construct tomorrow from base \(Date.today).")
+        }
+        return nextWeek
+    }
 }
