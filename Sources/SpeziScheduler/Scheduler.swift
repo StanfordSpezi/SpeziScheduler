@@ -152,7 +152,7 @@ public final class Scheduler {
     /// When we add a new task we want to instantly save it to disk. This helps to, e.g., make sure a `@EventQuery` receives the update by subscribing to the
     /// `didSave` notification. We delay saving the context by a bit, by queuing a task for the next possible execution. This helps to avoid that adding a new task model
     /// blocks longer than needed and makes sure that creating multiple tasks in sequence (which happens at startup) doesn't call `save()` more often than required.
-    private func scheduleSave(for context: ModelContext) {
+    private func scheduleSave(for context: ModelContext, rescheduleNotifications: Bool) {
         guard saveTask == nil else {
             return // se docs above
         }
@@ -166,6 +166,11 @@ public final class Scheduler {
                 try context.save()
             } catch {
                 logger.error("Failed to save the scheduler model context: \(error)")
+            }
+
+            // TODO: the saveTask might run longer now, the assumption doesn't hold anymore! make it a separate task!
+            if rescheduleNotifications {
+                await notifications.scheduleNotificationsUpdate(using: self)
             }
         }
     }
@@ -186,13 +191,14 @@ public final class Scheduler {
     ///   - category: The user-visible category information of a task.
     ///   - schedule: The schedule for the events of this task.
     ///   - completionPolicy: The policy to decide when an event can be completed by the user.
+    ///   - scheduleNotifications: Automatically schedule notifications for upcoming events.
     ///   - tags: Custom tags associated with the task.
     ///   - effectiveFrom: The date from which this version of the task is effective. You typically do not want to modify this parameter.
     ///     If you do specify a custom value, make sure to specify it relative to `now`.
     ///   - contextClosure: The closure that allows to customize the ``Task/Context`` that is stored with the task.
     /// - Returns: Returns the latest version of the `task` and if the task was updated or created indicated by `didChange`.
     @discardableResult
-    public func createOrUpdateTask( // swiftlint:disable:this function_default_parameter_at_end function_body_length
+    public func createOrUpdateTask( // swiftlint:disable:this function_default_parameter_at_end
         id: String,
         title: String.LocalizationValue,
         instructions: String.LocalizationValue,
@@ -240,14 +246,8 @@ public final class Scheduler {
             )
 
             if result.didChange {
-                scheduleSave(for: context)
-
-                if Task.requiresNotificationRescheduling(previous: existingTask, updated: result.task) {
-                    // TODO: we could just run the algorithm for this single task!
-                    _Concurrency.Task { @MainActor in
-                        try await notifications.updateNotifications(using: self) // TODO: handle errors!
-                    }
-                }
+                let notifications = Task.requiresNotificationRescheduling(previous: existingTask, updated: result.task)
+                scheduleSave(for: context, rescheduleNotifications: notifications)
             }
 
 
@@ -266,12 +266,8 @@ public final class Scheduler {
                 with: contextClosure ?? { _ in }
             )
             context.insert(task)
-            scheduleSave(for: context)
+            scheduleSave(for: context, rescheduleNotifications: scheduleNotifications)
 
-            // TODO: we could just run the algorithm for this single task!
-            _Concurrency.Task { @MainActor in
-                try await notifications.updateNotifications(using: self) // TODO: handle errors!
-            }
             return (task, true)
         }
     }
@@ -300,7 +296,7 @@ public final class Scheduler {
         }
 
         context.insert(outcome)
-        scheduleSave(for: context)
+        scheduleSave(for: context, rescheduleNotifications: false)
     }
 
     /// Delete a task from the store.
@@ -341,9 +337,16 @@ public final class Scheduler {
         for range: ClosedRange<Date>,
         predicate: Predicate<Task> = #Predicate { _ in true },
         sortBy sortDescriptors: [SortDescriptor<Task>] = [],
+        fetchLimit: Int? = nil,
         prefetchOutcomes: Bool = false
     ) throws -> [Task] {
-        try queryTasks(with: inClosedRangePredicate(for: range), combineWith: predicate, sortBy: sortDescriptors, prefetchOutcomes: prefetchOutcomes)
+        try queryTasks(
+            with: inClosedRangePredicate(for: range),
+            combineWith: predicate,
+            sortBy: sortDescriptors,
+            fetchLimit: fetchLimit,
+            prefetchOutcomes: prefetchOutcomes
+        )
     }
 
     
@@ -364,9 +367,16 @@ public final class Scheduler {
         for range: Range<Date>,
         predicate: Predicate<Task> = #Predicate { _ in true },
         sortBy sortDescriptors: [SortDescriptor<Task>] = [],
+        fetchLimit: Int? = nil,
         prefetchOutcomes: Bool = false
     ) throws -> [Task] {
-        try queryTasks(with: inRangePredicate(for: range), combineWith: predicate, sortBy: sortDescriptors, prefetchOutcomes: prefetchOutcomes)
+        try queryTasks(
+            with: inRangePredicate(for: range),
+            combineWith: predicate,
+            sortBy: sortDescriptors,
+            fetchLimit: fetchLimit,
+            prefetchOutcomes: prefetchOutcomes
+        )
     }
 
     func queryTasks(
@@ -380,7 +390,7 @@ public final class Scheduler {
             with: inPartialRangeFromPredicate(for: range),
             combineWith: predicate,
             sortBy: sortDescriptors,
-            fetchLimit: fetchLimit, // TODO: support fetchLimit with the others as well
+            fetchLimit: fetchLimit,
             prefetchOutcomes: prefetchOutcomes
         )
     }
@@ -414,13 +424,23 @@ extension Scheduler: Module, EnvironmentAccessible, Sendable {}
 
 
 extension Scheduler {
+    private struct OccurrenceId: Hashable {
+        let taskId: String
+        let startDate: Date
+
+        init(task: Task, startDate: Date) {
+            self.taskId = task.id
+            self.startDate = startDate
+        }
+    }
+
     func assembleEvents<S: Sequence<Task>>(
         for range: Range<Date>,
         tasks: S,
-        outcomes: [Outcome] // TODO: mark the events as incomplete to make sure you can' accidentally add outcome
+        outcomes: [Outcome]? // swiftlint:disable:this discouraged_optional_collection
     ) -> [Event] {
-        let outcomesByOccurrence = outcomes.reduce(into: [:]) { partialResult, outcome in
-            partialResult[outcome.occurrenceStartDate] = outcome
+        let outcomesByOccurrence = outcomes?.reduce(into: [:]) { partialResult, outcome in
+            partialResult[OccurrenceId(task: outcome.task, startDate: outcome.occurrenceStartDate)] = outcome
         }
 
         return tasks
@@ -447,11 +467,15 @@ extension Scheduler {
 
                 return task.schedule
                     .occurrences(in: lowerBound..<upperBound)
-                    .map { occurrence in
-                        if let outcome = outcomesByOccurrence[occurrence.start] {
-                            Event(task: task, occurrence: occurrence, outcome: .value(outcome))
+                    .map { occurrence -> Event in
+                        if let outcomesByOccurrence {
+                            if let outcome = outcomesByOccurrence[OccurrenceId(task: task, startDate: occurrence.start)] {
+                                Event(task: task, occurrence: occurrence, outcome: .value(outcome))
+                            } else {
+                                Event(task: task, occurrence: occurrence, outcome: .createWith(self))
+                            }
                         } else {
-                            Event(task: task, occurrence: occurrence, outcome: .createWith(self))
+                            Event(task: task, occurrence: occurrence, outcome: .preventCreation)
                         }
                     }
             }
@@ -524,11 +548,13 @@ extension Scheduler {
     }
 
     private func queryOutcomes(for range: Range<Date>, predicate taskPredicate: Predicate<Task>) throws -> [Outcome] {
-        let descriptor = FetchDescriptor<Outcome>(
+        var descriptor = FetchDescriptor<Outcome>(
             predicate: #Predicate { outcome in
                 range.contains(outcome.occurrenceStartDate) && taskPredicate.evaluate(outcome.task)
             }
         )
+
+        descriptor.relationshipKeyPathsForPrefetching = [\.task]
 
         return try context.fetch(descriptor)
     }

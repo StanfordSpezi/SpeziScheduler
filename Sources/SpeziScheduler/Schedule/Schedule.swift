@@ -61,9 +61,7 @@ public struct Schedule {
     ///
     /// This is only possible if `DateComponents` doesn't describe another occurrence between `now` and `startDate`. Therefore, we might need to schedule
     /// these occurrences manually, till we reach a date where `now` is near enough at the `startDate`.
-    private(set) var notificationMatchingHint: DateComponents?
-    // TODO: when does this end???
-    // TODO: we can only do that if we are post the startDate (e.g., daily but only starting next week) =>
+    private(set) var notificationMatchingHint: NotificationMatchingHint?
 
     /// The duration of a single occurrence.
     ///
@@ -140,7 +138,7 @@ public struct Schedule {
         startingAt start: Date,
         duration: Duration,
         recurrence: Calendar.RecurrenceRule?,
-        notificationIntervalHint: DateComponents?
+        notificationIntervalHint: NotificationMatchingHint?
     ) {
         self.duration = duration
         self.start = start
@@ -273,7 +271,7 @@ extension Schedule {
             preconditionFailure("Failed to set time of start date for daily schedule. Can't set \(hour):\(minute):\(second) for \(start).")
         }
 
-        let notificationIntervalHint = Self.notificationIntervalHint(
+        let notificationIntervalHint = Schedule.notificationMatchingHint(
             forMatchingInterval: interval,
             calendar: calendar,
             hour: hour,
@@ -324,7 +322,7 @@ extension Schedule {
         }
 
         let weekdayNum = weekday.map { $0.ordinal } ?? Calendar.current.component(.weekday, from: startTime)
-        let notificationIntervalHint = Self.notificationIntervalHint(
+        let notificationIntervalHint = Schedule.notificationMatchingHint(
             forMatchingInterval: interval,
             calendar: calendar,
             hour: hour,
@@ -407,7 +405,15 @@ extension Schedule {
                 true
             }
     }
-    
+
+    func nextOccurrences(in range: PartialRangeFrom<Date>, count: Int) -> [Occurrence] {
+        Array(occurrences(in: range.lowerBound..<Date.distantFuture).prefix(count))
+    }
+
+    func nextOccurrences(in range: Range<Date>, count: Int) -> [Occurrence] {
+        Array(occurrences(in: range).prefix(count))
+    }
+
     /// Return the last occurrence of a schedule if its part of the requested range.
     ///
     /// This method iterates through the occurrences of the schedule to find if the last occurrence of the schedule is within the bounds of the provided range.
@@ -498,3 +504,5 @@ extension Data {
         }
     }
 }
+
+// swiftlint:disable:this file_length

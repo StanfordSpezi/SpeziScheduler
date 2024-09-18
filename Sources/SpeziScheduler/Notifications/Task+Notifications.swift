@@ -55,8 +55,6 @@ extension Task {
         notifications: LocalNotifications,
         hint notificationMatchingHint: DateComponents
     ) async throws {
-        // TODO: duplicates the entry! ???
-
         let content = notificationContent()
         let trigger = UNCalendarNotificationTrigger(dateMatching: notificationMatchingHint, repeats: true)
         let request = UNNotificationRequest(identifier: SchedulerNotifications.notificationId(for: self), content: content, trigger: trigger)

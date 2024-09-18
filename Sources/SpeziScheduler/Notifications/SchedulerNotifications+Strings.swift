@@ -54,7 +54,7 @@ extension SchedulerNotifications {
     /// - Parameter event: The event.
     /// - Returns: Returns the identifier for the notification request when creating a request for the specified event.
     public static nonisolated func notificationId(for event: Event) -> String {
-        "\(baseEventNotificationId).\(event.task.id).\(event.occurrence.start)" // TODO: brint timeInterval since Reference?
+        "\(baseEventNotificationId).\(event.task.id).\(event.occurrence.start.timeIntervalSinceReferenceDate)"
     }
     
     /// The notification request identifier for a given task if its scheduled using a repeating calendar trigger.
