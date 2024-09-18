@@ -11,7 +11,7 @@ import UserNotifications
 
 
 extension Schedule {
-    static var defaultNotificationTime: (hour: Int, minute: Int, second: Int) {
+    static var defaultNotificationTime: (hour: Int, minute: Int, second: Int) { // swiftlint:disable:this large_tuple
         // default to 9am // TODO: customize that?
         (9, 0, 0)
     }
@@ -28,7 +28,7 @@ extension Schedule {
         }
     }
 
-    static func notificationIntervalHint(
+    static func notificationIntervalHint( // swiftlint:disable:this function_parameter_count function_default_parameter_at_end
         forMatchingInterval interval: Int,
         calendar: Calendar,
         hour: Int,
@@ -64,9 +64,11 @@ extension Schedule {
             return false
         }
 
-        guard let nextOccurrence = nextOccurrence(from: now) else {
+        guard let nextOccurrence = nextOccurrence(in: now...) else {
             return false
         }
+
+        // TODO: do not schedule as calendar trigger if this is the last event occurring!
 
         if duration.isAllDay {
             // we deliver notifications for all day occurrences at a different time

@@ -27,6 +27,7 @@ jobs:
         run: |
           VERSION=$(sw_vers -productVersion | cut -d '.' -f 1)
           echo "major_version=$VERSION >> $GITHUB_OUTPUT"
+          echo "macOS major version $VERSION"
   buildandtest_ios:
     name: Build and Test Swift Package
     uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
