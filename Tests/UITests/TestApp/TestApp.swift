@@ -8,6 +8,7 @@
 
 import SpeziScheduler
 import SwiftUI
+import XCTSpeziScheduler
 
 
 @main
@@ -18,7 +19,17 @@ struct UITestsApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ScheduleView()
+            TabView {
+                Tab("Schedule", systemImage: "list.clipboard.fill") {
+                    ScheduleView()
+                }
+
+                Tab("Notifications", systemImage: "mail.fill") {
+                    NavigationStack {
+                        PendingNotificationsList()
+                    }
+                }
+            }
                 .spezi(appDelegate)
         }
     }

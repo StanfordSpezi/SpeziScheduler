@@ -22,7 +22,7 @@ import SwiftUI
 /// for tasks. It allows to modify the properties (e.g., schedule) of future events without affecting occurrences of the past.
 ///
 /// You create and automatically update your tasks
-/// using ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:tags:effectiveFrom:with:)``.
+/// using ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:with:)``.
 ///
 /// Below is a example on how to create your own [`Module`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/module)
 /// to manage your tasks and ensure they are always up to date.
@@ -58,8 +58,8 @@ import SwiftUI
 /// ### Configuration
 /// - ``init()``
 ///
-/// ### Creating Tasks
-/// - ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:tags:effectiveFrom:with:)``
+/// ### Creating and Updating Tasks
+/// - ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:with:)``
 ///
 /// ### Query Tasks
 /// - ``queryTasks(for:predicate:sortBy:fetchLimit:prefetchOutcomes:)-8z86i``
@@ -206,13 +206,14 @@ public final class Scheduler {
     ///   - schedule: The schedule for the events of this task.
     ///   - completionPolicy: The policy to decide when an event can be completed by the user.
     ///   - scheduleNotifications: Automatically schedule notifications for upcoming events.
+    ///   - notificationThread: The behavior how task notifications are grouped in the notification center.
     ///   - tags: Custom tags associated with the task.
     ///   - effectiveFrom: The date from which this version of the task is effective. You typically do not want to modify this parameter.
     ///     If you do specify a custom value, make sure to specify it relative to `now`.
     ///   - contextClosure: The closure that allows to customize the ``Task/Context`` that is stored with the task.
     /// - Returns: Returns the latest version of the `task` and if the task was updated or created indicated by `didChange`.
     @discardableResult
-    public func createOrUpdateTask( // swiftlint:disable:this function_default_parameter_at_end
+    public func createOrUpdateTask( // swiftlint:disable:this function_default_parameter_at_end function_body_length
         id: String,
         title: String.LocalizationValue,
         instructions: String.LocalizationValue,
@@ -220,6 +221,7 @@ public final class Scheduler {
         schedule: Schedule,
         completionPolicy: AllowedCompletionPolicy = .sameDay,
         scheduleNotifications: Bool = false,
+        notificationThread: NotificationThread = .task,
         tags: [String]? = nil, // swiftlint:disable:this discouraged_optional_collection
         effectiveFrom: Date = .now,
         with contextClosure: ((inout Task.Context) -> Void)? = nil
@@ -254,6 +256,7 @@ public final class Scheduler {
                 schedule: schedule,
                 completionPolicy: completionPolicy,
                 scheduleNotifications: scheduleNotifications,
+                notificationThread: notificationThread,
                 tags: tags,
                 effectiveFrom: effectiveFrom,
                 with: contextClosure
@@ -275,6 +278,7 @@ public final class Scheduler {
                 schedule: schedule,
                 completionPolicy: completionPolicy,
                 scheduleNotifications: scheduleNotifications,
+                notificationThread: notificationThread,
                 tags: tags ?? [],
                 effectiveFrom: effectiveFrom,
                 with: contextClosure ?? { _ in }

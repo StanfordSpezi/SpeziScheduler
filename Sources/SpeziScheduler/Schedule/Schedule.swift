@@ -196,11 +196,12 @@ public struct Schedule {
 }
 
 
-extension Schedule: Equatable, Sendable, Codable {
+extension Schedule: Equatable, Sendable, Codable {/*
     private enum CodingKeys: String, CodingKey {
         case startDate
         case scheduleDuration
         case recurrenceRule
+        case notificationMatchingHint
     }
 
     public init(from decoder: any Decoder) throws {
@@ -208,6 +209,7 @@ extension Schedule: Equatable, Sendable, Codable {
         self.startDate = try container.decode(Date.self, forKey: .startDate)
         self.scheduleDuration = try container.decode(Schedule.Duration.SwiftDataDuration.self, forKey: .scheduleDuration)
         self.recurrenceRule = try container.decodeIfPresent(Data.self, forKey: .recurrenceRule)
+        self.notificationMatchingHint = try container.decodeIfPresent(NotificationMatchingHint.self, forKey: .notificationMatchingHint)
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -215,7 +217,8 @@ extension Schedule: Equatable, Sendable, Codable {
         try container.encode(startDate, forKey: .startDate)
         try container.encode(scheduleDuration, forKey: .scheduleDuration)
         try container.encode(recurrenceRule, forKey: .recurrenceRule)
-    }
+        try container.encode(notificationMatchingHint, forKey: .notificationMatchingHint)
+    }*/
 }
 
 
@@ -386,9 +389,8 @@ extension Schedule {
     ///
     /// - Parameter range: A range that limits the search space. If `nil`, return all occurrences in the schedule.
     /// - Returns: Returns a potentially infinite sequence of ``Occurrence``s.
-    public func occurrences(in range: Range<Date>? = nil) -> some Sequence<Occurrence> & Sendable {
+    public func occurrences(in range: Range<Date>? = nil) -> some Sequence<Occurrence> {
         recurrencesSequence(in: range)
-            .lazy
             .map { element in
                 Occurrence(start: element, schedule: self)
             }
@@ -410,7 +412,7 @@ extension Schedule {
     }
 
     func nextOccurrences(in range: Range<Date>, count: Int) -> [Occurrence] {
-        Array(occurrences(in: range).prefix(count))
+        Array(occurrences(in: range).lazy.prefix(count))
     }
 
     /// Return the last occurrence of a schedule if its part of the requested range.
@@ -431,7 +433,7 @@ extension Schedule {
         return lastOccurrence
     }
 
-    private func recurrencesSequence(in range: Range<Date>? = nil) -> some Sequence<Date> {
+    private func recurrencesSequence(in range: Range<Date>? = nil) -> LazyFilterSequence<some Sequence<Date>> {
         let start = start
         let rangeUsedWithRule: Range<Date>?
 

@@ -36,7 +36,12 @@ final class ScheduleTests: XCTestCase {
         try XCTAssertEqual(occurrence.start, .withTestDate(hour: 9, minute: 23, second: 25))
         try XCTAssertEqual(occurrence.end, .withTestDate(hour: 11, minute: 23, second: 25))
 
-        // TODO: test nextOccurrences as well!
+
+        let occurrences = try schedule.nextOccurrences(in: .withTestDate(hour: 9, minute: 3)..., count: 2)
+        continueAfterFailure = false
+        XCTAssertEqual(occurrences.count, 1)
+        continueAfterFailure = true
+        XCTAssertEqual(occurrences[0], occurrence)
     }
 
     func testNextOccurrence() throws {
@@ -47,6 +52,51 @@ final class ScheduleTests: XCTestCase {
         try XCTAssertNil(schedule.nextOccurrence(in: .withTestDate(day: 26, hour: 14, minute: 0)...))
 
         try XCTAssertEqual(occurrence.start, .withTestDate(hour: 12, minute: 35))
+
+
+        let occurrences = try schedule.nextOccurrences(in: .withTestDate(hour: 9, minute: 3)..., count: 2)
+        continueAfterFailure = false
+        XCTAssertEqual(occurrences.count, 2)
+        continueAfterFailure = true
+        XCTAssertEqual(occurrences[0], occurrence)
+
+        let occurrence1 = occurrences[1]
+        try XCTAssertEqual(occurrence1.start, .withTestDate(day: 25, hour: 12, minute: 35, second: 0))
+    }
+
+    func testNextOccurrenceInfinite() throws {
+        let clock = ContinuousClock()
+
+        let startDate: Date = try .withTestDate(hour: 9, minute: 23, second: 25)
+        let schedule: Schedule = .daily(hour: 12, minute: 35, startingAt: startDate)
+
+        var occurrence: Occurrence! // swiftlint:disable:this implicitly_unwrapped_optional
+        let duration = try clock.measure {
+            occurrence = try XCTUnwrap(schedule.nextOccurrence(in: .withTestDate(hour: 9, minute: 3)...))
+        }
+        continueAfterFailure = false
+        XCTAssertNotNil(occurrence)
+        continueAfterFailure = true
+
+        XCTAssert(duration < .milliseconds(10), "Querying next occurrence took longer than expected: \(duration)")
+
+        try XCTAssertEqual(occurrence.start, .withTestDate(hour: 12, minute: 35))
+
+
+        var occurrences: [Occurrence] = []
+        let duration2 = try clock.measure {
+            occurrences = try schedule.nextOccurrences(in: .withTestDate(hour: 9, minute: 3)..., count: 2)
+        }
+
+        XCTAssert(duration2 < .milliseconds(10), "Query next occurrences took longer than expected: \(duration2)")
+
+        continueAfterFailure = false
+        XCTAssertEqual(occurrences.count, 2)
+        continueAfterFailure = true
+        XCTAssertEqual(occurrences[0], occurrence)
+
+        let occurrence1 = occurrences[1]
+        try XCTAssertEqual(occurrence1.start, .withTestDate(day: 25, hour: 12, minute: 35, second: 0))
     }
 
     func testDailyScheduleWithThreeOccurrences() throws {

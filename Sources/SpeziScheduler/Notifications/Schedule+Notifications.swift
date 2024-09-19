@@ -12,13 +12,13 @@ import UserNotifications
 
 extension Schedule {
     enum NotificationMatchingHint: Codable, Sendable, Hashable {
-        case components(DateComponents)
+        case components(hour: Int, minute: Int, second: Int, weekday: Int?)
         case allDayNotification(weekday: Int?)
 
         func dateComponents(calendar: Calendar, allDayNotificationTime: NotificationTime) -> DateComponents {
             switch self {
-            case let .components(dateComponents):
-                return dateComponents
+            case let .components(hour, minute, second, weekday):
+                return DateComponents(calendar: calendar, hour: hour, minute: minute, second: second, weekday: weekday)
             case let .allDayNotification(weekday):
                 let time = allDayNotificationTime
                 return DateComponents(calendar: calendar, hour: time.hour, minute: time.minute, second: time.second, weekday: weekday)
@@ -54,7 +54,7 @@ extension Schedule {
         if duration.isAllDay {
             return .allDayNotification(weekday: weekday)
         } else {
-            return .components(DateComponents(calendar: calendar, hour: hour, minute: minute, second: second, weekday: weekday))
+            return .components(hour: hour, minute: minute, second: second, weekday: weekday)
         }
     }
 
@@ -74,7 +74,7 @@ extension Schedule {
             return false
         }
 
-        let nextOccurrences = nextOccurrences(in: now..., count: 2)
+        let nextOccurrences = nextOccurrences(in: now..., count: 2) // TODO: this is taking forever?
         guard let nextOccurrence = nextOccurrences.first,
               nextOccurrences.count >= 2 else {
             // we require at least two next occurrences to justify a **repeating** calendar-based trigger

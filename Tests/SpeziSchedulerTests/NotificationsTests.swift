@@ -7,7 +7,6 @@
 //
 
 @testable import SpeziScheduler
-import UserNotifications
 import XCTest
 
 

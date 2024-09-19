@@ -27,6 +27,7 @@ public struct SchedulerSampleData: PreviewModifier {
             schedule: .daily(hour: 17, minute: 0, startingAt: .today),
             completionPolicy: .sameDay,
             scheduleNotifications: false,
+            notificationThread: .task,
             tags: [],
             effectiveFrom: .today // make sure test task always starts from the start of today
         )

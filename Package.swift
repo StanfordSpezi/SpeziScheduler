@@ -24,7 +24,8 @@ let package = Package(
     ],
     products: [
         .library(name: "SpeziScheduler", targets: ["SpeziScheduler"]),
-        .library(name: "SpeziSchedulerUI", targets: ["SpeziSchedulerUI"])
+        .library(name: "SpeziSchedulerUI", targets: ["SpeziSchedulerUI"]),
+        .library(name: "XCTSpeziScheduler", targets: ["XCTSpeziScheduler"])
     ],
     dependencies: [
         .package(url: "https://github.com/StanfordSpezi/SpeziFoundation", from: "2.0.0"),
@@ -65,6 +66,15 @@ let package = Package(
             ],
             resources: [
                 .process("Resources")
+            ],
+            plugins: [] + swiftLintPlugin()
+        ),
+        .target(
+            name: "XCTSpeziScheduler",
+            dependencies: [
+                .target(name: "SpeziScheduler"),
+                .target(name: "SpeziSchedulerUI"),
+                .product(name: "SpeziViews", package: "SpeziViews")
             ],
             plugins: [] + swiftLintPlugin()
         ),

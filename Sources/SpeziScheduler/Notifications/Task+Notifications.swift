@@ -9,13 +9,6 @@
 import Spezi
 import UserNotifications
 
-enum NotificationThread { // TODO: use?
-    case scheduler
-    case task
-    case custom(String)
-    case none
-}
-
 
 extension Task {
     /// Determine if any notification-related properties changed that require updating the notifications schedule.
@@ -42,10 +35,20 @@ extension Task {
             content.interruptionLevel = .timeSensitive
         }
 
+        content.sound = .default // will be automatically ignored if sound is not enabled
+
         content.userInfo[SchedulerNotifications.notificationTaskIdKey] = id
 
-        // TODO: make the grouping "approach" an option? (`notificationThread` global, task, custom).
-        content.threadIdentifier = SchedulerNotifications.notificationThreadIdentifier(for: id)
+        switch notificationThread {
+        case .global:
+            content.threadIdentifier = SchedulerNotifications.baseNotificationId
+        case .task:
+            content.threadIdentifier = SchedulerNotifications.notificationThreadIdentifier(for: id)
+        case let .custom(identifier):
+            content.threadIdentifier = identifier
+        case .none:
+            break
+        }
 
         return content
     }
@@ -63,6 +66,9 @@ extension Task {
 
         let trigger = UNCalendarNotificationTrigger(dateMatching: notificationMatchingHint, repeats: true)
         let request = UNNotificationRequest(identifier: SchedulerNotifications.notificationId(for: self), content: content, trigger: trigger)
+
+        // TODO: remove
+        print("Scheduling repeating notification with next occurrence on \(trigger.nextTriggerDate())")
 
         try await notifications.add(request: request)
     }
