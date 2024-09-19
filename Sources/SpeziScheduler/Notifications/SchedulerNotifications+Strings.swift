@@ -8,6 +8,8 @@
 
 
 extension SchedulerNotifications {
+    static nonisolated let earliestScheduleRefreshDateStorageKey = "edu.stanford.spezi.scheduler.earliestScheduleRefreshDate"
+
     /// Access the task id from the `userInfo` of a notification.
     ///
     /// The ``Task/id`` is stored in the [`userInfo`](https://developer.apple.com/documentation/usernotifications/unmutablenotificationcontent/userinfo)

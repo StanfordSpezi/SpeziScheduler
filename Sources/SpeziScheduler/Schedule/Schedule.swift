@@ -92,7 +92,6 @@ public struct Schedule {
             recurrenceRule = newValue.map { Data(encoding: $0) }
 
             // if someone updates the recurrence rule, our notificationMatchingHint is not valid anymore
-            // TODO: there are properties that can be safely changed!
             notificationMatchingHint = nil
         }
     }
@@ -407,7 +406,7 @@ extension Schedule {
     }
 
     func nextOccurrences(in range: PartialRangeFrom<Date>, count: Int) -> [Occurrence] {
-        Array(occurrences(in: range.lowerBound..<Date.distantFuture).prefix(count))
+        nextOccurrences(in: range.lowerBound..<Date.distantFuture, count: count)
     }
 
     func nextOccurrences(in range: Range<Date>, count: Int) -> [Occurrence] {

@@ -10,21 +10,37 @@ import Algorithms
 import BackgroundTasks
 import Foundation
 import Spezi
+import SpeziFoundation
 import SpeziLocalStorage
 import SwiftData
 import UserNotifications
+import struct SwiftUI.AppStorage
 
 
 /// Manage notifications for the Scheduler.
 ///
+/// Notifications can be automatically scheduled for Tasks that are scheduled using the ``Scheduler`` module. You configure a Task for automatic notification scheduling by
+/// setting the ``Task/scheduleNotifications`` property.
+///
+/// - Note: The `SchedulerNotifications` module is automatically configured by the `Scheduler` module using default configuration options. If you want to provide
+///     custom configuration for the `SchedulerNotifications`, just include it in your `configuration` section of your
+///     [`SpeziAppDelegate`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/speziappdelegate) using
+///     ``init(notificationLimit:schedulingInterval:allDayNotificationTime:)``.
+///
 /// ## Topics
 ///
 /// ### Configuration
-/// - ``init(schedulerLimit:schedulerTimeLimit:)``
 /// - ``init()``
+/// - ``init(notificationLimit:schedulingInterval:allDayNotificationTime:)``
 ///
-/// ### Notification Identifier
-/// - ``notificationId(for:)``
+/// ### Properties
+/// - ``notificationLimit``
+/// - ``schedulingInterval``
+/// - ``allDayNotificationTime``
+///
+/// ### Notification Identifiers
+/// - ``notificationId(for:)-33tri``
+/// - ``notificationId(for:)-8cchs``
 /// - ``notificationCategory(for:)``
 /// - ``notificationThreadIdentifier(for:)``
 /// - ``notificationTaskIdKey``
@@ -38,25 +54,59 @@ public final class SchedulerNotifications { // TODO: docs! entitltemenet for tim
     @Dependency(LocalStorage.self)
     private var localStorage
 
-    /// The limit of events that should be scheduled at the same time.
-    ///
-    /// Default is `30`.
-    private nonisolated let schedulerLimit: Int
-    /// The time period for which we should schedule events.
-    ///
-    /// Default is `4` weeks.
-    private nonisolated let schedulerTimeLimit: TimeInterval // TODO: rename and make public
+    @StandardActor private var standard: any Standard
 
-    public nonisolated let allDayTaskNotificationTime: NotificationTime
+    /// The limit of notification requests that should be pre-scheduled at a time.
+    ///
+    /// This options limits the maximum amount of local notifications request that SpeziScheduler schedules.
+    ///
+    /// - Note: Default is `30`.
+    public nonisolated let notificationLimit: Int
+    /// The time period for which we should schedule events in advance.
+    ///
+    /// - Note: Default is `4` weeks.
+    public nonisolated let schedulingInterval: TimeInterval
 
+    /// The time at which we schedule notifications for all day events.
+    ///
+    /// - Note: Default is 9 AM.
+    public nonisolated let allDayNotificationTime: NotificationTime
+
+    /// Make sure we aren't running multiple notification scheduling at the same time.
+    private let scheduleNotificationAccess = AsyncSemaphore()
+    /// Small flag that helps us to debounce multiple calls to schedule notifications.
+    ///
+    /// This flag is set once the scheduling notifications task is queued and reset once it starts running.
+    /// As we are running on the same actor, we know that if the flag is true, we do not need to start another task as we are still in the same call stack
+    /// and the task that is about to run will still see our changes.
+    private var queuedForNextTick = false
+
+    private var backgroundTaskRegistered = false
+
+    /// Store the earliest refresh date of the background task.
+    ///
+    /// In the case that background tasks are not enabled, we still want to schedule notifications on a best-effort approach.
+    @AppStorage(SchedulerNotifications.earliestScheduleRefreshDateStorageKey)
+    private var earliestScheduleRefreshDate: Date?
+
+    /// Default configuration.
     public required convenience nonisolated init() {
-        self.init(schedulerLimit: 30, schedulerTimeLimit: .seconds(1 * 60 * 60 * 24 * 7 * 4), allDayTaskNotificationTime: .init(hour: 9))
+        self.init(notificationLimit: 30)
     }
-
-    public nonisolated init(schedulerLimit: Int, schedulerTimeLimit: Duration, allDayTaskNotificationTime: NotificationTime) {
-        self.schedulerLimit = schedulerLimit
-        self.schedulerTimeLimit = Double(schedulerTimeLimit.components.seconds) // TODO: duration doesn't really make things easier!
-        self.allDayTaskNotificationTime = allDayTaskNotificationTime
+    
+    /// Configure the scheduler notifications module.
+    /// - Parameters:
+    ///   - notificationLimit: The limit of notification requests that should be pre-scheduled at a time.
+    ///   - schedulingInterval: The time period for which we should schedule events in advance.
+    ///   - allDayNotificationTime: The time at which we schedule notifications for all day events.
+    public nonisolated init(
+        notificationLimit: Int = 30,
+        schedulingInterval: Duration = .weeks(4),
+        allDayNotificationTime: NotificationTime = NotificationTime(hour: 9)
+    ) {
+        self.notificationLimit = notificationLimit
+        self.schedulingInterval = Double(schedulingInterval.components.seconds)
+        self.allDayNotificationTime = allDayNotificationTime
     }
     
     /// Configures the module.
@@ -65,34 +115,27 @@ public final class SchedulerNotifications { // TODO: docs! entitltemenet for tim
         purgeLegacyEventNotifications()
     }
 
-    private func ensureAllSchedulerNotificationsCancelled() async {
-        let pendingNotifications = await notifications.pendingNotificationRequests()
-            .filter { request in
-                request.identifier.starts(with: Self.baseNotificationId)
-            }
-            .map { $0.identifier }
+    func scheduleNotificationsUpdate(using scheduler: Scheduler) {
+        guard !queuedForNextTick else {
+            return
+        }
 
-        if !pendingNotifications.isEmpty {
-            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: pendingNotifications)
+        queuedForNextTick = true
+        _Concurrency.Task { @MainActor in
+            queuedForNextTick = false
+            await _scheduleNotificationsUpdate(using: scheduler)
         }
     }
 
-    private func groupedPendingSchedulerNotifications(otherNotificationsCount: inout Int) async -> [String: UNNotificationRequest] {
-        var otherNotifications = 0
-        let result: [String: UNNotificationRequest] = await notifications.pendingNotificationRequests().reduce(into: [:]) { partialResult, request in
-            if request.identifier.starts(with: Self.baseNotificationId) {
-                partialResult[request.identifier] = request
-            } else {
-                otherNotifications += 1
-            }
+    private func _scheduleNotificationsUpdate(using scheduler: Scheduler) async {
+        try? await scheduleNotificationAccess.waitCheckingCancellation()
+        guard !_Concurrency.Task.isCancelled else {
+            return
         }
 
-        otherNotificationsCount = otherNotifications
-        return result
-    }
-
-    func scheduleNotificationsUpdate(using scheduler: Scheduler) async {
-        // TODO: use an async semaphore or similar (or just debounce multiple calls here!)
+        defer {
+            scheduleNotificationAccess.signal()
+        }
 
         let task = _Concurrency.Task { @MainActor in
             try await self.updateNotifications(using: scheduler)
@@ -118,9 +161,7 @@ public final class SchedulerNotifications { // TODO: docs! entitltemenet for tim
         }
     }
 
-    // TODO: move first few lines to the scheduler, just pass in list of events that should be scheduled!
-    func updateNotifications(using scheduler: borrowing Scheduler) async throws { // swiftlint:disable:this function_body_length
-        // TODO: remove siwfltint disable again?
+    private func updateNotifications(using scheduler: borrowing Scheduler) async throws { // swiftlint:disable:this function_body_length
         let now = Date.now // ensure consistency in queries
 
         let hasTasksWithNotificationsAtAll = try measure(name: "hasTasksWithNotifications") {
@@ -148,7 +189,7 @@ public final class SchedulerNotifications { // TODO: docs! entitltemenet for tim
 
         /// We can only schedule a limited amount of notifications at the same time.
         /// Therefore, we do the following to limit the number of `UNTimeIntervalNotificationTrigger`-based notifications.
-        /// 1) We only consider the events within the `schedulerTimeLimit`.
+        /// 1) We only consider the events within the `schedulingInterval`.
         /// 2) Sort all events by their occurrence.
         /// 3) Take the first N events and schedule their notifications (with n being the `schedulerLimit`).
         /// 4) Update the schedule after 1 week or earlier if the last scheduled event has an earlier occurrence.
@@ -157,15 +198,15 @@ public final class SchedulerNotifications { // TODO: docs! entitltemenet for tim
         let pendingNotifications = await groupedPendingSchedulerNotifications(otherNotificationsCount: &otherNotificationsCount)
 
         // the amount of "slots" which would be currently available to other modules to schedule notifications.
-        let remainingNotificationSlots = LocalNotifications.pendingNotificationsLimit - otherNotificationsCount - schedulerLimit
+        let remainingNotificationSlots = LocalNotifications.pendingNotificationsLimit - otherNotificationsCount - notificationLimit
 
         // if remainingNotificationSlots is negative, we need to lower our limit, because there is simply not enough space for us
-        let currentSchedulerLimit = min(schedulerLimit, schedulerLimit + remainingNotificationSlots)
+        let currentSchedulerLimit = min(notificationLimit, notificationLimit + remainingNotificationSlots)
 
-        let range = now..<now.addingTimeInterval(schedulerTimeLimit)
+        let range = now..<now.addingTimeInterval(schedulingInterval)
         var nextOccurrenceCache = TaskNextOccurrenceCache(in: now...)
 
-        // We query all future events until the schedulerTimeLimit. We generally aim to schedule things not too early so we apply the limit.
+        // We query all future events until the schedulingInterval. We generally aim to schedule things not too early so we apply the limit.
         // The results are sorted by their effective date. However, we additionally sort by the events first occurrence.
         var tasks = try scheduler.queryTasks(for: range, predicate: #Predicate { task in
             task.scheduleNotifications
@@ -196,7 +237,7 @@ public final class SchedulerNotifications { // TODO: docs! entitltemenet for tim
         // stable partition preserves relative order
         let pivot = tasks.stablePartition { task in
             // true, if it belongs into the second partition
-            task.schedule.canBeScheduledAsRepeatingCalendarTrigger(allDayNotificationTime: allDayTaskNotificationTime, now: now)
+            task.schedule.canBeScheduledAsRepeatingCalendarTrigger(allDayNotificationTime: allDayNotificationTime, now: now)
         }
 
         let calendarTriggerTasks = tasks[pivot...]
@@ -236,12 +277,8 @@ public final class SchedulerNotifications { // TODO: docs! entitltemenet for tim
         // We don't create repeating triggers if the task only has a single occurrence left. Therefore, re-scheduling
         // notifications shortly before the last task is getting scheduled is fine.
         let earliestTaskLevelOccurrenceNeedingCancellation = tasks // swiftlint:disable:this identifier_name
-            .filter { task in
-                !task.schedule.repeatsIndefinitely
-            }
-            .compactMap { task in
-                task.schedule.lastOccurrence(ifIn: now..<Date.nextWeek)
-            }
+            .filter { !$0.schedule.repeatsIndefinitely }
+            .compactMap { $0.schedule.lastOccurrence(ifIn: now..<Date.nextWeek) }
             .min()
 
 
@@ -249,7 +286,13 @@ public final class SchedulerNotifications { // TODO: docs! entitltemenet for tim
             .compactMap { $0 }
             .min()
 
-        scheduleNotificationsRefresh(nextThreshold: earliest?.start)
+        guard let earliest else {
+            // there is no task repeating task that ends sooner, there is no task we didn't schedule
+            // and there is no event we didn't schedule. Therefore, we do not need to schedule a background task at all.
+            return
+        }
+
+        scheduleNotificationsRefresh(nextThreshold: earliest.start)
     }
 
     private func shouldScheduleNotification(
@@ -268,6 +311,32 @@ public final class SchedulerNotifications { // TODO: docs! entitltemenet for tim
             UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [existingRequest.identifier])
             return true
         }
+    }
+
+    private func ensureAllSchedulerNotificationsCancelled() async {
+        let pendingNotifications = await notifications.pendingNotificationRequests()
+            .filter { request in
+                request.identifier.starts(with: Self.baseNotificationId)
+            }
+            .map { $0.identifier }
+
+        if !pendingNotifications.isEmpty {
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: pendingNotifications)
+        }
+    }
+
+    private func groupedPendingSchedulerNotifications(otherNotificationsCount: inout Int) async -> [String: UNNotificationRequest] {
+        var otherNotifications = 0
+        let result: [String: UNNotificationRequest] = await notifications.pendingNotificationRequests().reduce(into: [:]) { partialResult, request in
+            if request.identifier.starts(with: Self.baseNotificationId) {
+                partialResult[request.identifier] = request
+            } else {
+                otherNotifications += 1
+            }
+        }
+
+        otherNotificationsCount = otherNotifications
+        return result
     }
 
     private func taskLevelScheduling(
@@ -289,15 +358,17 @@ public final class SchedulerNotifications { // TODO: docs! entitltemenet for tim
                 continue // shouldn't happen, otherwise, wouldn't be here
             }
 
-            let components = notificationMatchingHint.dateComponents(calendar: calendar, allDayNotificationTime: allDayTaskNotificationTime)
+            let components = notificationMatchingHint.dateComponents(calendar: calendar, allDayNotificationTime: allDayNotificationTime)
 
-            do {
-                // TODO: just propagate failed notification scheduling, this fucks with our bg task scheduling!
-                try await measure(name: "Task Notification Request") {
-                    try await task.scheduleNotification(notifications: notifications, hint: components)
-                }
-            } catch {
-                logger.error("Failed to register remote notification for task \(task.id) for hint \(String(describing: notificationMatchingHint))")
+            // Notification scheduling only fails if there is something statically wrong (e.g., content issues or configuration issues)
+            // If one fails, probably all fail. So just abort.
+            // See https://developer.apple.com/documentation/usernotifications/unerror
+            try await measure(name: "Task Notification Request") {
+                try await task.scheduleNotification(
+                    notifications: notifications,
+                    standard: standard as? SchedulerNotificationsConstraint,
+                    hint: components
+                )
             }
         }
     }
@@ -317,12 +388,12 @@ public final class SchedulerNotifications { // TODO: docs! entitltemenet for tim
                 continue
             }
 
-            do {
-                try await measure(name: "Event Notification Request") {
-                    try await event.scheduleNotification(notifications: notifications, allDayNotificationTime: allDayTaskNotificationTime)
-                }
-            } catch {
-                logger.error("Failed to register remote notification for task \(event.task.id) for date \(event.occurrence.start)")
+            try await measure(name: "Event Notification Request") {
+                try await event.scheduleNotification(
+                    notifications: notifications,
+                    standard: standard as? SchedulerNotificationsConstraint,
+                    allDayNotificationTime: allDayNotificationTime
+                )
             }
         }
     }
@@ -335,7 +406,7 @@ extension SchedulerNotifications: Module, DefaultInitializable {}
 // MARK: - Background Tasks
 
 extension SchedulerNotifications {
-    static var uiBackgroundModes: Set<BackgroundMode> {
+    @usableFromInline static var uiBackgroundModes: Set<BackgroundMode> {
         let modes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String]
         return modes.map { modes in
             modes.reduce(into: Set()) { partialResult, rawValue in
@@ -344,45 +415,39 @@ extension SchedulerNotifications {
         } ?? []
     }
 
-    static var permittedBackgroundTaskIdentifiers: Set<PermittedBackgroundTaskIdentifier> {
-        let identifiers = Bundle.main.object(forInfoDictionaryKey: "BGTaskSchedulerPermittedIdentifiers") as? [String]
-        return identifiers.map { identifiers in
-            identifiers.reduce(into: Set()) { partialResult, rawValue in
-                partialResult.insert(PermittedBackgroundTaskIdentifier(rawValue: rawValue))
+    @inlinable static var backgroundFetchEnabled: Bool {
+        uiBackgroundModes.contains(.fetch)
+    }
+
+    func registerProcessingTask(using scheduler: Scheduler) {
+        defer {
+            // fallback plan if we do not have background fetch enabled
+            if let earliestScheduleRefreshDate, !backgroundTaskRegistered, earliestScheduleRefreshDate > .now {
+                scheduleNotificationsUpdate(using: scheduler)
             }
-        } ?? []
-    }
-
-    static var backgroundProcessingEnabled: Bool {
-        // TODO: warning!
-        uiBackgroundModes.contains(.processing) && permittedBackgroundTaskIdentifiers.contains(.speziSchedulerNotificationsScheduling)
-    }
-
-    func registerProcessingTask(_ action: @escaping (BGAppRefreshTask) -> Void) {
-        guard Self.backgroundProcessingEnabled else {
-            // TODO: best effort, manualy scheudling uppn app launch! => save date trigger of the background task!
-            return // TODO: logger?
         }
 
-        // TODO: returns false if the identifier is not included in the info plist!
-        BGTaskScheduler.shared.register(
+        guard Self.backgroundFetchEnabled else {
+            logger.debug("Background fetch is not enabled. Skipping registering background task for notification scheduling.")
+            return
+        }
+
+        backgroundTaskRegistered = BGTaskScheduler.shared.register(
             forTaskWithIdentifier: PermittedBackgroundTaskIdentifier.speziSchedulerNotificationsScheduling.rawValue,
             using: .main
-        ) { task in
-            guard let backgroundTask = task as? BGAppRefreshTask else {
+        ) { [weak scheduler, weak self] task in
+            guard let self,
+                  let scheduler,
+                  let backgroundTask = task as? BGAppRefreshTask else {
                 return
             }
             MainActor.assumeIsolated {
-                action(backgroundTask)
+                handleNotificationsRefresh(for: backgroundTask, using: scheduler)
             }
         }
     }
 
     private func scheduleNotificationsRefresh(nextThreshold: Date? = nil) {
-        guard Self.backgroundProcessingEnabled else {
-            return
-        }
-
         let nextWeek: Date = .nextWeek
 
         let earliestBeginDate = if let nextThreshold {
@@ -391,14 +456,17 @@ extension SchedulerNotifications {
             nextWeek
         }
 
-        // TODO: does this classify as a processing task?
-        let request = BGAppRefreshTaskRequest(identifier: PermittedBackgroundTaskIdentifier.speziSchedulerNotificationsScheduling.rawValue)
-        request.earliestBeginDate = earliestBeginDate
+        earliestScheduleRefreshDate = earliestBeginDate
 
-        do {
-            try BGTaskScheduler.shared.submit(request)
-        } catch {
-            logger.error("Failed to schedule notifications processing task for SpeziScheduler: \(error)")
+        if backgroundTaskRegistered {
+            let request = BGAppRefreshTaskRequest(identifier: PermittedBackgroundTaskIdentifier.speziSchedulerNotificationsScheduling.rawValue)
+            request.earliestBeginDate = earliestBeginDate
+
+            do {
+                try BGTaskScheduler.shared.submit(request)
+            } catch {
+                logger.error("Failed to schedule notifications processing task for SpeziScheduler: \(error)")
+            }
         }
     }
 
@@ -457,3 +525,5 @@ extension SchedulerNotifications {
         }
     }
 }
+
+// swiftlint:disable:this file_length

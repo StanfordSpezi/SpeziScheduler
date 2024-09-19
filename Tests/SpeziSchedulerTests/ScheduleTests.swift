@@ -30,19 +30,21 @@ final class ScheduleTests: XCTestCase {
         let startDate: Date = try .withTestDate(hour: 9, minute: 23, second: 25)
         let schedule: Schedule = .once(at: startDate, duration: .hours(2))
 
-        let occurrence = try XCTUnwrap(schedule.nextOccurrence(from: .withTestDate(hour: 9, minute: 3)))
-        try XCTAssertNil(schedule.nextOccurrence(from: .withTestDate(hour: 9, minute: 25)))
+        let occurrence = try XCTUnwrap(schedule.nextOccurrence(in: .withTestDate(hour: 9, minute: 3)...))
+        try XCTAssertNil(schedule.nextOccurrence(in: .withTestDate(hour: 9, minute: 25)...))
 
         try XCTAssertEqual(occurrence.start, .withTestDate(hour: 9, minute: 23, second: 25))
         try XCTAssertEqual(occurrence.end, .withTestDate(hour: 11, minute: 23, second: 25))
+
+        // TODO: test nextOccurrences as well!
     }
 
     func testNextOccurrence() throws {
         let startDate: Date = try .withTestDate(hour: 9, minute: 23, second: 25)
         let schedule: Schedule = .daily(hour: 12, minute: 35, startingAt: startDate, end: .afterOccurrences(3))
 
-        let occurrence = try XCTUnwrap(schedule.nextOccurrence(from: .withTestDate(hour: 9, minute: 3)))
-        try XCTAssertNil(schedule.nextOccurrence(from: .withTestDate(day: 26, hour: 14, minute: 0)))
+        let occurrence = try XCTUnwrap(schedule.nextOccurrence(in: .withTestDate(hour: 9, minute: 3)...))
+        try XCTAssertNil(schedule.nextOccurrence(in: .withTestDate(day: 26, hour: 14, minute: 0)...))
 
         try XCTAssertEqual(occurrence.start, .withTestDate(hour: 12, minute: 35))
     }

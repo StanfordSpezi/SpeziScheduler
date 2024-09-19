@@ -74,9 +74,28 @@ class MySchedulerModule: Module {
 - ``Event``
 - ``Outcome``
 - ``Property()``
+- ``AllowedCompletionPolicy``
 
-### Date Accessors
+### Notifications
+
+- ``SchedulerNotifications``
+- ``SchedulerNotificationsConstraint``
+- ``NotificationTime``
+
+### Date Extensions
 
 - ``Foundation/Date/today``
 - ``Foundation/Date/tomorrow``
 - ``Foundation/Date/yesterday``
+- ``Foundation/Date/nextWeek``
+
+### Duration Extensions
+
+- ``Swift/Duration/minutes(_:)-109v7``
+- ``Swift/Duration/minutes(_:)-1i7j5``
+- ``Swift/Duration/hours(_:)-191bg``
+- ``Swift/Duration/hours(_:)-33xlm``
+- ``Swift/Duration/days(_:)-58sx4``
+- ``Swift/Duration/days(_:)-4geo0``
+- ``Swift/Duration/weeks(_:)-34lc3``
+- ``Swift/Duration/weeks(_:)-74s4k``

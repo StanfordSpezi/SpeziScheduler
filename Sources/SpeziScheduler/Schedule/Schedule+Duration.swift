@@ -26,7 +26,7 @@ extension Schedule {
 
 extension Schedule.Duration {
     /// Determine if a duration is all day.
-    public var isAllDay: Bool {
+    @inlinable public var isAllDay: Bool {
         self == .allDay
     }
 
@@ -60,6 +60,7 @@ extension Schedule.Duration {
     /// let duration: Duration = .minutes(27.5)
     /// ```
     /// - Returns: A `Duration` representing a given number of minutes.
+    @inlinable
     public static func minutes(_ minutes: Double) -> Schedule.Duration {
         .duration(.seconds(minutes * 60))
     }
@@ -80,9 +81,10 @@ extension Schedule.Duration {
     /// Creates a new duration given a number of hours by converting into the closest second scale value.
     ///
     /// ```swift
-    /// let duration: Duration = .hours(4)
+    /// let duration: Duration = .hours(4.5)
     /// ```
     /// - Returns: A `Duration` representing a given number of hours.
+    @inlinable
     public static func hours(_ hours: Double) -> Schedule.Duration {
         .minutes(hours * 60)
     }

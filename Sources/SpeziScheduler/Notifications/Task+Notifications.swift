@@ -9,6 +9,13 @@
 import Spezi
 import UserNotifications
 
+enum NotificationThread { // TODO: use?
+    case scheduler
+    case task
+    case custom(String)
+    case none
+}
+
 
 extension Task {
     /// Determine if any notification-related properties changed that require updating the notifications schedule.
@@ -23,23 +30,16 @@ extension Task {
 
 
     func notificationContent() -> sending UNMutableNotificationContent {
-        // TODO: or what is generally a good way to customize the notification
-
-        
         let content = UNMutableNotificationContent()
-        // TODO: do we need to update the localized string? (otherwise localizedUserNotificationString(forKey:arguments:)?)
         content.title = String(localized: title, locale: .autoupdatingCurrent)
         content.body = String(localized: instructions) // TODO: instructions might be longer! specify notification specific description?
-
-        // TODO: support: subtitle, sound, attachments??, userInfo?, relevanceScore, filterCriteria (focus)
-        // TODO: targetContentIdentifier (which application window to bring forward)
 
         if let category {
             content.categoryIdentifier = SchedulerNotifications.notificationCategory(for: category)
         }
 
         if !schedule.duration.isAllDay {
-            content.interruptionLevel = .timeSensitive // TODO: document required entitlement!
+            content.interruptionLevel = .timeSensitive
         }
 
         content.userInfo[SchedulerNotifications.notificationTaskIdKey] = id
@@ -50,15 +50,20 @@ extension Task {
         return content
     }
 
-    func scheduleNotification( // swiftlint:disable:this function_default_parameter_at_end
-        isolation: isolated (any Actor)? = #isolation,
+    @MainActor
+    func scheduleNotification(
         notifications: LocalNotifications,
+        standard: (any SchedulerNotificationsConstraint)?,
         hint notificationMatchingHint: DateComponents
     ) async throws {
         let content = notificationContent()
+        if let standard {
+            standard.notificationContent(for: self, content: content)
+        }
+
         let trigger = UNCalendarNotificationTrigger(dateMatching: notificationMatchingHint, repeats: true)
         let request = UNNotificationRequest(identifier: SchedulerNotifications.notificationId(for: self), content: content, trigger: trigger)
 
-        try await notifications.add(request: request) // TODO: parameter doesn't need to be sending?
+        try await notifications.add(request: request)
     }
 }
