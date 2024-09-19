@@ -26,6 +26,7 @@ struct TaskCategoryAppearances: ViewModifier {
     func body(content: Content) -> some View {
         content
             .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
+            .taskCategoryAppearance(for: .measurement, label: "Measurement", image: .system("heart.text.square.fill"))
     }
 }
 
@@ -56,11 +57,36 @@ final class TestAppScheduler: Module {
                                 and overall well-being.
                                 """
             }
+
+            let now = Date.now
+            let time = notificationTestTime(for: now, adding: .minutes(1))
+
+            try scheduler.createOrUpdateTask(
+                id: "test-measurement",
+                title: "Weight Measurement",
+                instructions: "Take a weight measurement every day.",
+                category: .measurement,
+                // TODO: minute might need to wrap around!
+                schedule: .daily(hour: time.hour, minute: time.minute, second: time.second, startingAt: now),
+                scheduleNotifications: true
+            )
         } catch {
             model.viewState = .error(AnyLocalizedError(
                 error: error,
                 defaultErrorDescription: "Failed to configure or update tasks."
             ))
         }
+    }
+
+    private func notificationTestTime(for date: Date, adding duration: Duration) -> NotificationTime {
+        let now = date.addingTimeInterval(Double(duration.components.seconds))
+        let components = Calendar.current.dateComponents([.hour, .minute, .second], from: now)
+        guard let hour = components.hour,
+              let minute = components.minute,
+              let second = components.second else {
+            preconditionFailure("Consistency error")
+        }
+
+        return NotificationTime(hour: hour, minute: minute, second: second)
     }
 }

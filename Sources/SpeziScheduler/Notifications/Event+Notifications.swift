@@ -28,6 +28,7 @@ extension Event {
             duration: occurrence.schedule.duration,
             allDayNotificationTime: allDayNotificationTime
         )
+        print("Scheduling event notification in \(notificationTime.timeIntervalSinceNow)") // TODO: remove
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: notificationTime.timeIntervalSinceNow, repeats: false)
 
         let request = UNNotificationRequest(identifier: SchedulerNotifications.notificationId(for: self), content: content, trigger: trigger)

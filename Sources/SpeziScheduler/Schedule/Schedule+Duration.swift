@@ -11,14 +11,29 @@ extension Schedule {
     /// The duration of an occurrence.
     ///
     /// While we maintain atto-second accuracy for arithmetic operations on duration, the schedule will always retrieve the duration in a resolution of seconds.
+    ///
+    /// ## Topics
+    ///
+    /// ### Creating a Duration
+    /// - ``allDay``
+    /// - ``tillEndOfDay``
+    /// - ``seconds(_:)``
+    /// - ``minutes(_:)-5tlmc``
+    /// - ``minutes(_:)-ym89``
+    /// - ``hours(_:)-8ihgw``
+    /// - ``hours(_:)-5557k``
+    ///
+    /// ### Properties
+    /// - ``isAllDay``
     public enum Duration {
         /// An all-day occurrence.
         ///
         /// The start the will always the the `startOfDay` date.
         case allDay
-        /// An occurrence that
+        /// An occurrence that ends at the end of day.
         case tillEndOfDay
         /// Fixed length occurrence.
+        @_documentation(visibility: internal)
         case duration(Swift.Duration)
     }
 }
