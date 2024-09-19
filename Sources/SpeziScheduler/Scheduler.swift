@@ -22,7 +22,7 @@ import SwiftUI
 /// for tasks. It allows to modify the properties (e.g., schedule) of future events without affecting occurrences of the past.
 ///
 /// You create and automatically update your tasks
-/// using ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)``.
+/// using ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:tags:effectiveFrom:with:)``.
 ///
 /// Below is a example on how to create your own [`Module`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/module)
 /// to manage your tasks and ensure they are always up to date.
@@ -59,11 +59,11 @@ import SwiftUI
 /// - ``init()``
 ///
 /// ### Creating Tasks
-/// - ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)``
+/// - ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:tags:effectiveFrom:with:)``
 ///
 /// ### Query Tasks
-/// - ``queryTasks(for:predicate:sortBy:prefetchOutcomes:)-f7se``
-/// - ``queryTasks(for:predicate:sortBy:prefetchOutcomes:)-583yk``
+/// - ``queryTasks(for:predicate:sortBy:fetchLimit:prefetchOutcomes:)-8z86i``
+/// - ``queryTasks(for:predicate:sortBy:fetchLimit:prefetchOutcomes:)-5cuwe``
 ///
 /// ### Query Events
 /// - ``queryEvents(for:predicate:)``
@@ -157,12 +157,7 @@ public final class Scheduler {
         // It also makes it easier to understand the SwiftData-related infrastructure around Spezi Scheduler.
         // One could think that Apple could have provided a lot of this information in their documentation.
 
-        notifications.registerProcessingTask { [weak self] task in
-            guard let self else {
-                return
-            }
-            notifications.handleNotificationsRefresh(for: task, using: self)
-        }
+        notifications.registerProcessingTask(using: self)
     }
 
 
@@ -172,29 +167,25 @@ public final class Scheduler {
     /// `didSave` notification. We delay saving the context by a bit, by queuing a task for the next possible execution. This helps to avoid that adding a new task model
     /// blocks longer than needed and makes sure that creating multiple tasks in sequence (which happens at startup) doesn't call `save()` more often than required.
     private func scheduleSave(for context: ModelContext, rescheduleNotifications: Bool) {
-        guard context.hasChanges else {
-            return
+        if saveTask == nil, context.hasChanges {
+            // as we run on the MainActor in the task, if the saveTask is not nil,
+            // we know that the Task isn't executed yet but will on the "next" tick.
+
+            saveTask = _Concurrency.Task { @MainActor [logger] in
+                defer {
+                    saveTask = nil
+                }
+
+                do {
+                    try context.save()
+                } catch {
+                    logger.error("Failed to save the scheduler model context: \(error)")
+                }
+            }
         }
 
-        guard saveTask == nil else {
-            return // se docs above
-        }
-
-        saveTask = _Concurrency.Task { [logger] in
-            defer {
-                saveTask = nil
-            }
-
-            do {
-                try context.save()
-            } catch {
-                logger.error("Failed to save the scheduler model context: \(error)")
-            }
-
-            // TODO: the saveTask might run longer now, the assumption doesn't hold anymore! make it a separate task!
-            if rescheduleNotifications {
-                await notifications.scheduleNotificationsUpdate(using: self)
-            }
+        if rescheduleNotifications {
+            notifications.scheduleNotificationsUpdate(using: self)
         }
     }
 
@@ -389,6 +380,7 @@ public final class Scheduler {
     ///   - range: The closed date range in which queried task versions need to be effective.
     ///   - predicate: Specify additional conditions to filter the list of task that is fetched from the store.
     ///   - sortDescriptors: Additionally sort descriptors. The list of task is always sorted by its ``Task/effectiveFrom``.
+    ///   - fetchLimit: The maximum number of models the query can return.
     ///   - prefetchOutcomes: Flag to indicate if the ``Task/outcomes`` relationship should be pre-fetched. By default this is `false` and relationship data is loaded lazily.
     /// - Returns: The list of `Task` that are effective in the specified date range and match the specified `predicate`. The result is ordered by the specified `sortDescriptors`.
     public func queryTasks(
@@ -419,6 +411,7 @@ public final class Scheduler {
     ///   - range: The date range in which queried task versions need to be effective.
     ///   - predicate: Specify additional conditions to filter the list of task that is fetched from the store.
     ///   - sortDescriptors: Additionally sort descriptors. The list of task is always sorted by its ``Task/effectiveFrom``.
+    ///   - fetchLimit: The maximum number of models the query can return.
     ///   - prefetchOutcomes: Flag to indicate if the ``Task/outcomes`` relationship should be pre-fetched. By default this is `false` and relationship data is loaded lazily.
     /// - Returns: The list of `Task` that are effective in the specified date range and match the specified `predicate`. The result is ordered by the specified `sortDescriptors`.
     public func queryTasks(

@@ -12,12 +12,16 @@ import UserNotifications
 
 
 extension Event {
-    func scheduleNotification( // swiftlint:disable:this function_default_parameter_at_end
-        isolation: isolated (any Actor)? = #isolation,
+    @MainActor
+    func scheduleNotification(
         notifications: LocalNotifications,
+        standard: (any SchedulerNotificationsConstraint)?,
         allDayNotificationTime: NotificationTime
     ) async throws {
         let content = task.notificationContent()
+        if let standard {
+            standard.notificationContent(for: task, content: content)
+        }
 
         let notificationTime = Schedule.notificationTime(
             for: occurrence.start,

@@ -7,13 +7,15 @@
 //
 
 
+@usableFromInline
 struct PermittedBackgroundTaskIdentifier {
-    static let speziSchedulerNotificationsScheduling = PermittedBackgroundTaskIdentifier(
+    @usableFromInline static let speziSchedulerNotificationsScheduling = PermittedBackgroundTaskIdentifier(
         rawValue: "edu.stanford.spezi.scheduler.notifications-scheduling"
     )
 
-    let rawValue: String
+    @usableFromInline let rawValue: String
 
+    @usableFromInline
     init(rawValue: String) {
         self.rawValue = rawValue
     }

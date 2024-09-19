@@ -7,12 +7,14 @@
 //
 
 
+@usableFromInline
 struct BackgroundMode {
-    static let processing = BackgroundMode(rawValue: "processing")
-    static let fetch = BackgroundMode(rawValue: "fetch")
+    @usableFromInline static let processing = BackgroundMode(rawValue: "processing")
+    @usableFromInline static let fetch = BackgroundMode(rawValue: "fetch")
 
-    let rawValue: String
+    @usableFromInline let rawValue: String
 
+    @usableFromInline
     init(rawValue: String) {
         self.rawValue = rawValue
     }

@@ -55,7 +55,7 @@ import SwiftData
 ///
 /// ### Modifying a task
 /// - ``Scheduler/createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)``
-/// - ``createUpdatedVersion(title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)``
+/// - ``createUpdatedVersion(title:instructions:category:schedule:completionPolicy:scheduleNotifications:tags:effectiveFrom:with:)``
 ///
 /// ### Storing additional information
 /// - ``Context``
