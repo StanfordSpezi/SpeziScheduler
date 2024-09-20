@@ -85,6 +85,12 @@
     "Failed to fetch Events" : {
 
     },
+    "Measurement" : {
+
+    },
+    "Medication" : {
+
+    },
     "More Information" : {
       "localizations" : {
         "de" : {
@@ -102,6 +108,9 @@
       }
     },
     "No Events Today" : {
+
+    },
+    "Questionnaire" : {
 
     },
     "Retry" : {

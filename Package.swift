@@ -24,14 +24,16 @@ let package = Package(
     ],
     products: [
         .library(name: "SpeziScheduler", targets: ["SpeziScheduler"]),
-        .library(name: "SpeziSchedulerUI", targets: ["SpeziSchedulerUI"])
+        .library(name: "SpeziSchedulerUI", targets: ["SpeziSchedulerUI"]),
+        .library(name: "XCTSpeziScheduler", targets: ["XCTSpeziScheduler"])
     ],
     dependencies: [
-        .package(url: "https://github.com/StanfordSpezi/SpeziFoundation", from: "2.0.0-beta.2"),
-        .package(url: "https://github.com/StanfordSpezi/Spezi", from: "1.7.0"),
-        .package(url: "https://github.com/StanfordSpezi/SpeziViews", branch: "feature/additional-infrastructure"),
-        .package(url: "https://github.com/StanfordSpezi/SpeziStorage", from: "1.1.2"),
-        .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0-prerelease-2024-08-14"),
+        .package(url: "https://github.com/StanfordSpezi/SpeziFoundation.git", from: "2.0.0-beta.2"),
+        .package(url: "https://github.com/StanfordSpezi/Spezi.git", branch: "feature/application-for-swiftui"),
+        .package(url: "https://github.com/StanfordSpezi/SpeziViews.git", branch: "feature/additional-infrastructure"),
+        .package(url: "https://github.com/StanfordSpezi/SpeziStorage.git", from: "1.1.2"),
+        .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0-prerelease-2024-08-14"),
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", from: "1.17.2")
     ] + swiftLintPackage(),
     targets: [
@@ -51,7 +53,8 @@ let package = Package(
                 .product(name: "SpeziFoundation", package: "SpeziFoundation"),
                 .product(name: "Spezi", package: "Spezi"),
                 .product(name: "SpeziViews", package: "SpeziViews"),
-                .product(name: "SpeziLocalStorage", package: "SpeziStorage")
+                .product(name: "SpeziLocalStorage", package: "SpeziStorage"),
+                .product(name: "Algorithms", package: "swift-algorithms")
             ],
             plugins: [] + swiftLintPlugin()
         ),
@@ -63,6 +66,15 @@ let package = Package(
             ],
             resources: [
                 .process("Resources")
+            ],
+            plugins: [] + swiftLintPlugin()
+        ),
+        .target(
+            name: "XCTSpeziScheduler",
+            dependencies: [
+                .target(name: "SpeziScheduler"),
+                .target(name: "SpeziSchedulerUI"),
+                .product(name: "SpeziViews", package: "SpeziViews")
             ],
             plugins: [] + swiftLintPlugin()
         ),
@@ -109,7 +121,7 @@ func swiftLintPlugin() -> [Target.PluginUsage] {
 
 func swiftLintPackage() -> [PackageDescription.Package.Dependency] {
     if ProcessInfo.processInfo.environment["SPEZI_DEVELOPMENT_SWIFTLINT"] != nil {
-        [.package(url: "https://github.com/realm/SwiftLint.git", from: "0.56.2")]
+        [.package(url: "https://github.com/realm/SwiftLint.git", from: "0.55.1")]
     } else {
         []
     }

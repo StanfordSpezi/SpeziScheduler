@@ -23,10 +23,16 @@ struct ScheduleView: View {
         @Bindable var model = model
         NavigationStack {
             TodayList { event in
-                InstructionsTile(event) {
-                    QuestionnaireEventDetailView(event)
-                } action: {
-                    event.complete()
+                if event.task.id == TaskIdentifier.socialSupportQuestionnaire {
+                    InstructionsTile(event) {
+                        EventDetailView(event)
+                    } action: {
+                        event.complete()
+                    }
+                } else {
+                    InstructionsTile(event) {
+                        EventDetailView(event)
+                    }
                 }
             }
                 .navigationTitle("Schedule")

@@ -14,6 +14,7 @@ class TestAppDelegate: SpeziAppDelegate {
     override var configuration: Configuration {
         Configuration {
             Scheduler()
+            SchedulerNotifications()
             TestAppScheduler()
         }
     }
