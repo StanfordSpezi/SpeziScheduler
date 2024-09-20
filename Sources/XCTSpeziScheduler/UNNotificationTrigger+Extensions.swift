@@ -16,12 +16,18 @@ extension UNNotificationTrigger {
             LocalizedStringResource("Calendar", bundle: .atURL(from: .module))
         } else if self is UNTimeIntervalNotificationTrigger {
             LocalizedStringResource("Interval", bundle: .atURL(from: .module))
-        } else if self is UNLocationNotificationTrigger {
-            LocalizedStringResource("Location", bundle: .atURL(from: .module))
         } else if self is UNPushNotificationTrigger {
             LocalizedStringResource("Push", bundle: .atURL(from: .module))
         } else {
+#if !os(visionOS)
+            if self is UNLocationNotificationTrigger {
+                LocalizedStringResource("Location", bundle: .atURL(from: .module))
+            } else {
+                LocalizedStringResource("Unknown", bundle: .atURL(from: .module))
+            }
+#else
             LocalizedStringResource("Unknown", bundle: .atURL(from: .module))
+#endif
         }
     }
 

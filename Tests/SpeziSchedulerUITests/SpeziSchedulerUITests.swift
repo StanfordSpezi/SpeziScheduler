@@ -9,7 +9,7 @@
 import SnapshotTesting
 import SpeziScheduler
 @_spi(TestingSupport)
-import SpeziSchedulerUI
+@testable import SpeziSchedulerUI
 import SwiftUI
 import XCTest
 
@@ -20,9 +20,13 @@ final class SpeziSchedulerUITests: XCTestCase {
         let event = SchedulerSampleData.makeTestEvent()
 
         let leadingTileHeader = DefaultTileHeader(event, alignment: .leading)
+            .disableCategoryDefaultAppearances()
         let centerTileHeader = DefaultTileHeader(event, alignment: .center)
+            .disableCategoryDefaultAppearances()
         let trailingTileHeader = DefaultTileHeader(event, alignment: .trailing)
+            .disableCategoryDefaultAppearances()
 
+        // TODO: clear appearance?
 #if os(iOS)
         assertSnapshot(of: leadingTileHeader, as: .image(layout: .device(config: .iPhone13Pro)), named: "leading")
         assertSnapshot(of: centerTileHeader, as: .image(layout: .device(config: .iPhone13Pro)), named: "center")
@@ -53,22 +57,29 @@ final class SpeziSchedulerUITests: XCTestCase {
         let event = SchedulerSampleData.makeTestEvent()
 
         let tileLeading = InstructionsTile(event, alignment: .leading)
+            .disableCategoryDefaultAppearances()
         let tileCenter = InstructionsTile(event, alignment: .center)
+            .disableCategoryDefaultAppearances()
         let tileTrailing = InstructionsTile(event, alignment: .trailing)
+            .disableCategoryDefaultAppearances()
 
         let tileLeadingMore = InstructionsTile(event, alignment: .leading, more: {
             Text("More Information")
         })
+            .disableCategoryDefaultAppearances()
         let tileCenterMore = InstructionsTile(event, alignment: .center, more: {
             Text("More Information")
         })
+            .disableCategoryDefaultAppearances()
         let tileTrailingMore = InstructionsTile(event, alignment: .trailing, more: {
             Text("More Information")
         })
+            .disableCategoryDefaultAppearances()
 
         let tileWithAction = InstructionsTile(event) {
             print("Action was pressed")
         }
+            .disableCategoryDefaultAppearances()
 
 #if os(iOS)
         assertSnapshot(of: tileLeading, as: .image(layout: .device(config: .iPhone13Pro)), named: "leading")
