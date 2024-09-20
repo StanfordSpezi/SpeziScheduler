@@ -37,6 +37,7 @@ import struct SwiftUI.AppStorage
 ///
 /// - Important: Make sure to add  the [Background Modes](https://developer.apple.com/documentation/xcode/configuring-background-execution-modes)
 ///     capability and enable the **Background fetch** option. SpeziScheduler automatically schedules background tasks to update the scheduled notifications.
+///     Background tasks are currently not supported on watchOS. Background tasks are generally not supported on macOS.
 ///
 /// ### Time Sensitive Notifications
 /// All notifications for events that do not have an ``Schedule/Duration-swift.enum/allDay`` duration, are automatically scheduled as [time-sensitive](https://developer.apple.com/documentation/usernotifications/unnotificationinterruptionlevel/timesensitive)
