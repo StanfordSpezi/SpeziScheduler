@@ -14,7 +14,5 @@ final class NotificationsTests: XCTestCase {
     func testSharedIdPrefix() {
         XCTAssert(SchedulerNotifications.baseTaskNotificationId.starts(with: SchedulerNotifications.baseNotificationId))
         XCTAssert(SchedulerNotifications.baseEventNotificationId.starts(with: SchedulerNotifications.baseNotificationId))
-
-        // TODO: also test that for the event and task methods?
     }
 }

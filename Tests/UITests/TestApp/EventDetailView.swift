@@ -12,7 +12,7 @@ import SpeziViews
 import SwiftUI
 
 
-struct QuestionnaireEventDetailView: View {
+struct EventDetailView: View {
     private let event: Event
 
     @Environment(\.dismiss)

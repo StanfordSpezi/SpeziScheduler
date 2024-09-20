@@ -6,12 +6,15 @@
 // SPDX-License-Identifier: MIT
 //
 
+import SpeziViews
 import SwiftUI
 import UserNotifications
 
 
 struct NotificationRequestLabel: View {
     private let request: UNNotificationRequest
+
+    @ManagedViewUpdate private var viewUpdate
 
     var body: some View {
         NavigationLink {
@@ -20,9 +23,13 @@ struct NotificationRequestLabel: View {
             VStack(alignment: .leading) {
                 Text(request.content.title)
                     .bold()
-                if let trigger = request.trigger {
-                    NotificationTriggerLabel(trigger)
+                if let trigger = request.trigger,
+                   let nextDate = trigger.nextDate() {
+                    NotificationTriggerLabel(nextDate)
                         .foregroundStyle(.secondary)
+                        .onAppear {
+                            viewUpdate.schedule(at: nextDate)
+                        }
                 }
             }
         }

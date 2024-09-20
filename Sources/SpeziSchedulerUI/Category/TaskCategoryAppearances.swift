@@ -24,6 +24,19 @@ public struct TaskCategoryAppearances {
         self.appearances = appearances
     }
 
+    private static func buildIntDefault(for category: Task.Category) -> Task.Category.Appearance? {
+        switch category {
+        case .questionnaire:
+                .init(label: "Questionnaire", image: .system("heart.text.clipboard.fill"))
+        case .measurement:
+                .init(label: "Measurement", image: .system("heart.text.square.fill"))
+        case .medication:
+                .init(label: "Medication", image: .system("pills.circle.fill"))
+        default:
+            nil
+        }
+    }
+
     func inserting(_ appearance: Task.Category.Appearance, for category: Task.Category) -> Self {
         var appearances = appearances
         appearances[category] = appearance
@@ -34,7 +47,7 @@ public struct TaskCategoryAppearances {
     /// - Parameter category: The task category.
     /// - Returns: The appearance stored for the category.
     public subscript(_ category: Task.Category) -> Task.Category.Appearance? {
-        appearances[category]
+        appearances[category] ?? Self.buildIntDefault(for: category)
     }
 }
 

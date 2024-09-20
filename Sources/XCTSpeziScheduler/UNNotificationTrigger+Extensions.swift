@@ -11,17 +11,17 @@ import UserNotifications
 
 
 extension UNNotificationTrigger {
-    var type: String {
+    var type: LocalizedStringResource {
         if self is UNCalendarNotificationTrigger {
-            "Calendar"
+            LocalizedStringResource("Calendar", bundle: .atURL(from: .module))
         } else if self is UNTimeIntervalNotificationTrigger {
-            "Interval"
+            LocalizedStringResource("Interval", bundle: .atURL(from: .module))
         } else if self is UNLocationNotificationTrigger {
-            "Location"
+            LocalizedStringResource("Location", bundle: .atURL(from: .module))
         } else if self is UNPushNotificationTrigger {
-            "Push"
+            LocalizedStringResource("Push", bundle: .atURL(from: .module))
         } else {
-            "Unknown"
+            LocalizedStringResource("Unknown", bundle: .atURL(from: .module))
         }
     }
 

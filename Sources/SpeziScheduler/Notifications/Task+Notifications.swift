@@ -25,7 +25,7 @@ extension Task {
     func notificationContent() -> sending UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
         content.title = String(localized: title, locale: .autoupdatingCurrent)
-        content.body = String(localized: instructions) // TODO: instructions might be longer! specify notification specific description?
+        content.body = String(localized: instructions)
 
         if let category {
             content.categoryIdentifier = SchedulerNotifications.notificationCategory(for: category)
@@ -51,25 +51,5 @@ extension Task {
         }
 
         return content
-    }
-
-    @MainActor
-    func scheduleNotification(
-        notifications: LocalNotifications,
-        standard: (any SchedulerNotificationsConstraint)?,
-        hint notificationMatchingHint: DateComponents
-    ) async throws {
-        let content = notificationContent()
-        if let standard {
-            standard.notificationContent(for: self, content: content)
-        }
-
-        let trigger = UNCalendarNotificationTrigger(dateMatching: notificationMatchingHint, repeats: true)
-        let request = UNNotificationRequest(identifier: SchedulerNotifications.notificationId(for: self), content: content, trigger: trigger)
-
-        // TODO: remove
-        print("Scheduling repeating notification with next occurrence on \(trigger.nextTriggerDate())")
-
-        try await notifications.add(request: request)
     }
 }

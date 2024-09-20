@@ -15,10 +15,11 @@
 		2FE0B6E72A14C65900818AE9 /* SpeziScheduler in Frameworks */ = {isa = PBXBuildFile; productRef = 2FE0B6E62A14C65900818AE9 /* SpeziScheduler */; };
 		2FE0B6EA2A14D82600818AE9 /* XCTestExtensions in Frameworks */ = {isa = PBXBuildFile; productRef = 2FE0B6E92A14D82600818AE9 /* XCTestExtensions */; };
 		A90AEFBA2C9CCE810098CDF5 /* XCTSpeziScheduler in Frameworks */ = {isa = PBXBuildFile; productRef = A90AEFB92C9CCE810098CDF5 /* XCTSpeziScheduler */; };
+		A926A5352C9D87B100C92F94 /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A926A5342C9D87B100C92F94 /* NotificationsView.swift */; };
 		A977F6732C92F4C00071A1D1 /* SpeziSchedulerUI in Frameworks */ = {isa = PBXBuildFile; productRef = A977F6722C92F4C00071A1D1 /* SpeziSchedulerUI */; };
 		A98B09C42C90913F0076E99A /* TestAppScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98B09C32C9091390076E99A /* TestAppScheduler.swift */; };
 		A98B09C62C90B02B0076E99A /* Task+About.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98B09C52C90B0260076E99A /* Task+About.swift */; };
-		A98B09C82C90C8E40076E99A /* QuestionnaireEventDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98B09C72C90C8E30076E99A /* QuestionnaireEventDetailView.swift */; };
+		A98B09C82C90C8E40076E99A /* EventDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98B09C72C90C8E30076E99A /* EventDetailView.swift */; };
 		A9C2951D2C899FA10038EF1B /* ScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C2951C2C899FA10038EF1B /* ScheduleView.swift */; };
 /* End PBXBuildFile section */
 
@@ -41,11 +42,12 @@
 		2FA7382B290ADFAA007ACEB9 /* TestApp.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TestApp.swift; sourceTree = "<group>"; };
 		2FB0758A299DDB9000C0B37F /* TestApp.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = TestApp.xctestplan; sourceTree = "<group>"; };
 		2FE0B6E52A14C64E00818AE9 /* SpeziScheduler */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = SpeziScheduler; path = ../..; sourceTree = "<group>"; };
+		A926A5342C9D87B100C92F94 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
 		A960461B2C9840E800EA8022 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A960461C2C9853C700EA8022 /* TestApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TestApp.entitlements; sourceTree = "<group>"; };
 		A98B09C32C9091390076E99A /* TestAppScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestAppScheduler.swift; sourceTree = "<group>"; };
 		A98B09C52C90B0260076E99A /* Task+About.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Task+About.swift"; sourceTree = "<group>"; };
-		A98B09C72C90C8E30076E99A /* QuestionnaireEventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionnaireEventDetailView.swift; sourceTree = "<group>"; };
+		A98B09C72C90C8E30076E99A /* EventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailView.swift; sourceTree = "<group>"; };
 		A9C2951C2C899FA10038EF1B /* ScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -98,13 +100,14 @@
 			children = (
 				A960461C2C9853C700EA8022 /* TestApp.entitlements */,
 				A960461B2C9840E800EA8022 /* Info.plist */,
-				2F6D139928F5F386007C25D6 /* Assets.xcassets */,
-				A98B09C72C90C8E30076E99A /* QuestionnaireEventDetailView.swift */,
+				A926A5342C9D87B100C92F94 /* NotificationsView.swift */,
+				A98B09C72C90C8E30076E99A /* EventDetailView.swift */,
 				A9C2951C2C899FA10038EF1B /* ScheduleView.swift */,
 				A98B09C52C90B0260076E99A /* Task+About.swift */,
 				2FA7382B290ADFAA007ACEB9 /* TestApp.swift */,
 				2F9F4D8429B80A1500ABE259 /* TestAppDelegate.swift */,
 				A98B09C32C9091390076E99A /* TestAppScheduler.swift */,
+				2F6D139928F5F386007C25D6 /* Assets.xcassets */,
 			);
 			path = TestApp;
 			sourceTree = "<group>";
@@ -237,10 +240,11 @@
 			files = (
 				2F9F4D8529B80A1500ABE259 /* TestAppDelegate.swift in Sources */,
 				A98B09C62C90B02B0076E99A /* Task+About.swift in Sources */,
-				A98B09C82C90C8E40076E99A /* QuestionnaireEventDetailView.swift in Sources */,
+				A98B09C82C90C8E40076E99A /* EventDetailView.swift in Sources */,
 				A98B09C42C90913F0076E99A /* TestAppScheduler.swift in Sources */,
 				A9C2951D2C899FA10038EF1B /* ScheduleView.swift in Sources */,
 				2FA7382C290ADFAA007ACEB9 /* TestApp.swift in Sources */,
+				A926A5352C9D87B100C92F94 /* NotificationsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

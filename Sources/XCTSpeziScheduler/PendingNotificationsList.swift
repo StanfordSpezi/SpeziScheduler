@@ -7,8 +7,8 @@
 //
 
 import Spezi
-import SwiftUI
 import SpeziViews
+import SwiftUI
 import UserNotifications
 
 
@@ -17,32 +17,66 @@ public struct PendingNotificationsList: View {
     @Environment(LocalNotifications.self)
     private var localNotifications
 
+    @State private var viewState: ViewState = .idle
     @State private var pendingNotifications: [UNNotificationRequest] = []
 
     public var body: some View {
-        List {
-            if pendingNotifications.isEmpty {
-                ContentUnavailableView("No Notifications", systemImage: "mail.fill", description: Text("No pending notification requests."))
-            } else {
-                ForEach(pendingNotifications, id: \.identifier) { request in
-                    NotificationRequestLabel(request)
+        Group {
+            if viewState == .processing {
+                ProgressView()
+            } else if pendingNotifications.isEmpty {
+                ContentUnavailableView {
+                    Label {
+                        Text("No Notifications", bundle: .module)
+                    } icon: {
+                        Image(systemName: "mail.fill") // swiftlint:disable:this accessibility_label_for_image
+                    }
+                } description: {
+                    Text("No pending notification requests.", bundle: .module)
+                } actions: {
+                    refreshButton
+                        .labelStyle(.titleOnly)
                 }
+            } else {
+                List {
+                    ForEach(pendingNotifications, id: \.identifier) { request in
+                        NotificationRequestLabel(request)
+                    }
+                }
+                    .toolbar {
+                        refreshButton
+                    }
             }
         }
-            .navigationTitle("Pending Notifications")
-            .toolbar {
-                AsyncButton {
-                    pendingNotifications = await localNotifications.pendingNotificationRequests()
-                } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
-                }
-
-            }
+            .navigationTitle(Text("Pending Notifications", bundle: .module))
             .task {
-                pendingNotifications = await localNotifications.pendingNotificationRequests()
+                await refreshList()
             }
     }
-    
+
+    @ViewBuilder private var refreshButton: some View {
+        AsyncButton(state: $viewState) {
+            await refreshList()
+        } label: {
+            Label {
+                Text("Refresh", bundle: .module)
+            } icon: {
+                Image(systemName: "arrow.clockwise") // swiftlint:disable:this accessibility_label_for_image
+            }
+        }
+    }
+
     /// Create a new list of pending notifications
     public init() {}
+
+
+    private func refreshList() async {
+        viewState = .processing
+        defer {
+            viewState = .idle
+        }
+
+        pendingNotifications.removeAll()
+        pendingNotifications = await localNotifications.pendingNotificationRequests()
+    }
 }

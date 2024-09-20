@@ -115,7 +115,7 @@ public struct EventScheduleList<Tile: View>: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .accessibilityHidden(true)
                 }
-                .symbolRenderingMode(.multicolor)
+                    .symbolRenderingMode(.multicolor)
             } description: {
                 if let localizedError = fetchError as? LocalizedError,
                    let reason = localizedError.failureReason {

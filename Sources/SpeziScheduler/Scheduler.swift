@@ -159,6 +159,14 @@ public final class Scheduler {
 
         notifications.registerProcessingTask(using: self)
     }
+    
+    /// Trigger a manual refresh of the scheduled notifications.
+    ///
+    /// Call this method after requesting notification authorization from the user, if you disabled the ``SchedulerNotifications/automaticallyRequestProvisionalAuthorization``
+    /// option.
+    public func manuallyScheduleNotificationRefresh() {
+        notifications.scheduleNotificationsUpdate(using: self)
+    }
 
 
     /// Schedules a new save.
@@ -480,7 +488,7 @@ extension Scheduler: Module, EnvironmentAccessible, Sendable {}
 
 extension Scheduler {
     private struct OccurrenceId: Hashable {
-        let taskId: String
+        let taskId: Task.ID
         let startDate: Date
 
         init(task: Task, startDate: Date) {
@@ -536,6 +544,17 @@ extension Scheduler {
             }
             .sorted { lhs, rhs in
                 lhs.occurrence < rhs.occurrence
+            }
+    }
+
+    func hasEventOccurrence<S: Sequence<Task>>(in range: Range<Date>, tasks: S) -> Bool {
+        tasks
+            .lazy
+            .compactMap { task in
+                task.schedule.nextOccurrence(in: range)
+            }
+            .contains { _ in
+                true
             }
     }
 

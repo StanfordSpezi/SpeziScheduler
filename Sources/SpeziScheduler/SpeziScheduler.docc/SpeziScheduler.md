@@ -70,6 +70,7 @@ class MySchedulerModule: Module {
 ### Task
 
 - ``Task``
+- ``Task/ID-swift.struct``
 - ``Task/Category-swift.struct``
 - ``Event``
 - ``Outcome``

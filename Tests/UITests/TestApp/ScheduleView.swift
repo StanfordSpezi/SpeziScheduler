@@ -18,7 +18,7 @@ enum DateSelection: Hashable {
 }
 
 
-struct ScheduleView: View { // TODO: tab view that shows scheduled notifications!
+struct ScheduleView: View {
     @EventQuery(in: Date.today..<Date.tomorrow)
     private var events
 
@@ -34,12 +34,16 @@ struct ScheduleView: View { // TODO: tab view that shows scheduled notifications
         @Bindable var model = model
         NavigationStack {
             EventScheduleList(date: date) { event in
-                // TODO: make raw value typed for the id?
-                // TODO: do not include completed button for measurement (and make it centered)!
-                InstructionsTile(event, alignment: alignment) {
-                    event.complete()
-                } more: {
-                    QuestionnaireEventDetailView(event)
+                if event.task.id == TaskIdentifier.socialSupportQuestionnaire {
+                    InstructionsTile(event, alignment: alignment) {
+                        event.complete()
+                    } action: {
+                        EventDetailView(event)
+                    }
+                } else {
+                    InstructionsTile(event, more: {
+                        EventDetailView(event)
+                    })
                 }
             }
                 .navigationTitle("Schedule")

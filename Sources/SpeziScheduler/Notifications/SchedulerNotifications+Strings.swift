@@ -9,6 +9,8 @@
 
 extension SchedulerNotifications {
     static nonisolated let earliestScheduleRefreshDateStorageKey = "edu.stanford.spezi.scheduler.earliestScheduleRefreshDate"
+    static nonisolated let authorizationDisallowedLastSchedulingStorageKey = "edu.stanford.spezi.scheduler.authorizationDisallowedLastScheduling"
+    // swiftlint:disable:previous identifier_name
 
     /// Access the task id from the `userInfo` of a notification.
     ///
