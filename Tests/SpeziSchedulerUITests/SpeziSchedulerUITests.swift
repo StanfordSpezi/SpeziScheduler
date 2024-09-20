@@ -26,7 +26,6 @@ final class SpeziSchedulerUITests: XCTestCase {
         let trailingTileHeader = DefaultTileHeader(event, alignment: .trailing)
             .disableCategoryDefaultAppearances()
 
-        // TODO: clear appearance?
 #if os(iOS)
         assertSnapshot(of: leadingTileHeader, as: .image(layout: .device(config: .iPhone13Pro)), named: "leading")
         assertSnapshot(of: centerTileHeader, as: .image(layout: .device(config: .iPhone13Pro)), named: "center")
