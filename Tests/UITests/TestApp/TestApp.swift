@@ -8,7 +8,6 @@
 
 import SpeziScheduler
 import SwiftUI
-import XCTSpeziScheduler
 
 
 @main
@@ -25,9 +24,7 @@ struct UITestsApp: App {
                 }
 
                 Tab("Notifications", systemImage: "mail.fill") {
-                    NavigationStack {
-                        PendingNotificationsList()
-                    }
+                    NotificationsView()
                 }
             }
                 .spezi(appDelegate)

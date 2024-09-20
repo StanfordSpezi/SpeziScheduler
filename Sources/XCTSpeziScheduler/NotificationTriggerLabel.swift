@@ -7,20 +7,29 @@
 //
 
 import Spezi
+import SpeziViews
 import SwiftUI
-import UserNotifications
 
 
 struct NotificationTriggerLabel: View {
-    private let trigger: UNNotificationTrigger
+    private let nextTriggerDate: Date
+
+    @ManagedViewUpdate private var viewUpdate
 
     var body: some View {
-        if let nextDate = trigger.nextDate() {
-            Text("in \(Text(.currentDate, format: SystemFormatStyle.DateOffset(to: nextDate, sign: .never)))")
+        Group {
+            if nextTriggerDate > .now {
+                Text("in \(Text(.currentDate, format: SystemFormatStyle.DateOffset(to: nextTriggerDate, sign: .never)))", bundle: .module)
+            } else {
+                Text("\(Text(.currentDate, format: SystemFormatStyle.DateOffset(to: nextTriggerDate, sign: .never))) ago", bundle: .module)
+            }
         }
+            .onAppear {
+                viewUpdate.schedule(at: nextTriggerDate)
+            }
     }
 
-    init(_ trigger: UNNotificationTrigger) {
-        self.trigger = trigger
+    init(_ nextTriggerDate: Date) {
+        self.nextTriggerDate = nextTriggerDate
     }
 }

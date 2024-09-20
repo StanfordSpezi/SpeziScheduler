@@ -74,7 +74,7 @@ extension Schedule {
             return false
         }
 
-        let nextOccurrences = nextOccurrences(in: now..., count: 2) // TODO: this is taking forever?
+        let nextOccurrences = nextOccurrences(in: now..., count: 2)
         guard let nextOccurrence = nextOccurrences.first,
               nextOccurrences.count >= 2 else {
             // we require at least two next occurrences to justify a **repeating** calendar-based trigger

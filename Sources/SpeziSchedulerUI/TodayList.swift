@@ -99,7 +99,7 @@ public struct TodayList<Tile: View>: View {
     
     /// Create a new today list.
     /// - Parameter content: A closure that is called to display each event occurring today.
-    public init(content: @escaping (Event) -> Tile) {
+    public init(@ViewBuilder content: @escaping (Event) -> Tile) {
         self.eventTile = content
     }
 }

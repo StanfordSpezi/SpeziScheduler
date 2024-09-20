@@ -12,7 +12,7 @@ import SpeziViews
 import SwiftUI
 
 
-struct ScheduleView: View { // TODO: tab view that shows scheduled notifications!
+struct ScheduleView: View {
     @EventQuery(in: Date.today..<Date.tomorrow)
     private var events
 
@@ -23,12 +23,16 @@ struct ScheduleView: View { // TODO: tab view that shows scheduled notifications
         @Bindable var model = model
         NavigationStack {
             TodayList { event in
-                // TODO: make raw value typed for the id?
-                // TODO: do not include completed button for measurement (and make it centered)!
-                InstructionsTile(event) {
-                    QuestionnaireEventDetailView(event)
-                } action: {
-                    event.complete()
+                if event.task.id == TaskIdentifier.socialSupportQuestionnaire {
+                    InstructionsTile(event) {
+                        EventDetailView(event)
+                    } action: {
+                        event.complete()
+                    }
+                } else {
+                    InstructionsTile(event) {
+                        EventDetailView(event)
+                    }
                 }
             }
                 .navigationTitle("Schedule")

@@ -22,21 +22,19 @@ import struct SwiftUI.AppStorage
 /// Notifications can be automatically scheduled for Tasks that are scheduled using the ``Scheduler`` module. You configure a Task for automatic notification scheduling by
 /// setting the ``Task/scheduleNotifications`` property.
 ///
-/// - Note: The `SchedulerNotifications` module is automatically configured by the `Scheduler` module using default configuration options. If you want to provide
-///     custom configuration for the `SchedulerNotifications`, just include it in your `configuration` section of your
-///     [`SpeziAppDelegate`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/speziappdelegate) using
-///     ``init(notificationLimit:schedulingInterval:allDayNotificationTime:automaticallyRequestProvisionalAuthorization:)``.
+/// - Note: The `SchedulerNotifications` module is automatically configured by the `Scheduler` module using default configuration options. If you want to
+///     custom the configuration, just provide the configured module in your `configuration` section of your
+///     [`SpeziAppDelegate`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/speziappdelegate).
 ///
 /// ### Automatic Scheduling
 ///
-/// The `Schedule` of a `Task` supports specifying complex recurrence rules to describe how the `Event`s of a `Task` recur.
+/// The ``Schedule`` of a ``Task`` supports specifying complex recurrence rules to describe how the ``Event``s of a `Task` recur.
 /// These can not always be mapped to repeating notification triggers. Therefore, events need to be scheduled individually requiring much more notification requests.
-/// Apple limits the total pending notification requests to `64` per application. SpeziScheduler, by default, doesn't schedule more than `30` local notifications at a time.
+/// Apple limits the total pending notification requests to `64` per application. SpeziScheduler, by default, doesn't schedule more than `30` local notifications at a time for events
+/// that occur within the next 4 weeks.
 ///
-/// - Warning: Make sure to add  the [Background Modes](https://developer.apple.com/documentation/xcode/configuring-background-execution-modes)
-///     capability and enable the **Background fetch** option.
-///
-/// SpeziScheduler automatically schedules background tasks to update the list of scheduled notifications.
+/// - Important: Make sure to add  the [Background Modes](https://developer.apple.com/documentation/xcode/configuring-background-execution-modes)
+///     capability and enable the **Background fetch** option. SpeziScheduler automatically schedules background tasks to update the scheduled notifications.
 ///
 /// ### Time Sensitive Notifications
 /// All notifications for events that do not have an ``Schedule/Duration-swift.enum/allDay`` duration, are automatically scheduled as [time-sensitive](https://developer.apple.com/documentation/usernotifications/unnotificationinterruptionlevel/timesensitive)
@@ -53,18 +51,27 @@ import struct SwiftUI.AppStorage
 /// Provisional authorization doesn't require explicit user authorization, however limits notification to be delivered quietly to the notification center only.
 /// To disable this behavior use the ``automaticallyRequestProvisionalAuthorization`` option.
 ///
-/// - Important: To ensure that notifications are delivered as alerts and can play sound, request explicit authorization from the user.
+/// - Important: To ensure that notifications are delivered as alerts and can play sound, request explicit authorization from the user. Once the user received their first provisional notification
+///     and taped the "Keep" button, notifications will always be delivered quietly but the authorization status will change to `authorized`, making it impossible to request notification authorization
+///     for alert-based notification again.
+///
+/// There are cases where we cannot reliably detect when to re-schedule notifications. For example a user might turn off notifications in the settings app and turn them back on without ever
+/// opening the application. In these cases, we never have the opportunity to schedule or update notifications if the users doesn't open up the application again.
+///
+/// - Important: If you disable ``automaticallyRequestProvisionalAuthorization``, make sure to call ``Scheduler/manuallyScheduleNotificationRefresh()`` once
+///     you requested notification authorization from the user. Otherwise, SpeziScheduler won't schedule notifications properly.
 ///
 /// ## Topics
 ///
 /// ### Configuration
 /// - ``init()``
-/// - ``init(notificationLimit:schedulingInterval:allDayNotificationTime:automaticallyRequestProvisionalAuthorization:)``
+/// - ``init(notificationLimit:schedulingInterval:allDayNotificationTime:notificationPresentation:automaticallyRequestProvisionalAuthorization:)``
 ///
 /// ### Properties
 /// - ``notificationLimit``
 /// - ``schedulingInterval``
 /// - ``allDayNotificationTime``
+/// - ``notificationPresentation``
 /// - ``automaticallyRequestProvisionalAuthorization``
 ///
 /// ### Notification Identifiers
@@ -77,10 +84,6 @@ import struct SwiftUI.AppStorage
 public final class SchedulerNotifications {
     @Application(\.logger)
     private var logger
-
-    // TODO: are we fine with notifications that are scheduled with provisional but access is later granted?
-    // TODO: we need to get notified if after notification authorization changed! (e.g., after onboarding screen)
-    //  => do we, we schedule with provisional?
 
     @Application(\.notificationSettings)
     private var notificationSettings
@@ -109,12 +112,16 @@ public final class SchedulerNotifications {
     ///
     /// - Note: Default is 9 AM.
     public nonisolated let allDayNotificationTime: NotificationTime
-    
+
+    /// Defines the presentation of scheduler notifications if they are delivered when the app is in foreground.
+    public nonisolated let notificationPresentation: UNNotificationPresentationOptions
+
     /// Automatically request provisional notification authorization if notification authorization isn't determined yet.
     ///
     /// If the module attempts to schedule notifications for its task and detects that notification authorization isn't determined yet, it automatically
     /// requests [provisional notification authorization](https://developer.apple.com/documentation/usernotifications/asking-permission-to-use-notifications#Use-provisional-authorization-to-send-trial-notifications).
     public nonisolated let automaticallyRequestProvisionalAuthorization: Bool // swiftlint:disable:this identifier_name
+
 
     /// Make sure we aren't running multiple notification scheduling at the same time.
     private let scheduleNotificationAccess = AsyncSemaphore()
@@ -132,6 +139,10 @@ public final class SchedulerNotifications {
     /// In the case that background tasks are not enabled, we still want to schedule notifications on a best-effort approach.
     @AppStorage(SchedulerNotifications.earliestScheduleRefreshDateStorageKey)
     private var earliestScheduleRefreshDate: Date?
+    @AppStorage(SchedulerNotifications.authorizationDisallowedLastSchedulingStorageKey)
+    private var authorizationDisallowedLastScheduling = false
+
+    @Modifier private var scenePhaseRefresh = NotificationScenePhaseScheduling()
 
     /// Default configuration.
     public required convenience nonisolated init() {
@@ -142,18 +153,24 @@ public final class SchedulerNotifications {
     /// - Parameters:
     ///   - notificationLimit: The limit of notification requests that should be pre-scheduled at a time.
     ///   - schedulingInterval: The time period for which we should schedule events in advance.
+    ///     The interval must be greater than one week.
     ///   - allDayNotificationTime: The time at which we schedule notifications for all day events.
+    ///   - notificationPresentation: Defines the presentation of scheduler notifications if they are delivered when the app is in foreground.
     ///   - automaticallyRequestProvisionalAuthorization: Automatically request provisional notification authorization if notification authorization isn't determined yet.
     public nonisolated init(
         notificationLimit: Int = 30,
         schedulingInterval: Duration = .weeks(4),
         allDayNotificationTime: NotificationTime = NotificationTime(hour: 9),
+        notificationPresentation: UNNotificationPresentationOptions = [.list, .badge, .banner, .sound],
         automaticallyRequestProvisionalAuthorization: Bool = true // swiftlint:disable:this identifier_name
     ) {
         self.notificationLimit = notificationLimit
         self.schedulingInterval = Double(schedulingInterval.components.seconds)
         self.allDayNotificationTime = allDayNotificationTime
+        self.notificationPresentation = notificationPresentation
         self.automaticallyRequestProvisionalAuthorization = automaticallyRequestProvisionalAuthorization
+
+        precondition(schedulingInterval >= .weeks(1), "The scheduling interval must be at least 1 week.")
     }
     
     /// Configures the module.
@@ -174,10 +191,66 @@ public final class SchedulerNotifications {
         }
     }
 
+    func registerProcessingTask(using scheduler: Scheduler) {
+        if Self.backgroundFetchEnabled {
+            backgroundTaskRegistered = BGTaskScheduler.shared.register(
+                forTaskWithIdentifier: PermittedBackgroundTaskIdentifier.speziSchedulerNotificationsScheduling.rawValue,
+                using: .main
+            ) { [weak scheduler, weak self] task in
+                guard let self,
+                      let scheduler,
+                      let backgroundTask = task as? BGAppRefreshTask else {
+                    return
+                }
+                MainActor.assumeIsolated {
+                    handleNotificationsRefresh(for: backgroundTask, using: scheduler)
+                }
+            }
+        } else {
+            logger.debug("Background fetch is not enabled. Skipping registering background task for notification scheduling.")
+        }
+
+        _Concurrency.Task { @MainActor in
+            await checkForInitialScheduling(scheduler: scheduler)
+        }
+    }
+
+    func checkForInitialScheduling(scheduler: Scheduler) async {
+        var scheduleNotificationUpdate = false
+
+        if authorizationDisallowedLastScheduling {
+            let status = await notificationSettings().authorizationStatus
+            let nowAllowed = switch status {
+            case .notDetermined, .denied:
+                false
+            case .authorized, .provisional, .ephemeral:
+                true
+            @unknown default:
+                false
+            }
+
+            if nowAllowed {
+                logger.debug("Notification Authorization now allows scheduling. Scheduling notifications...")
+                scheduleNotificationUpdate = true
+            }
+        }
+
+        // fallback plan if we do not have background fetch enabled
+        if !backgroundTaskRegistered, let earliestScheduleRefreshDate, earliestScheduleRefreshDate > .now {
+            logger.debug("Background task failed to register and we passed earliest refresh date. Manually scheduling...")
+            scheduleNotificationUpdate = true
+        }
+
+        if scheduleNotificationUpdate {
+            scheduleNotificationsUpdate(using: scheduler)
+        }
+    }
+
     private func _scheduleNotificationsUpdate(using scheduler: Scheduler) async {
-        try? await scheduleNotificationAccess.waitCheckingCancellation()
-        guard !_Concurrency.Task.isCancelled else {
-            return
+        do {
+            try await scheduleNotificationAccess.waitCheckingCancellation()
+        } catch {
+            return // cancellation
         }
 
         defer {
@@ -231,6 +304,7 @@ extension SchedulerNotifications {
 
             // ensure task is cancelled
             BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: PermittedBackgroundTaskIdentifier.speziSchedulerNotificationsScheduling.rawValue)
+            earliestScheduleRefreshDate = nil
 
             // however, ensure that we cancel previously scheduled notifications (e.g., if we refresh due to a change)
             await ensureAllSchedulerNotificationsCancelled()
@@ -252,7 +326,6 @@ extension SchedulerNotifications {
 
         var otherNotificationsCount = 0
         let pendingNotifications = await groupedPendingSchedulerNotifications(otherNotificationsCount: &otherNotificationsCount)
-        print("Pending notifications: \(pendingNotifications)") // TODO: remove!
 
         // the amount of "slots" which would be currently available to other modules to schedule notifications.
         let remainingNotificationSlots = LocalNotifications.pendingNotificationsLimit - otherNotificationsCount - notificationLimit
@@ -283,8 +356,8 @@ extension SchedulerNotifications {
             .prefix(currentSchedulerLimit + 1)
 
         // to be able to efficiently schedule the next refresh, we need to know the next task that we didn't schedule anymore
-        let nextTaskOccurrenceWeDidNotSchedule: Occurrence? = if tasks.count == currentSchedulerLimit + 1, let last = tasks.last {
-            nextOccurrenceCache[last]
+        let nextTaskOccurrenceWeDidNotSchedule: Date? = if tasks.count == currentSchedulerLimit + 1, let last = tasks.last {
+            nextOccurrenceCache[last]?.start
         } else {
             nil
         }
@@ -307,11 +380,15 @@ extension SchedulerNotifications {
             .prefix(eventCountLimit + 1)
 
         // to be able to efficiently schedule the next refresh, we need to know the next event that we didn't schedule anymore
-        let nextEventOccurrenceWeDidNotSchedule: Occurrence? = if events.count == eventCountLimit + 1, let last = events.last {
-            last.occurrence
+        let nextEventOccurrenceWeDidNotSchedule: Date? = if events.count == eventCountLimit + 1, let last = events.last {
+            last.occurrence.start
         } else {
             nil
         }
+
+        // We might query less than `eventCountLimit` events, but there might be events scheduled after our `schedulingInterval`.
+        // Therefore,
+        let hasEventOccurrenceNextMonth = scheduler.hasEventOccurrence(in: range.upperBound..<Date.distantFuture, tasks: tasks)
 
         events = events.prefix(eventCountLimit) // correct the prefix
 
@@ -330,7 +407,7 @@ extension SchedulerNotifications {
         case .notDetermined:
             guard automaticallyRequestProvisionalAuthorization else {
                 logger.error("Could not schedule notifications. Authorization status is not yet determined.")
-                // TODO: no we definitely need to get notified once we are allowed to schedule notifications?
+                authorizationDisallowedLastScheduling = true
                 return
             }
             do {
@@ -338,22 +415,26 @@ extension SchedulerNotifications {
                 logger.debug("Request provisional notification authorization to deliver event notifications.")
             } catch {
                 logger.error("Failed to request provisional notification authorization: \(error)")
+                authorizationDisallowedLastScheduling = true
                 throw error
             }
         case .authorized, .provisional, .ephemeral:
             break // continue to schedule notifications
         case .denied:
             logger.debug("The user denied to receive notifications. Aborting to schedule notifications.")
+            authorizationDisallowedLastScheduling = true
             return
         @unknown default:
             logger.error("Unknown notification authorization status: \(String(describing: settings.authorizationStatus))")
+            authorizationDisallowedLastScheduling = true // we basically retry
             return
         }
+
+        authorizationDisallowedLastScheduling = false
 
         // `pendingNotifications` might contain notifications that already got removed. We only use it to check against notification request
         // we know for sure got not removed. So we do not bother to provide a filtered representations
         try await measure(name: "Task Notification Request") {
-            // TODO: we need to check if the date trigger changed!
             try await taskLevelScheduling(tasks: calendarTriggerTasks, pending: pendingNotifications, using: scheduler)
         }
         try await measure(name: "Event Notification Request") {
@@ -366,33 +447,40 @@ extension SchedulerNotifications {
         // notifications shortly before the last task is getting scheduled is fine.
         let earliestTaskLevelOccurrenceNeedingCancellation = tasks // swiftlint:disable:this identifier_name
             .filter { !$0.schedule.repeatsIndefinitely }
-            .compactMap { $0.schedule.lastOccurrence(ifIn: now..<Date.nextWeek) }
+            .map { $0.schedule.lastOccurrence(ifIn: now..<Date.nextWeek)?.start ?? .nextWeek }
             .min()
 
 
-        let earliest = [nextTaskOccurrenceWeDidNotSchedule, nextEventOccurrenceWeDidNotSchedule, earliestTaskLevelOccurrenceNeedingCancellation]
+        let earliest = [
+            nextTaskOccurrenceWeDidNotSchedule,
+            nextEventOccurrenceWeDidNotSchedule,
+            earliestTaskLevelOccurrenceNeedingCancellation,
+            hasEventOccurrenceNextMonth ? range.upperBound : nil
+        ]
             .compactMap { $0 }
             .min()
 
         guard let earliest else {
             // there is no task repeating task that ends sooner, there is no task we didn't schedule
             // and there is no event we didn't schedule. Therefore, we do not need to schedule a background task at all.
+            earliestScheduleRefreshDate = nil
             return
         }
 
-        scheduleNotificationsRefresh(nextThreshold: earliest.start) // TODO: debug that!
+        scheduleNotificationsRefresh(nextThreshold: earliest)
     }
 
     private func shouldScheduleNotification(
         for identifier: String,
         with content: @autoclosure () -> UNMutableNotificationContent,
+        trigger: @autoclosure () -> UNNotificationTrigger,
         pending: [String: UNNotificationRequest]
     ) -> Bool {
         guard let existingRequest = pending[identifier] else {
             return true
         }
 
-        if existingRequest.content == content() {
+        if existingRequest.content == content() && existingRequest.trigger == trigger() {
             return false
         } else {
             // notification exists, but is outdated, so remove it and redo it
@@ -437,12 +525,6 @@ extension SchedulerNotifications {
         for task in tasks {
             try _Concurrency.Task.checkCancellation()
 
-            lazy var content = task.notificationContent()
-
-            guard shouldScheduleNotification(for: Self.notificationId(for: task), with: content, pending: pendingNotifications) else {
-                continue
-            }
-
             guard let notificationMatchingHint = task.schedule.notificationMatchingHint,
                   let calendar = task.schedule.recurrence?.calendar else {
                 continue // shouldn't happen, otherwise, wouldn't be here
@@ -450,14 +532,27 @@ extension SchedulerNotifications {
 
             let components = notificationMatchingHint.dateComponents(calendar: calendar, allDayNotificationTime: allDayNotificationTime)
 
+            lazy var content = {
+                let content = task.notificationContent()
+                if let standard = standard as? SchedulerNotificationsConstraint {
+                    standard.notificationContent(for: task, content: content)
+                }
+                return content
+            }()
+            lazy var trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+
+            let id = Self.notificationId(for: task)
+            guard shouldScheduleNotification(for: id, with: content, trigger: trigger, pending: pendingNotifications) else {
+                continue
+            }
+
+            let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
+
             // Notification scheduling only fails if there is something statically wrong (e.g., content issues or configuration issues)
             // If one fails, probably all fail. So just abort.
             // See https://developer.apple.com/documentation/usernotifications/unerror
-            try await task.scheduleNotification(
-                notifications: notifications,
-                standard: standard as? SchedulerNotificationsConstraint,
-                hint: components
-            )
+            try await notifications.add(request: request)
+
             scheduledNotifications += 1
         }
 
@@ -477,17 +572,30 @@ extension SchedulerNotifications {
         for event in events {
             try _Concurrency.Task.checkCancellation()
 
-            lazy var content = event.task.notificationContent()
+            lazy var content = {
+                let content = event.task.notificationContent()
+                if let standard = standard as? SchedulerNotificationsConstraint {
+                    standard.notificationContent(for: event.task, content: content)
+                }
+                return content
+            }()
 
-            guard shouldScheduleNotification(for: Self.notificationId(for: event), with: content, pending: pendingNotifications) else {
+            let notificationTime = Schedule.notificationTime(
+                for: event.occurrence.start,
+                duration: event.occurrence.schedule.duration,
+                allDayNotificationTime: allDayNotificationTime
+            )
+
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: notificationTime.timeIntervalSinceNow, repeats: false)
+
+            let id = Self.notificationId(for: event)
+            guard shouldScheduleNotification(for: id, with: content, trigger: trigger, pending: pendingNotifications) else {
                 continue
             }
 
-            try await event.scheduleNotification(
-                notifications: notifications,
-                standard: standard as? SchedulerNotificationsConstraint,
-                allDayNotificationTime: allDayNotificationTime
-            )
+            let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
+            try await notifications.add(request: request)
+
             scheduledNotifications += 1
         }
 
@@ -506,7 +614,7 @@ extension SchedulerNotifications: NotificationHandler {
             return nil // we are not responsible
         }
 
-        return [.list, .badge, .banner, .sound] // TODO: configurable?
+        return notificationPresentation
     }
 }
 
@@ -527,34 +635,6 @@ extension SchedulerNotifications {
         uiBackgroundModes.contains(.fetch)
     }
 
-    func registerProcessingTask(using scheduler: Scheduler) {
-        defer {
-            // fallback plan if we do not have background fetch enabled
-            if let earliestScheduleRefreshDate, !backgroundTaskRegistered, earliestScheduleRefreshDate > .now {
-                scheduleNotificationsUpdate(using: scheduler)
-            }
-        }
-
-        guard Self.backgroundFetchEnabled else {
-            logger.debug("Background fetch is not enabled. Skipping registering background task for notification scheduling.")
-            return
-        }
-
-        backgroundTaskRegistered = BGTaskScheduler.shared.register(
-            forTaskWithIdentifier: PermittedBackgroundTaskIdentifier.speziSchedulerNotificationsScheduling.rawValue,
-            using: .main
-        ) { [weak scheduler, weak self] task in
-            guard let self,
-                  let scheduler,
-                  let backgroundTask = task as? BGAppRefreshTask else {
-                return
-            }
-            MainActor.assumeIsolated {
-                handleNotificationsRefresh(for: backgroundTask, using: scheduler)
-            }
-        }
-    }
-
     private func scheduleNotificationsRefresh(nextThreshold: Date? = nil) {
         let nextWeek: Date = .nextWeek
 
@@ -572,8 +652,21 @@ extension SchedulerNotifications {
             request.earliestBeginDate = earliestBeginDate
 
             do {
+                logger.debug("Scheduling background task with earliest begin date \(earliestBeginDate)...")
                 try BGTaskScheduler.shared.submit(request)
-                logger.debug("Scheduled background task with earliest begin date \(earliestBeginDate)")
+            } catch let error as BGTaskScheduler.Error {
+#if targetEnvironment(simulator)
+                if case .unavailable = error.code {
+                    logger.warning(
+                            """
+                            Failed to schedule notifications processing task for SpeziScheduler: \
+                            Background tasks are not available on simulator devices!
+                            """
+                    )
+                    return
+                }
+#endif
+                logger.error("Failed to schedule notifications processing task for SpeziScheduler: \(error.code)")
             } catch {
                 logger.error("Failed to schedule notifications processing task for SpeziScheduler: \(error)")
             }
@@ -586,8 +679,18 @@ extension SchedulerNotifications {
     /// - Parameters:
     ///   - processingTask:
     ///   - scheduler: The scheduler to retrieve the events from.
-    func handleNotificationsRefresh(for processingTask: BGAppRefreshTask, using scheduler: Scheduler) {
+    private func handleNotificationsRefresh(for processingTask: BGAppRefreshTask, using scheduler: Scheduler) {
         let task = _Concurrency.Task { @MainActor in
+            do {
+                try await scheduleNotificationAccess.waitCheckingCancellation()
+            } catch {
+                return // cancellation
+            }
+
+            defer {
+                scheduleNotificationAccess.signal()
+            }
+
             do {
                 try await updateNotifications(using: scheduler)
                 processingTask.setTaskCompleted(success: true)

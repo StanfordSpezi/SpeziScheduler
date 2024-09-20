@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+import SpeziViews
 import SwiftUI
 import UserNotifications
 
@@ -14,49 +15,121 @@ import UserNotifications
 public struct NotificationRequestView: View {
     private let request: UNNotificationRequest
 
+    @ManagedViewUpdate private var viewUpdate
+
     public var body: some View {
         List {
-            Section("Content") {
-                LabeledContent("Title", value: request.content.title)
-                if !request.content.subtitle.isEmpty {
-                    LabeledContent("Subtitle", value: request.content.subtitle)
-                }
-                LabeledContent("Body", value: request.content.body) // TODO: too long?
+            content
 
-                if !request.content.categoryIdentifier.isEmpty {
-                    LabeledContent("Category", value: request.content.categoryIdentifier)
-                }
+            delivery
 
-                if !request.content.threadIdentifier.isEmpty {
-                    LabeledContent("Thread", value: request.content.threadIdentifier)
-                }
-            }
-
-            Section("Delivery") {
-                LabeledContent("Sound", value: request.content.sound != nil ? "Yes" : "No")
-                // TODO: is num raw value, make description!
-                LabeledContent("Interruption", value: request.content.interruptionLevel.rawValue.description)
-            }
-
-            if let trigger = request.trigger {
-                Section("Trigger") {
-                    LabeledContent("Type", value: trigger.type)
-                    if let nextDate = trigger.nextDate() {
-                        LabeledContent("Next Trigger") {
-                            Text("in \(Text(.currentDate, format: SystemFormatStyle.DateOffset(to: nextDate, sign: .never)))")
-                        }
-                    }
-                }
-            }
+            trigger
 
             Section {
-                LabeledContent("Identifier", value: request.identifier)
+                LabeledContent {
+                    Text(request.identifier)
+                } label: {
+                    Text("Identifier", bundle: .module)
+                }
+                    .accessibilityElement(children: .combine)
             }
         }
-        .navigationTitle(request.content.title)
-        .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(request.content.title)
+            .navigationBarTitleDisplayMode(.inline)
     }
-    
+
+    @ViewBuilder private var content: some View {
+        Section { // swiftlint:disable:this closure_body_length
+            LabeledContent {
+                Text(request.content.title)
+            } label: {
+                Text("Title", bundle: .module)
+            }
+                .accessibilityElement(children: .combine)
+
+            if !request.content.subtitle.isEmpty {
+                LabeledContent {
+                    Text(request.content.subtitle)
+                } label: {
+                    Text("Subtitle", bundle: .module)
+                }
+                    .accessibilityElement(children: .combine)
+            }
+
+            LabeledContent {
+                Text(request.content.body)
+            } label: {
+                Text("Body", bundle: .module)
+            }
+                .accessibilityElement(children: .combine)
+
+            if !request.content.categoryIdentifier.isEmpty {
+                LabeledContent {
+                    Text(request.content.categoryIdentifier)
+                } label: {
+                    Text("Category", bundle: .module)
+                }
+                    .accessibilityElement(children: .combine)
+            }
+
+            if !request.content.threadIdentifier.isEmpty {
+                LabeledContent {
+                    Text(request.content.threadIdentifier)
+                } label: {
+                    Text("Thread", bundle: .module)
+                }
+                    .accessibilityElement(children: .combine)
+            }
+        } header: {
+            Text("Content", bundle: .module)
+        }
+    }
+
+    @ViewBuilder private var delivery: some View {
+        Section {
+            LabeledContent {
+                Text(request.content.sound != nil ? "Yes" : "No", bundle: .module)
+            } label: {
+                Text("Sound", bundle: .module)
+            }
+                .accessibilityElement(children: .combine)
+
+            LabeledContent {
+                Text(request.content.interruptionLevel.description)
+            } label: {
+                Text("Interruption", bundle: .module)
+            }
+                .accessibilityElement(children: .combine)
+        } header: {
+            Text("Delivery", bundle: .module)
+        }
+    }
+
+    @ViewBuilder private var trigger: some View {
+        if let trigger = request.trigger {
+            Section {
+                LabeledContent {
+                    Text(trigger.type)
+                } label: {
+                    Text("Type", bundle: .module)
+                }
+                    .accessibilityElement(children: .combine)
+
+                if let nextDate = trigger.nextDate() {
+                    LabeledContent("Next Trigger") {
+                        NotificationTriggerLabel(nextDate)
+                    }
+                        .accessibilityElement(children: .combine)
+                        .onAppear {
+                            viewUpdate.schedule(at: nextDate)
+                        }
+                }
+            } header: {
+                Text("Trigger", bundle: .module)
+            }
+        }
+    }
+
     /// Create a new notification request details view.
     /// - Parameter request: The notification request.
     public init(_ request: UNNotificationRequest) {

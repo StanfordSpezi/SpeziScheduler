@@ -442,7 +442,12 @@ extension Schedule {
         // Once SF-0010 is available, we could access if `end.occurrences` is not `nil` and only apply the custom range in this case.
         // See https://github.com/apple/swift-foundation/blob/main/Proposals/0010-calendar-recurrence-rule-end-count-and-date.md.
         rangeUsedWithRule = range.map { range in
-            start..<range.upperBound
+            if start > range.upperBound {
+                // range upper bound might be before start, the range should just return zero occurrences
+                range
+            } else {
+                start..<range.upperBound
+            }
         }
 
         return if let recurrence {
