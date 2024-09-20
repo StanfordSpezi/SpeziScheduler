@@ -7,7 +7,9 @@
 //
 
 import Algorithms
+#if canImport(BackgroundTasks) // not available on watchOS
 import BackgroundTasks
+#endif
 import Foundation
 import Spezi
 import SpeziFoundation
@@ -193,6 +195,9 @@ public final class SchedulerNotifications {
 
     func registerProcessingTask(using scheduler: Scheduler) {
         if Self.backgroundFetchEnabled {
+            #if os(macOS) || os(watchOS)
+            preconditionFailure("BackgroundFetch was enabled even though it isn't supported on this platform.")
+            #else
             backgroundTaskRegistered = BGTaskScheduler.shared.register(
                 forTaskWithIdentifier: PermittedBackgroundTaskIdentifier.speziSchedulerNotificationsScheduling.rawValue,
                 using: .main
@@ -206,8 +211,15 @@ public final class SchedulerNotifications {
                     handleNotificationsRefresh(for: backgroundTask, using: scheduler)
                 }
             }
+            #endif
         } else {
+            #if os(macOS)
+            logger.debug("Background fetch is not supported. Skipping registering background task for notification scheduling.")
+            #elseif os(watchOS)
+            logger.debug("Background fetch is currently not supported. Skipping registering background task for notification scheduling.")
+            #else
             logger.debug("Background fetch is not enabled. Skipping registering background task for notification scheduling.")
+            #endif
         }
 
         _Concurrency.Task { @MainActor in
@@ -261,6 +273,7 @@ public final class SchedulerNotifications {
             try await self.updateNotifications(using: scheduler)
         }
 
+        #if !os(macOS) && !os(watchOS)
         let identifier = _Application.shared.beginBackgroundTask(withName: "Scheduler Notifications") {
             task.cancel()
         }
@@ -268,6 +281,7 @@ public final class SchedulerNotifications {
         defer {
             _Application.shared.endBackgroundTask(identifier)
         }
+        #endif
 
         do {
             try await withTaskCancellationHandler {
@@ -303,7 +317,9 @@ extension SchedulerNotifications {
             // Therefore, we do not need to schedule a background task to refresh notifications
 
             // ensure task is cancelled
+#if !os(macOS) && !os(watchOS)
             BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: PermittedBackgroundTaskIdentifier.speziSchedulerNotificationsScheduling.rawValue)
+#endif
             earliestScheduleRefreshDate = nil
 
             // however, ensure that we cancel previously scheduled notifications (e.g., if we refresh due to a change)
@@ -632,7 +648,11 @@ extension SchedulerNotifications {
     }
 
     @inlinable static var backgroundFetchEnabled: Bool {
+#if os(macOS) || os(watchOS)
+        false
+#else
         uiBackgroundModes.contains(.fetch)
+#endif
     }
 
     private func scheduleNotificationsRefresh(nextThreshold: Date? = nil) {
@@ -648,6 +668,9 @@ extension SchedulerNotifications {
         earliestScheduleRefreshDate = earliestBeginDate
 
         if backgroundTaskRegistered {
+            #if os(macOS) || os(watchOS)
+            preconditionFailure("Background Task was set to be registered, but isn't available on this platform.")
+            #else
             let request = BGAppRefreshTaskRequest(identifier: PermittedBackgroundTaskIdentifier.speziSchedulerNotificationsScheduling.rawValue)
             request.earliestBeginDate = earliestBeginDate
 
@@ -670,15 +693,18 @@ extension SchedulerNotifications {
             } catch {
                 logger.error("Failed to schedule notifications processing task for SpeziScheduler: \(error)")
             }
+            #endif
         } else {
             logger.debug("Setting earliest schedule refresh to \(earliestBeginDate). Will attempt to update schedule on next app launch.")
         }
     }
 
+#if !os(watchOS)
     /// Call to handle execution of the background processing task that updates scheduled notifications.
     /// - Parameters:
     ///   - processingTask:
     ///   - scheduler: The scheduler to retrieve the events from.
+    @available(macOS, unavailable)
     private func handleNotificationsRefresh(for processingTask: BGAppRefreshTask, using scheduler: Scheduler) {
         let task = _Concurrency.Task { @MainActor in
             do {
@@ -704,6 +730,7 @@ extension SchedulerNotifications {
             task.cancel()
         }
     }
+#endif
 }
 
 // MARK: - Legacy Notifications

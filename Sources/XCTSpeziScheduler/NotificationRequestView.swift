@@ -35,7 +35,9 @@ public struct NotificationRequestView: View {
             }
         }
             .navigationTitle(request.content.title)
+#if !os(macOS)
             .navigationBarTitleDisplayMode(.inline)
+#endif
     }
 
     @ViewBuilder private var content: some View {

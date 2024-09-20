@@ -6,9 +6,11 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(BackgroundTasks)
 import BackgroundTasks
 
 
+@available(macOS, unavailable)
 extension BGTaskScheduler.Error.Code: @retroactive CustomStringConvertible {
     public var description: String {
         switch self {
@@ -23,3 +25,4 @@ extension BGTaskScheduler.Error.Code: @retroactive CustomStringConvertible {
         }
     }
 }
+#endif

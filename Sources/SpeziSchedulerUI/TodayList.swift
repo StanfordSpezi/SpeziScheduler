@@ -93,7 +93,9 @@ public struct TodayList<Tile: View>: View {
                     }
                 }
             }
+#if !os(macOS)
                 .listSectionSpacing(.compact)
+#endif
         }
     }
     

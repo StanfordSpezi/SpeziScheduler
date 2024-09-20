@@ -216,6 +216,6 @@ func measure<T, C: Clock>(
     logger.debug("Performing \(name()) took \(start.duration(to: end))")
     return result
 #else
-    try action()
+    try await action()
 #endif
 }

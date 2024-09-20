@@ -19,7 +19,7 @@ extension UNNotificationTrigger {
         } else if self is UNPushNotificationTrigger {
             LocalizedStringResource("Push", bundle: .atURL(from: .module))
         } else {
-#if !os(visionOS)
+#if !os(visionOS) && !os(macOS)
             if self is UNLocationNotificationTrigger {
                 LocalizedStringResource("Location", bundle: .atURL(from: .module))
             } else {
