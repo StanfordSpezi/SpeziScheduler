@@ -72,6 +72,9 @@ class TestAppUITests: XCTestCase {
 
         app.staticTexts["Weight Measurement"].tap()
 
+        XCTAssert(app.navigationBars.staticTexts["Weight Measurement"].waitForExistence(timeout: 2.0))
+        app.swipeUp()
+
         app.assertNotificationDetails(
             identifier: "edu.stanford.spezi.scheduler.notification.task.test-measurement",
             title: "Weight Measurement",
@@ -98,6 +101,9 @@ class TestAppUITests: XCTestCase {
 
         XCTAssert(app.staticTexts["Medication"].firstMatch.waitForExistence(timeout: 2.0))
         app.staticTexts["Medication"].firstMatch.tap()
+
+        XCTAssert(app.navigationBars.staticTexts["Medication"].waitForExistence(timeout: 2.0))
+        app.swipeUp()
 
         app.assertNotificationDetails(
             title: "Medication",
