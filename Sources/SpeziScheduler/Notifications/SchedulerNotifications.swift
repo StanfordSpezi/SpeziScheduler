@@ -14,6 +14,7 @@ import Foundation
 import Spezi
 import SpeziFoundation
 import SpeziLocalStorage
+import SpeziNotifications
 import SwiftData
 import UserNotifications
 import struct SwiftUI.AppStorage
@@ -93,7 +94,7 @@ public final class SchedulerNotifications {
     @Application(\.requestNotificationAuthorization)
     private var requestNotificationAuthorization
 
-    @Dependency(LocalNotifications.self)
+    @Dependency(Notifications.self)
     private var notifications
     @Dependency(LocalStorage.self)
     private var localStorage
@@ -345,7 +346,7 @@ extension SchedulerNotifications {
         let pendingNotifications = await groupedPendingSchedulerNotifications(otherNotificationsCount: &otherNotificationsCount)
 
         // the amount of "slots" which would be currently available to other modules to schedule notifications.
-        let remainingNotificationSlots = LocalNotifications.pendingNotificationsLimit - otherNotificationsCount - notificationLimit
+        let remainingNotificationSlots = Notifications.pendingNotificationsLimit - otherNotificationsCount - notificationLimit
 
         // if remainingNotificationSlots is negative, we need to lower our limit, because there is simply not enough space for us
         let currentSchedulerLimit = min(notificationLimit, notificationLimit + remainingNotificationSlots)
