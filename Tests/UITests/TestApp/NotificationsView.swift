@@ -6,20 +6,21 @@
 // SPDX-License-Identifier: MIT
 //
 
+import OSLog
 import Spezi
 import SpeziScheduler
 import SpeziViews
 import SwiftUI
-import XCTSpeziScheduler
+import XCTSpeziNotificationsUI
 
 
 struct NotificationsView: View {
-    @Application(\.notificationSettings)
+    private let logger = Logger(subsystem: "edu.stanford.spezi.TestApp", category: "NotificationsView")
+
+    @Environment(\.notificationSettings)
     private var notificationSettings
-    @Application(\.requestNotificationAuthorization)
+    @Environment(\.requestNotificationAuthorization)
     private var requestNotificationAuthorization
-    @Application(\.logger)
-    private var logger
 
     @Environment(Scheduler.self)
     private var scheduler

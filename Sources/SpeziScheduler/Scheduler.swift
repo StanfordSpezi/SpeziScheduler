@@ -229,7 +229,7 @@ public final class Scheduler {
         schedule: Schedule,
         completionPolicy: AllowedCompletionPolicy = .sameDay,
         scheduleNotifications: Bool = false,
-        notificationThread: NotificationThread = .task,
+        notificationThread: NotificationThread = .global,
         tags: [String]? = nil, // swiftlint:disable:this discouraged_optional_collection
         effectiveFrom: Date = .now,
         with contextClosure: ((inout Task.Context) -> Void)? = nil
