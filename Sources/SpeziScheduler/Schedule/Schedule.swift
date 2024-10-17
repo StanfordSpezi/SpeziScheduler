@@ -51,7 +51,17 @@ public struct Schedule {
     /// We need a separate storage container as SwiftData cannot store values of type `Swift.Duration`.
     private var scheduleDuration: Duration.SwiftDataDuration
 
+
     private var recurrenceRule: Data?
+
+    /// A simpler representation of the recurrence rule used for notification scheduling.
+    ///
+    /// Some simple recurrences can be expressed as an interval using `DateComponents`. In these cases, we are able to more efficiently
+    /// schedule notifications. Therefore, if possible we augment the interval hint for recurrence rules we know are simple enough.
+    ///
+    /// This is only possible if `DateComponents` doesn't describe another occurrence between `now` and `startDate`. Therefore, we might need to schedule
+    /// these occurrences manually, till we reach a date where `now` is near enough at the `startDate`.
+    private(set) var notificationMatchingHint: NotificationMatchingHint?
 
     /// The duration of a single occurrence.
     ///
@@ -80,6 +90,9 @@ public struct Schedule {
         }
         set {
             recurrenceRule = newValue.map { Data(encoding: $0) }
+
+            // if someone updates the recurrence rule, our notificationMatchingHint is not valid anymore
+            notificationMatchingHint = nil
         }
     }
 
@@ -120,6 +133,19 @@ public struct Schedule {
     }
 
 
+    init(
+        startingAt start: Date,
+        duration: Duration,
+        recurrence: Calendar.RecurrenceRule?,
+        notificationIntervalHint: NotificationMatchingHint?
+    ) {
+        self.duration = duration
+        self.start = start
+        self.recurrence = recurrence
+        self.notificationMatchingHint = notificationIntervalHint
+    }
+
+
     /// Create a new schedule.
     ///
     /// ```swift
@@ -136,9 +162,7 @@ public struct Schedule {
     ///   - duration: The duration of a single occurrence.
     ///   - recurrence: Optional recurrence rule to specify how often and in which interval the event my reoccur.
     public init(startingAt start: Date, duration: Duration = .tillEndOfDay, recurrence: Calendar.RecurrenceRule? = nil) {
-        self.duration = duration
-        self.start = start
-        self.recurrence = recurrence
+        self.init(startingAt: start, duration: duration, recurrence: recurrence, notificationIntervalHint: nil)
     }
 
 
@@ -172,11 +196,12 @@ public struct Schedule {
 }
 
 
-extension Schedule: Equatable, Sendable, Codable {
+extension Schedule: Equatable, Sendable, Codable {/*
     private enum CodingKeys: String, CodingKey {
         case startDate
         case scheduleDuration
         case recurrenceRule
+        case notificationMatchingHint
     }
 
     public init(from decoder: any Decoder) throws {
@@ -184,6 +209,7 @@ extension Schedule: Equatable, Sendable, Codable {
         self.startDate = try container.decode(Date.self, forKey: .startDate)
         self.scheduleDuration = try container.decode(Schedule.Duration.SwiftDataDuration.self, forKey: .scheduleDuration)
         self.recurrenceRule = try container.decodeIfPresent(Data.self, forKey: .recurrenceRule)
+        self.notificationMatchingHint = try container.decodeIfPresent(NotificationMatchingHint.self, forKey: .notificationMatchingHint)
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -191,7 +217,8 @@ extension Schedule: Equatable, Sendable, Codable {
         try container.encode(startDate, forKey: .startDate)
         try container.encode(scheduleDuration, forKey: .scheduleDuration)
         try container.encode(recurrenceRule, forKey: .recurrenceRule)
-    }
+        try container.encode(notificationMatchingHint, forKey: .notificationMatchingHint)
+    }*/
 }
 
 
@@ -245,7 +272,22 @@ extension Schedule {
         guard let startTime = Calendar.current.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start date for daily schedule. Can't set \(hour):\(minute):\(second) for \(start).")
         }
-        return Schedule(startingAt: startTime, duration: duration, recurrence: .daily(calendar: calendar, interval: interval, end: end))
+
+        let notificationIntervalHint = Schedule.notificationMatchingHint(
+            forMatchingInterval: interval,
+            calendar: calendar,
+            hour: hour,
+            minute: minute,
+            second: second,
+            consider: duration
+        )
+
+        return Schedule(
+            startingAt: startTime,
+            duration: duration,
+            recurrence: .daily(calendar: calendar, interval: interval, end: end),
+            notificationIntervalHint: notificationIntervalHint
+        )
     }
 
     /// Create a schedule that repeats weekly.
@@ -280,10 +322,23 @@ extension Schedule {
         guard let startTime = Calendar.current.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start time for weekly schedule. Can't set \(hour):\(minute):\(second) for \(start).")
         }
+
+        let weekdayNum = weekday.map { $0.ordinal } ?? Calendar.current.component(.weekday, from: startTime)
+        let notificationIntervalHint = Schedule.notificationMatchingHint(
+            forMatchingInterval: interval,
+            calendar: calendar,
+            hour: hour,
+            minute: minute,
+            second: second,
+            weekday: weekdayNum,
+            consider: duration
+        )
+
         return Schedule(
             startingAt: startTime,
             duration: duration,
-            recurrence: .weekly(calendar: calendar, interval: interval, end: end, weekdays: weekday.map { [.every($0)] } ?? [])
+            recurrence: .weekly(calendar: calendar, interval: interval, end: end, weekdays: weekday.map { [.every($0)] } ?? []),
+            notificationIntervalHint: notificationIntervalHint
         )
     }
 }
@@ -334,21 +389,89 @@ extension Schedule {
     ///
     /// - Parameter range: A range that limits the search space. If `nil`, return all occurrences in the schedule.
     /// - Returns: Returns a potentially infinite sequence of ``Occurrence``s.
-    public func occurrences(in range: Range<Date>? = nil) -> some Sequence<Occurrence> & Sendable {
+    public func occurrences(in range: Range<Date>? = nil) -> some Sequence<Occurrence> {
         recurrencesSequence(in: range)
-            .lazy
             .map { element in
                 Occurrence(start: element, schedule: self)
             }
     }
 
-    private func recurrencesSequence(in range: Range<Date>? = nil) -> some Sequence<Date> & Sendable {
-        if let recurrence {
-            recurrence.recurrences(of: self.start, in: range)
+    func nextOccurrence(in range: PartialRangeFrom<Date>) -> Occurrence? {
+        nextOccurrence(in: range.lowerBound..<Date.distantFuture)
+    }
+
+    func nextOccurrence(in range: Range<Date>) -> Occurrence? {
+        occurrences(in: range)
+            .first { _ in
+                true
+            }
+    }
+
+    func nextOccurrences(in range: PartialRangeFrom<Date>, count: Int) -> [Occurrence] {
+        nextOccurrences(in: range.lowerBound..<Date.distantFuture, count: count)
+    }
+
+    func nextOccurrences(in range: Range<Date>, count: Int) -> [Occurrence] {
+        Array(occurrences(in: range).lazy.prefix(count))
+    }
+
+    /// Return the last occurrence of a schedule if its part of the requested range.
+    ///
+    /// This method iterates through the occurrences of the schedule to find if the last occurrence of the schedule is within the bounds of the provided range.
+    /// If it is contained in the range, it returns that last occurrence. Otherwise, it returns `nil` if there aren't any occurrences at all, or if the last occurrence occurs after the upper bound.
+    /// - Parameter range: The range.
+    /// - Returns: Returns the last occurrence if it is contained within the provided `range`.
+    func lastOccurrence(ifIn range: Range<Date>) -> Occurrence? {
+        var iterator = occurrences(in: range.lowerBound..<Date.distantFuture).makeIterator()
+        var lastOccurrence: Occurrence?
+        while let next = iterator.next() {
+            if next.start >= range.upperBound {
+                return lastOccurrence
+            }
+            lastOccurrence = next
+        }
+        return lastOccurrence
+    }
+
+    private func recurrencesSequence(in range: Range<Date>? = nil) -> LazyFilterSequence<some Sequence<Date>> {
+        let start = start
+        let rangeUsedWithRule: Range<Date>?
+
+        // When using `afterOccurrences(_:)` as an `end` condition, recurrence rule counts occurrences only base do on the specified range not
+        // based on the start date. Therefore, we must make sure that the lower-bound of the range is always set to the start date.
+        // Once SF-0010 is available, we could access if `end.occurrences` is not `nil` and only apply the custom range in this case.
+        // See https://github.com/apple/swift-foundation/blob/main/Proposals/0010-calendar-recurrence-rule-end-count-and-date.md.
+        rangeUsedWithRule = range.map { range in
+            if start > range.upperBound {
+                // range upper bound might be before start, the range should just return zero occurrences
+                range
+            } else {
+                start..<range.upperBound
+            }
+        }
+
+        return if let recurrence {
+            recurrence.recurrences(of: start, in: rangeUsedWithRule)
+                .lazy
+                .filter { date in
+                    if let range {
+                        date >= range.lowerBound
+                    } else {
+                        true
+                    }
+                }
         } else {
             // workaround to make sure we return the same opaque but generic sequence (just equals to `start`)
             Calendar.RecurrenceRule(calendar: .current, frequency: .daily, end: .afterOccurrences(1))
-                .recurrences(of: start, in: range)
+                .recurrences(of: start, in: rangeUsedWithRule)
+                .lazy
+                .filter { date in
+                    if let range {
+                        date >= range.lowerBound
+                    } else {
+                        true
+                    }
+                }
         }
     }
 }
@@ -387,3 +510,5 @@ extension Data {
         }
     }
 }
+
+// swiftlint:disable:this file_length

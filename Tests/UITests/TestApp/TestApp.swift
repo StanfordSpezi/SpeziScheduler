@@ -18,7 +18,15 @@ struct UITestsApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ScheduleView()
+            TabView {
+                Tab("Schedule", systemImage: "list.clipboard.fill") {
+                    ScheduleView()
+                }
+
+                Tab("Notifications", systemImage: "mail.fill") {
+                    NotificationsView()
+                }
+            }
                 .spezi(appDelegate)
         }
     }

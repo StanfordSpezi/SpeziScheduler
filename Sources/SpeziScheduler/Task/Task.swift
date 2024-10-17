@@ -18,6 +18,8 @@ import SwiftData
 /// A task might occur once or multiple times. The occurrence of a task is referred to as an ``Event``.
 /// The ``Schedule`` defines when and how often a task reoccurs.
 ///
+/// - Note: SpeziScheduler can automatically schedule notifications for your events. Refer to the documentation of the ``SchedulerNotifications`` module for more information.
+///
 /// ### Versioning
 /// Tasks are stored in an append-only format. If you want to modify the contents of a task (e.g., the schedule, title or instructions), you create a new version of the task
 /// and set the ``effectiveFrom`` to indicate the date and time at which the updated version becomes effective. Only the newest task version can be modified.
@@ -50,12 +52,18 @@ import SwiftData
 /// - ``instructions``
 /// - ``category``
 /// - ``schedule``
+/// - ``completionPolicy``
 /// - ``tags``
 /// - ``outcomes``
 ///
+/// ### Notifications
+///
+/// - ``scheduleNotifications``
+/// - ``notificationThread``
+///
 /// ### Modifying a task
 /// - ``Scheduler/createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)``
-/// - ``createUpdatedVersion(title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)``
+/// - ``createUpdatedVersion(title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:with:)``
 ///
 /// ### Storing additional information
 /// - ``Context``
@@ -116,6 +124,15 @@ public final class Task {
 
     /// The policy to decide when an event can be completed by the user.
     public private(set) var completionPolicy: AllowedCompletionPolicy
+    
+    /// Automatically schedule notifications for upcoming events.
+    ///
+    /// If this flag is set to `true`, the ``SchedulerNotifications`` will automatically schedule notifications for the upcoming
+    /// events of this task. Refer to the documentation of `SchedulerNotifications` for all necessary steps and configuration in order to use this feature.
+    public private(set) var scheduleNotifications: Bool
+    
+    /// The behavior how task notifications are grouped in the notification center.
+    public private(set) var notificationThread: NotificationThread
 
     /// Tags associated with the task.
     ///
@@ -161,6 +178,8 @@ public final class Task {
         category: Category?,
         schedule: Schedule,
         completionPolicy: AllowedCompletionPolicy,
+        scheduleNotifications: Bool,
+        notificationThread: NotificationThread,
         tags: [String],
         effectiveFrom: Date,
         context: Context
@@ -171,6 +190,8 @@ public final class Task {
         self.category = category
         self.schedule = schedule
         self.completionPolicy = completionPolicy
+        self.scheduleNotifications = scheduleNotifications
+        self.notificationThread = notificationThread
         self.outcomes = []
         self.tags = tags
         self.effectiveFrom = effectiveFrom
@@ -187,6 +208,8 @@ public final class Task {
         category: Category?,
         schedule: Schedule,
         completionPolicy: AllowedCompletionPolicy,
+        scheduleNotifications: Bool,
+        notificationThread: NotificationThread,
         tags: [String],
         effectiveFrom: Date,
         with contextClosure: (inout Context) -> Void = { _ in }
@@ -201,6 +224,8 @@ public final class Task {
             category: category,
             schedule: schedule,
             completionPolicy: completionPolicy,
+            scheduleNotifications: scheduleNotifications,
+            notificationThread: notificationThread,
             tags: tags,
             effectiveFrom: effectiveFrom,
             context: context
@@ -219,6 +244,8 @@ public final class Task {
     ///   - category: The user-visible category information of a task.
     ///   - schedule: The updated schedule or `nil` if the schedule should not be updated.
     ///   - completionPolicy: The policy to decide when an event can be completed by the user.
+    ///   - scheduleNotifications: Automatically schedule notifications for upcoming events.
+    ///   - notificationThread: The behavior how task notifications are grouped in the notification center.
     ///   - tags: Custom tags associated with the task.
     ///   - effectiveFrom: The date this update is effective from.
     ///   - contextClosure: The updated context or `nil` if the context should not be updated.
@@ -229,6 +256,8 @@ public final class Task {
         category: Category? = nil,
         schedule: Schedule? = nil,
         completionPolicy: AllowedCompletionPolicy? = nil,
+        scheduleNotifications: Bool? = nil, // swiftlint:disable:this discouraged_optional_boolean
+        notificationThread: NotificationThread? = nil,
         tags: [String]? = nil, // swiftlint:disable:this discouraged_optional_collection
         effectiveFrom: Date = .now,
         with contextClosure: ((inout Context) -> Void)? = nil
@@ -240,21 +269,26 @@ public final class Task {
             category: category,
             schedule: schedule,
             completionPolicy: completionPolicy,
+            scheduleNotifications: scheduleNotifications,
+            notificationThread: notificationThread,
+            tags: tags,
             effectiveFrom: effectiveFrom,
             with: contextClosure
         )
     }
 
-    func createUpdatedVersion(
+    func createUpdatedVersion( // swiftlint:disable:this function_body_length function_parameter_count
         skipShadowCheck: Bool,
-        title: String.LocalizationValue? = nil,
-        instructions: String.LocalizationValue? = nil,
-        category: Category? = nil,
-        schedule: Schedule? = nil,
-        completionPolicy: AllowedCompletionPolicy? = nil,
-        tags: [String]? = nil, // swiftlint:disable:this discouraged_optional_collection
-        effectiveFrom: Date = .now,
-        with contextClosure: ((inout Context) -> Void)? = nil
+        title: String.LocalizationValue?,
+        instructions: String.LocalizationValue?,
+        category: Category?,
+        schedule: Schedule?,
+        completionPolicy: AllowedCompletionPolicy?,
+        scheduleNotifications: Bool?, // swiftlint:disable:this discouraged_optional_boolean
+        notificationThread: NotificationThread?,
+        tags: [String]?, // swiftlint:disable:this discouraged_optional_collection
+        effectiveFrom: Date,
+        with contextClosure: ((inout Context) -> Void)?
     ) throws -> (task: Task, didChange: Bool) {
         let context: Context?
         if let contextClosure {
@@ -275,6 +309,8 @@ public final class Task {
                 || didChange(schedule, for: \.schedule)
                 || didChange(completionPolicy, for: \.completionPolicy)
                 || didChange(tags, for: \.tags)
+                || didChange(scheduleNotifications, for: \.scheduleNotifications)
+                || didChange(notificationThread, for: \.notificationThread)
                 || didChange(context?.userInfo, for: \.userInfo) else {
             return (self, false) // nothing changed
         }
@@ -300,6 +336,8 @@ public final class Task {
             category: category ?? self.category,
             schedule: schedule ?? self.schedule,
             completionPolicy: completionPolicy ?? self.completionPolicy,
+            scheduleNotifications: scheduleNotifications ?? self.scheduleNotifications,
+            notificationThread: notificationThread ?? self.notificationThread,
             tags: tags ?? self.tags,
             effectiveFrom: effectiveFrom,
             context: context ?? Context()
