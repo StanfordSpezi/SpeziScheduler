@@ -187,7 +187,7 @@ extension EventQuery: DynamicProperty {
 private let logger = Logger(subsystem: "edu.stanford.spezi.scheduler", category: "EventQuery")
 
 
-func measure<T, C: Clock>(
+private func measure<T, C: Clock>(
     clock: C = ContinuousClock(),
     name: @autoclosure @escaping () -> StaticString,
     _ action: () throws -> T
