@@ -16,24 +16,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  determine_macos_version: # Currently some runners still run on macOS 14
-    name: Determine macOS version
-    runs-on: ["macOS", "self-hosted"]
-    outputs:
-      macos_major_version: ${{ steps.get_version.outputs.major_version }}
-    steps:
-      - name: Get macOS major version
-        id: get_version
-        run: |
-          VERSION=$(sw_vers -productVersion | cut -d '.' -f 1)
-          echo "major_version=$VERSION >> $GITHUB_OUTPUT"
   buildandtest_ios:
     name: Build and Test Swift Package
     uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
     with:
       runsonlabels: '["macOS", "self-hosted"]'
       scheme: SpeziScheduler-Package
-      xcodeversion: latest
       resultBundle: SpeziScheduler-iOS.xcresult
       artifactname: SpeziScheduler-iOS.xcresult
   buildandtest_watchos:
@@ -43,7 +31,6 @@ jobs:
       runsonlabels: '["macOS", "self-hosted"]'
       scheme: SpeziScheduler-Package
       destination: 'platform=watchOS Simulator,name=Apple Watch Series 9 (45mm)'
-      xcodeversion: latest
       resultBundle: SpeziScheduler-watchOS.xcresult
       artifactname: SpeziScheduler-watchOS.xcresult
   buildandtest_visionos:
@@ -53,26 +40,21 @@ jobs:
       runsonlabels: '["macOS", "self-hosted"]'
       scheme: SpeziScheduler-Package
       destination: 'platform=visionOS Simulator,name=Apple Vision Pro'
-      xcodeversion: latest
       resultBundle: SpeziScheduler-visionOS.xcresult
       artifactname: SpeziScheduler-visionOS.xcresult
   buildandtest_macos:
     name: Build and Test Swift Package macOS
-    needs: determine_macos_version
     uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
-    if: ${{ needs.determine_macos_version.outputs.macos_major_version >= 15 }}
     with:
       runsonlabels: '["macOS", "self-hosted"]'
       scheme: SpeziScheduler-Package
       destination: 'platform=macOS,arch=arm64'
-      xcodeversion: latest
       resultBundle: SpeziScheduler-macOS.xcresult
       artifactname: SpeziScheduler-macOS.xcresult
   buildandtestuitests_ios:
     name: Build and Test UI Tests
     uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
     with:
-      xcodeversion: latest
       artifactname: TestApp.xcresult
       runsonlabels: '["macOS", "self-hosted"]'
       path: 'Tests/UITests'

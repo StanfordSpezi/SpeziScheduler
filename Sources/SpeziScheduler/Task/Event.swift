@@ -22,6 +22,7 @@ import Foundation
 /// ### Completing an Event
 /// - ``complete()``
 /// - ``complete(with:)``
+@DebugDescription
 public struct Event {
     /// The outcome value.
     @_spi(Internal)

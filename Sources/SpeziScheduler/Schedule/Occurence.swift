@@ -19,6 +19,7 @@ import Foundation
 /// - ``start``
 /// - ``end``
 /// - ``schedule``
+@DebugDescription
 public struct Occurrence {
     /// The start date.
     public let start: Date
