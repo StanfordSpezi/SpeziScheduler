@@ -19,9 +19,9 @@ import SwiftUI
 /// ```swift
 /// EventScheduleList { event in
 ///     InstructionsTile(event) {
-///         QuestionnaireEventDetailView(event)
-///     } action: {
 ///         event.complete()
+///     } more: {
+///         QuestionnaireEventDetailView(event)
 ///     }
 /// }
 ///     .navigationTitle("Schedule")
