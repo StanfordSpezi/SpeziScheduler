@@ -15,6 +15,11 @@ import XCTSpezi
 
 final class SchedulerTests: XCTestCase {
     @MainActor
+    override func setUp() async throws {
+        Scheduler.isTesting = true
+    }
+
+    @MainActor
     func testScheduler() {
         // test simple scheduler initialization test
         let module = Scheduler()

@@ -78,6 +78,10 @@ import SwiftUI
 /// - ``deleteAllVersions(ofTask:)``
 @MainActor
 public final class Scheduler {
+#if os(macOS)
+    static var isTesting = false
+#endif
+
     /// We disable that for now. We might need to restore some information to cancel notifications.
     private static let purgeLegacyStorage = false
 
@@ -126,13 +130,21 @@ public final class Scheduler {
             return // we have a container injected for testing purposes
         }
 
-        let configuration: ModelConfiguration
-#if targetEnvironment(simulator)
-        configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        let testing: Bool
+#if targetEnvironment(simulator) || TEST
+        testing = true
+#elseif os(macOS)
+        testing = Self.isTesting
 #else
-        let storageUrl = URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite")
-        configuration = ModelConfiguration(url: storageUrl)
+        testing = false
 #endif
+
+        let configuration: ModelConfiguration = if testing {
+            ModelConfiguration(isStoredInMemoryOnly: true)
+        } else {
+            ModelConfiguration(url: URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite"))
+        }
+        
         do {
             _container = .success(try ModelContainer(for: Task.self, Outcome.self, configurations: configuration))
         } catch {
