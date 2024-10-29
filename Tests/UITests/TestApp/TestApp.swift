@@ -18,7 +18,7 @@ struct UITestsApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ScheduleView()
                 .spezi(appDelegate)
         }
     }

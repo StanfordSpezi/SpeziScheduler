@@ -6,15 +6,19 @@
 // SPDX-License-Identifier: MIT
 //
 
-import Spezi
 import SpeziScheduler
 
 
-class TestAppDelegate: SpeziAppDelegate {
-    override var configuration: Configuration {
-        Configuration {
-            Scheduler()
-            TestAppScheduler()
-        }
-    }
+extension Outcome {
+    @Property var example: String?
+}
+
+
+extension Task.Context {
+    @Property var example: String?
+}
+
+
+extension Task.Context {
+    @Property var example2: String = "Hello World"
 }

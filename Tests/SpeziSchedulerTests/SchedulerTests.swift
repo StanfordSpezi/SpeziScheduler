@@ -6,303 +6,187 @@
 // SPDX-License-Identifier: MIT
 //
 
-@testable import Spezi
-import SpeziLocalStorage
+import Spezi
+@_spi(TestingSupport)
 @testable import SpeziScheduler
-import SpeziSecureStorage
 import XCTest
 import XCTSpezi
 
 
 final class SchedulerTests: XCTestCase {
     @MainActor
-    private func createScheduler(withInitialTasks initialTasks: Task<String>) async throws -> Scheduler<String> {
-        let scheduler = Scheduler<String>(tasks: [initialTasks])
+    override func setUp() async throws {
+#if os(macOS)
+        Scheduler.isTesting = true
+#endif
+    }
 
+    @MainActor
+    func testScheduler() {
+        // test simple scheduler initialization test
+        let module = Scheduler()
         withDependencyResolution {
-            scheduler
+            module
         }
 
-        try? await _Concurrency.Task.sleep(for: .seconds(0.1)) // allow for configuration
+        let range = Date.today..<Date.now
 
-        return scheduler
+        XCTAssertNoThrow(
+            XCTAssert(try module.queryTasks(for: range).isEmpty),
+            "Failed to perform task query on empty scheduler. Did configure fail?"
+        )
+
+        XCTAssertNoThrow(
+            XCTAssert(try module.queryEvents(for: range).isEmpty),
+            "Failed to perform task query on empty scheduler. Did configure fail?"
+        )
     }
-
 
     @MainActor
-    func testObservedObjectCalls() async throws {
-        let numberOfEvents = 6
+    func testSimpleTaskCreation() throws {
+        let module = Scheduler()
+        withDependencyResolution {
+            module
+        }
 
-        let testTask = Task(
-            title: "Test Task",
-            description: "This is a Test task",
-            schedule: Schedule(
-                start: .now.addingTimeInterval(1),
-                repetition: .matching(.init(nanosecond: 0)), // Every full second
-                end: .numberOfEvents(numberOfEvents)
-            ),
-            context: "This is a test context"
-        )
-        let scheduler = try await createScheduler(withInitialTasks: testTask)
+        let schedule: Schedule = .daily(hour: 8, minute: 35, startingAt: .today)
 
-        try await _Concurrency.Task.sleep(for: .seconds(numberOfEvents + 3))
+        let result = try module.createOrUpdateTask(
+            id: "test-task",
+            title: "Hello World",
+            instructions: "Complete the Task!",
+            schedule: schedule
+        ) { context in
+            context.example = "Additional Storage Stuff"
+        }
 
-        let events = scheduler.tasks.flatMap { $0.events() }
-        let completedEvents = events.filter { $0.complete }.count
-        let uncompletedEvents = events.filter { !$0.complete }.count
+        XCTAssertTrue(result.didChange)
 
-        XCTAssertEqual(numberOfEvents, uncompletedEvents + completedEvents)
+        let results = try module.queryTasks(for: Date.yesterday..<Date.tomorrow)
+        XCTAssertEqual(results.count, 1, "Received unexpected amount of tasks in query.")
+        let task0 = try XCTUnwrap(results.first)
+
+        XCTAssertIdentical(result.task, task0)
+
+        // test that both overloads work as expected
+        _ = task0.title as LocalizedStringResource
+        _ = task0.title as String.LocalizationValue
+        _ = task0.instructions as LocalizedStringResource
+        _ = task0.instructions as String.LocalizationValue
+
+        XCTAssertEqual(task0.id, "test-task")
+        XCTAssertEqual(task0.example, "Additional Storage Stuff")
+        XCTAssertEqual(task0.title, "Hello World")
+
+        XCTAssertNoThrow(try module.deleteTasks(result.task))
     }
-
 
     @MainActor
-    func testRandomSchedulerFunctionality() async throws {
-        let numberOfEvents = 10
-
-        let testTask = Task(
-            title: "Random Scheduler Test Task",
-            description: "Random Scheduler Test task",
-            schedule: Schedule(
-                start: .now.addingTimeInterval(1),
-                repetition: .randomBetween( // Randomly scheduled in the first half of each second.
-                    start: .init(nanosecond: 450_000_000),
-                    end: .init(nanosecond: 550_000_000)
-                                          ),
-                end: .numberOfEvents(numberOfEvents)
-            ),
-            context: "This is a test context"
-        )
-        let scheduler = try await createScheduler(withInitialTasks: testTask)
-
-        for event in scheduler.tasks.flatMap({ $0.events() }) {
-            let nanosecondsElement = Calendar.current.dateComponents([.nanosecond], from: event.scheduledAt).nanosecond ?? 0
-            XCTAssertGreaterThan(nanosecondsElement, 450_000_000)
-            XCTAssertLessThan(nanosecondsElement, 550_000_000)
+    func testSimpleTaskVersioning() throws { // swiftlint:disable:this function_body_length
+        let module = Scheduler()
+        withDependencyResolution {
+            module
         }
 
+        let start = try XCTUnwrap(Calendar.current.date(from: DateComponents(year: 2024, month: 9, day: 6, hour: 14, minute: 0, second: 0)))
+        let date0 = try XCTUnwrap(Calendar.current.date(from: DateComponents(year: 2024, month: 9, day: 6, hour: 14, minute: 59, second: 49)))
+        let date1 = try XCTUnwrap(Calendar.current.date(from: DateComponents(year: 2024, month: 9, day: 6, hour: 15, minute: 59, second: 49)))
+        let end = try XCTUnwrap(Calendar.current.date(from: DateComponents(year: 2024, month: 9, day: 6, hour: 17, minute: 0, second: 0)))
 
-        try await _Concurrency.Task.sleep(for: .seconds(numberOfEvents + 3))
+        // a schedule that happens every hour at half past, starting from `date0`
+        let schedule = Schedule(startingAt: date0, recurrence: .hourly(calendar: .current, minutes: [30]))
 
-        let events = scheduler.tasks.flatMap { $0.events() }
-        let completedEvents = events.filter { $0.complete }.count
-        let uncompletedEvents = events.filter { !$0.complete }.count
-
-        XCTAssertEqual(numberOfEvents, uncompletedEvents + completedEvents)
-    }
-
-
-    @MainActor
-    func testCompleteEvents() async throws {
-        let numberOfEvents = 6
-
-        let testTask = Task(
-            title: "Test Task",
-            description: "This is a test task",
-            schedule: Schedule(
-                start: .now.addingTimeInterval(42_000),
-                repetition: .matching(.init(nanosecond: 0)), // Every full second
-                end: .numberOfEvents(numberOfEvents)
-            ),
-            context: "This is a test context"
-        )
-        let scheduler = try await createScheduler(withInitialTasks: testTask)
-
-        try await _Concurrency.Task.sleep(for: .seconds(1))
-
-        let testTask2 = Task(
-            title: "Test Task 2",
-            description: "This is a second test task",
-            schedule: Schedule(
-                start: .now.addingTimeInterval(42_000),
-                repetition: .matching(.init(nanosecond: 0)), // Every full second
-                end: .numberOfEvents(numberOfEvents)
-            ),
-            context: "This is a second test context"
-        )
-        await scheduler.schedule(task: testTask2)
-
-        XCTAssertEqual(scheduler.tasks.count, 2)
-
-        try await _Concurrency.Task.sleep(for: .seconds(1))
-
-        let expectationCompleteEvents = XCTestExpectation(description: "Complete all events")
-        expectationCompleteEvents.expectedFulfillmentCount = numberOfEvents * 2
-        expectationCompleteEvents.assertForOverFulfill = true
-
-        let events: Set<Event> = Set(scheduler.tasks.flatMap { $0.events() })
-        _Concurrency.Task {
-            for event in events {
-                event.complete(true)
-                try? await _Concurrency.Task.sleep(for: .seconds(0.5))
-                expectationCompleteEvents.fulfill()
-            }
+        let firstVersion = try module.createOrUpdateTask(
+            id: "test-task",
+            title: "Hello World",
+            instructions: "Complete the Task!",
+            schedule: schedule,
+            effectiveFrom: date0
+        ) { context in
+            context.example = "Additional Storage Stuff"
         }
 
-        await fulfillment(of: [expectationCompleteEvents], timeout: (Double(numberOfEvents) * 2 * 0.5) + 3)
+        XCTAssertTrue(firstVersion.didChange)
+        XCTAssertNil(firstVersion.task.previousVersion)
+        XCTAssertNil(firstVersion.task.nextVersion)
 
-        XCTAssert(events.allSatisfy { $0.complete })
-        XCTAssertEqual(events.count, 12)
-    }
-
-    func testCodable() throws {
-        let tasks = [
-            Task(
-                title: "Test Task",
-                description: "This is a test task",
-                schedule: Schedule(
-                    start: .now,
-                    repetition: .matching(.init(nanosecond: 0)), // Every full second
-                    end: .numberOfEvents(2)
-                ),
-                context: "This is a test context"
-            ),
-            Task(
-                title: "Test Task 2",
-                description: "This is a second test task",
-                schedule: Schedule(
-                    start: .now.addingTimeInterval(10),
-                    repetition: .matching(.init(nanosecond: 0)), // Every full second
-                    end: .numberOfEvents(2)
-                ),
-                context: "This is a second test context"
-            )
-        ]
-
-        try encodeAndDecodeTasksAssertion(tasks)
-
-        let expectation = XCTestExpectation(description: "Get Updates for all scheduled events.")
-        expectation.expectedFulfillmentCount = 4
-        expectation.assertForOverFulfill = true
-
-        let events: Set<Event> = Set(tasks.flatMap { $0.events() })
-        for event in events {
-            _Concurrency.Task {
-                await event.complete(true)
-                expectation.fulfill()
-            }
+        let noChanges = try module.createOrUpdateTask(
+            id: "test-task",
+            title: "Hello World",
+            instructions: "Complete the Task!",
+            schedule: schedule,
+            effectiveFrom: date0
+        ) { context in
+            context.example = "Additional Storage Stuff"
         }
 
-        sleep(1)
-        wait(for: [expectation], timeout: TimeInterval(2))
+        XCTAssertFalse(noChanges.didChange)
 
-        XCTAssert(events.allSatisfy { $0.complete })
-        XCTAssertEqual(events.count, 4)
-
-        try encodeAndDecodeTasksAssertion(tasks)
-    }
-
-    private func encodeAndDecodeTasksAssertion(_ tasks: [Task<String>]) throws {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        let data = try encoder.encode(tasks)
-        let decodedTasks = try JSONDecoder().decode([Task<String>].self, from: data)
-        XCTAssertEqual(tasks, decodedTasks)
-    }
-
-    func testLegacyEventDecoding() throws {
-        let uuid = UUID()
-        let date = Date().addingTimeInterval(100)
-
-        let json =
-        """
-        {
-            "scheduledAt": \(date.timeIntervalSinceReferenceDate),
-            "notification": "\(uuid.uuidString)"
+        let secondVersion = try module.createOrUpdateTask(
+            id: "test-task",
+            title: "Hello World 2",
+            instructions: "Complete the task slightly differently!",
+            schedule: schedule, // we use the same schedule, however date1 is after the start of the schedule, so previous versions stays responsible
+            effectiveFrom: date1
+        ) { context in
+            context.example = "Additional Storage Stuff"
         }
-        """
 
-        let event = try JSONDecoder().decode(Event.self, from: Data(json.utf8))
+        XCTAssertTrue(secondVersion.didChange)
+        XCTAssertNil(secondVersion.task.nextVersion)
+        XCTAssertIdentical(secondVersion.task.previousVersion, firstVersion.task)
+        XCTAssertNil(firstVersion.task.previousVersion)
+        XCTAssertIdentical(firstVersion.task.nextVersion, secondVersion.task)
 
-        XCTAssertFalse(event.due)
-        XCTAssertFalse(event.complete)
-        XCTAssertEqual(event.notification, uuid)
-        XCTAssertEqual(event.scheduledAt, date)
-    }
+        let results = try module.queryTasks(for: start...date1)
+        continueAfterFailure = false
+        XCTAssertEqual(results.count, 2, "Received unexpected amount of tasks in query.")
+        continueAfterFailure = true
+        let task0 = results[0]
+        let task1 = results[1]
 
-    func testDueDecoding() throws {
-        let date = Date().addingTimeInterval(-100)
+        XCTAssertEqual(try module.queryTasks(for: start..<date1).count, 1)
 
-        let json =
-        """
-        {
-            "scheduledAt": \(date.timeIntervalSinceReferenceDate)
-        }
-        """
+        // test implicit sort descriptor
+        XCTAssertIdentical(task0, firstVersion.task)
+        XCTAssertIdentical(task1, secondVersion.task)
 
-        let event = try JSONDecoder().decode(Event.self, from: Data(json.utf8))
+        // test equality of fields
+        XCTAssertEqual(task0, firstVersion.task)
+        XCTAssertEqual(task1, secondVersion.task)
 
-        XCTAssertTrue(event.due)
-        XCTAssertFalse(event.complete)
-        XCTAssertEqual(event.scheduledAt, date)
-    }
 
-    func testCompletedDecoding() throws {
-        let date = Date().addingTimeInterval(-100)
-        let completed = Date().addingTimeInterval(-5)
+        let events = try module.queryEvents(for: start..<end)
 
-        let json =
-        """
-        {
-            "scheduledAt": \(date.timeIntervalSinceReferenceDate),
-            "completedAt": \(completed.timeIntervalSinceReferenceDate)
-        }
-        """
+        continueAfterFailure = false
+        XCTAssertEqual(events.count, 2)
+        continueAfterFailure = true
 
-        let event = try JSONDecoder().decode(Event.self, from: Data(json.utf8))
+        // there should be two events.
+        // The first one is still provided by the first version, as the second task version only become effective after `date1`
+        // even if its schedule already starts from `date0`.
 
-        XCTAssertFalse(event.due)
-        XCTAssertTrue(event.complete)
-        XCTAssertEqual(event.scheduledAt, date)
-        XCTAssertEqual(event.completedAt, completed)
-    }
+        let event0 = events[0]
+        let event1 = events[1]
 
-    func testCurrentCalendarEncoding() throws {
-        let json = """
-        {
-            "events": [],
-            "notifications": false,
-            "context": "This is a test context",
-            "description": "This is a test task",
-            "id": "DEDDE3FF-0A75-4A8C-9F0D-75AD417F1104",
-            "schedule" : {
-                "calendar": "current",
-                "repetition" : {
-                    "matching" : {
-                        "_0" : {
-                            "nanosecond" : 500000000
-                        }
-                    }
-                },
-                "end" : {
-                    "numberOfEvents": {
-                      "_0" : 42
-                    }
-                },
-                "start" : 694224000
-            },
-            "title" : "Test Task"
-        }
-        """
-        let task = try JSONDecoder().decode(Task<String>.self, from: Data(json.utf8))
-        XCTAssertEqual(task.schedule.calendar, .current)
-    }
-    @MainActor
-    func testEventHashEqualityForScheduledVsCompleted() throws {
-        let taskId = UUID()
-        let scheduledDate = Date()
-        let scheduledEvent = Event(taskId: taskId, scheduledAt: scheduledDate)
+        XCTAssertIdentical(event0.task, firstVersion.task)
+        XCTAssertIdentical(event1.task, secondVersion.task)
 
-        let completedEvent = Event(taskId: taskId, scheduledAt: scheduledDate)
-        completedEvent.complete(true)
+        XCTAssertNil(event0.outcome)
+        XCTAssertNil(event1.outcome)
 
-        var scheduledEventHasher = Hasher()
-        scheduledEvent.hash(into: &scheduledEventHasher)
-        let scheduledEventHash = scheduledEventHasher.finalize()
+        let components0 = Calendar.current.dateComponents([.hour, .minute, .second], from: event0.occurrence.start)
+        let components1 = Calendar.current.dateComponents([.hour, .minute, .second], from: event1.occurrence.start)
 
-        var completedEventHasher = Hasher()
-        completedEvent.hash(into: &completedEventHasher)
-        let completedEventHash = completedEventHasher.finalize()
+        XCTAssertEqual(components0.hour, 15)
+        XCTAssertEqual(components0.minute, 30)
+        XCTAssertEqual(components0.second, 49)
 
-        XCTAssertEqual(scheduledEventHash, completedEventHash)
+        XCTAssertEqual(components1.hour, 16)
+        XCTAssertEqual(components1.minute, 30)
+        XCTAssertEqual(components1.second, 49)
+
+
+        XCTAssertNoThrow(try module.deleteAllVersions(ofTask: "test-task"))
     }
 }

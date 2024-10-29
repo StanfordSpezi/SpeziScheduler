@@ -21,7 +21,7 @@ jobs:
     uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
     with:
       runsonlabels: '["macOS", "self-hosted"]'
-      scheme: SpeziScheduler
+      scheme: SpeziScheduler-Package
       resultBundle: SpeziScheduler-iOS.xcresult
       artifactname: SpeziScheduler-iOS.xcresult
   buildandtest_watchos:
@@ -29,7 +29,7 @@ jobs:
     uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
     with:
       runsonlabels: '["macOS", "self-hosted"]'
-      scheme: SpeziScheduler
+      scheme: SpeziScheduler-Package
       destination: 'platform=watchOS Simulator,name=Apple Watch Series 9 (45mm)'
       resultBundle: SpeziScheduler-watchOS.xcresult
       artifactname: SpeziScheduler-watchOS.xcresult
@@ -38,7 +38,7 @@ jobs:
     uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
     with:
       runsonlabels: '["macOS", "self-hosted"]'
-      scheme: SpeziScheduler
+      scheme: SpeziScheduler-Package
       destination: 'platform=visionOS Simulator,name=Apple Vision Pro'
       resultBundle: SpeziScheduler-visionOS.xcresult
       artifactname: SpeziScheduler-visionOS.xcresult
@@ -47,7 +47,7 @@ jobs:
     uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
     with:
       runsonlabels: '["macOS", "self-hosted"]'
-      scheme: SpeziScheduler
+      scheme: SpeziScheduler-Package
       destination: 'platform=macOS,arch=arm64'
       resultBundle: SpeziScheduler-macOS.xcresult
       artifactname: SpeziScheduler-macOS.xcresult
@@ -55,16 +55,15 @@ jobs:
     name: Build and Test UI Tests
     uses: StanfordSpezi/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
     with:
-      xcodeversion: latest
       artifactname: TestApp.xcresult
       runsonlabels: '["macOS", "self-hosted"]'
       path: 'Tests/UITests'
       scheme: TestApp
   uploadcoveragereport:
     name: Upload Coverage Report
-    needs: [buildandtest_ios, buildandtest_watchos, buildandtest_visionos, buildandtest_macos, buildandtestuitests_ios]
+    needs: [buildandtest_ios, buildandtest_watchos, buildandtest_visionos, buildandtestuitests_ios]
     uses: StanfordSpezi/.github/.github/workflows/create-and-upload-coverage-report.yml@v2
     with:
-      coveragereports: SpeziScheduler-iOS.xcresult SpeziScheduler-watchOS.xcresult SpeziScheduler-visionOS.xcresult SpeziScheduler-macOS.xcresult TestApp.xcresult
+      coveragereports: SpeziScheduler-iOS.xcresult SpeziScheduler-watchOS.xcresult SpeziScheduler-visionOS.xcresult TestApp.xcresult
     secrets:
       token: ${{ secrets.CODECOV_TOKEN }}
