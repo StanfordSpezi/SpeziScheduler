@@ -568,8 +568,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/StanfordSpezi/SpeziNotifications";
 			requirement = {
-				branch = "feature/initial-version";
-				kind = branch;
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.2;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
