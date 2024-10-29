@@ -23,7 +23,7 @@ UI components provided for SpeziScheduler.
 
 ### Displaying Events
 
-- ``TodayList``
+- ``EventScheduleList``
 
 ### Category Appearance
 Control how the category information of a task should be rendered to the user.

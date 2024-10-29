@@ -101,7 +101,16 @@
         }
       }
     },
+    "No Events" : {
+
+    },
     "No Events Today" : {
+
+    },
+    "No Events Tomorrow" : {
+
+    },
+    "No Events Yesterday" : {
 
     },
     "Retry" : {
@@ -110,7 +119,22 @@
     "There are no events scheduled for today." : {
 
     },
+    "There are no events scheduled for tomorrow." : {
+
+    },
+    "There are no events scheduled for yesterday." : {
+
+    },
+    "There are no events scheduled that date." : {
+
+    },
     "Today" : {
+
+    },
+    "Tomorrow" : {
+
+    },
+    "Yesterday" : {
 
     }
   },

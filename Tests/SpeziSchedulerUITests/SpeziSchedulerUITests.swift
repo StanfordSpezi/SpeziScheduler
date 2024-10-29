@@ -56,15 +56,15 @@ final class SpeziSchedulerUITests: XCTestCase {
         let tileCenter = InstructionsTile(event, alignment: .center)
         let tileTrailing = InstructionsTile(event, alignment: .trailing)
 
-        let tileLeadingMore = InstructionsTile(event, alignment: .leading) {
+        let tileLeadingMore = InstructionsTile(event, alignment: .leading, more: {
             Text("More Information")
-        }
-        let tileCenterMore = InstructionsTile(event, alignment: .center) {
+        })
+        let tileCenterMore = InstructionsTile(event, alignment: .center, more: {
             Text("More Information")
-        }
-        let tileTrailingMore = InstructionsTile(event, alignment: .trailing) {
+        })
+        let tileTrailingMore = InstructionsTile(event, alignment: .trailing, more: {
             Text("More Information")
-        }
+        })
 
         let tileWithAction = InstructionsTile(event) {
             print("Action was pressed")
@@ -94,17 +94,17 @@ final class SpeziSchedulerUITests: XCTestCase {
         let tileTrailing = InstructionsTile(event, alignment: .trailing)
             .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
 
-        let tileLeadingMore = InstructionsTile(event, alignment: .leading) {
+        let tileLeadingMore = InstructionsTile(event, alignment: .leading, more: {
             Text("More Information")
-        }
+        })
             .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
-        let tileCenterMore = InstructionsTile(event, alignment: .center) {
+        let tileCenterMore = InstructionsTile(event, alignment: .center, more: {
             Text("More Information")
-        }
+        })
             .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
-        let tileTrailingMore = InstructionsTile(event, alignment: .trailing) {
+        let tileTrailingMore = InstructionsTile(event, alignment: .trailing, more: {
             Text("More Information")
-        }
+        })
             .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
 
 #if os(iOS)
