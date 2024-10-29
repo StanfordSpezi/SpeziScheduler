@@ -196,7 +196,7 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
         @ViewBuilder header: () -> Header,
         @ViewBuilder more: () -> Info
     ) where Footer == EventActionButton {
-        self.init(event, alignment: alignment, header: header, footer: { EventActionButton(event: event, action: action)}, more: more)
+        self.init(event, alignment: alignment, header: header, footer: { EventActionButton(event: event, action: action) }, more: more)
     }
     
     /// Create a new instructions.

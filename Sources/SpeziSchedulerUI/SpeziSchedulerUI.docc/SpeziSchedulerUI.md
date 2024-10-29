@@ -12,6 +12,26 @@ SPDX-License-Identifier: MIT
 
 UI components provided for SpeziScheduler.
 
+## Overview
+
+@Row {
+    @Column {
+        @Image(source: "Schedule-Today", alt: "A schedule view showing a upcoming Task at 4pm to complete the Social Support Questionnaire.") {
+            Use the ``EventScheduleList`` and the ``InstructionsTile`` to present the user's schedule.
+        }
+    }
+    @Column {
+        @Image(source: "Schedule-Today-Center", alt: "A schedule view with center alignment showing a upcoming Task at 4pm to complete the Social Support Questionnaire.") {
+            A schedule view with a `center` aligned ``InstructionsTile``.
+        }
+    }
+    @Column {
+        @Image(source: "Schedule-Tomorrow", alt: "A schedule view showing a upcoming Task for tomorrow.") {
+            Use the ``EventScheduleList`` view to display the schedule for arbitrary dates.
+        }
+    }
+}
+
 
 ## Topics
 
