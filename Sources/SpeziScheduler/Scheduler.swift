@@ -9,7 +9,6 @@
 import Combine
 import Foundation
 import Spezi
-import SpeziLocalStorage
 import SwiftData
 import SwiftUI
 
@@ -23,7 +22,7 @@ import SwiftUI
 /// for tasks. It allows to modify the properties (e.g., schedule) of future events without affecting occurrences of the past.
 ///
 /// You create and automatically update your tasks
-/// using ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)``.
+/// using ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:with:)``.
 ///
 /// Below is a example on how to create your own [`Module`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/module)
 /// to manage your tasks and ensure they are always up to date.
@@ -59,12 +58,12 @@ import SwiftUI
 /// ### Configuration
 /// - ``init()``
 ///
-/// ### Creating Tasks
-/// - ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)``
+/// ### Creating and Updating Tasks
+/// - ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:with:)``
 ///
 /// ### Query Tasks
-/// - ``queryTasks(for:predicate:sortBy:prefetchOutcomes:)-f7se``
-/// - ``queryTasks(for:predicate:sortBy:prefetchOutcomes:)-583yk``
+/// - ``queryTasks(for:predicate:sortBy:fetchLimit:prefetchOutcomes:)-8z86i``
+/// - ``queryTasks(for:predicate:sortBy:fetchLimit:prefetchOutcomes:)-5cuwe``
 ///
 /// ### Query Events
 /// - ``queryEvents(for:predicate:)``
@@ -88,8 +87,8 @@ public final class Scheduler {
     @Application(\.logger)
     private var logger
 
-    @Dependency(LocalStorage.self)
-    private var localStorage
+    @Dependency(SchedulerNotifications.self)
+    private var notifications
 
     private var _container: Result<ModelContainer, Error>?
 
@@ -130,20 +129,18 @@ public final class Scheduler {
             return // we have a container injected for testing purposes
         }
 
-        let testing: Bool
+        let configuration: ModelConfiguration
 #if targetEnvironment(simulator) || TEST
-        testing = true
+        configuration = ModelConfiguration(isStoredInMemoryOnly: true)
 #elseif os(macOS)
-        testing = Self.isTesting
-#else
-        testing = false
-#endif
-
-        let configuration: ModelConfiguration = if testing {
-            ModelConfiguration(isStoredInMemoryOnly: true)
+        if Self.isTesting {
+            configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         } else {
-            ModelConfiguration(url: URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite"))
+            configuration = ModelConfiguration(url: URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite"))
         }
+#else
+        configuration = ModelConfiguration(url: URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite"))
+#endif
         
         do {
             _container = .success(try ModelContainer(for: Task.self, Outcome.self, configurations: configuration))
@@ -158,15 +155,15 @@ public final class Scheduler {
         // It also makes it easier to understand the SwiftData-related infrastructure around Spezi Scheduler.
         // One could think that Apple could have provided a lot of this information in their documentation.
 
-
-        if Self.purgeLegacyStorage {
-            // the legacy scheduler 1.0 used to store tasks at this location. We don't support migration, so just remove it.
-            do {
-                try localStorage.delete(storageKey: Constants.taskStorageKey)
-            } catch {
-                logger.warning("Failed to remove legacy scheduler task storage: \(error)")
-            }
-        }
+        notifications.registerProcessingTask(using: self)
+    }
+    
+    /// Trigger a manual refresh of the scheduled notifications.
+    ///
+    /// Call this method after requesting notification authorization from the user, if you disabled the ``SchedulerNotifications/automaticallyRequestProvisionalAuthorization``
+    /// option.
+    public func manuallyScheduleNotificationRefresh() {
+        notifications.scheduleNotificationsUpdate(using: self)
     }
 
 
@@ -175,25 +172,26 @@ public final class Scheduler {
     /// When we add a new task we want to instantly save it to disk. This helps to, e.g., make sure a `@EventQuery` receives the update by subscribing to the
     /// `didSave` notification. We delay saving the context by a bit, by queuing a task for the next possible execution. This helps to avoid that adding a new task model
     /// blocks longer than needed and makes sure that creating multiple tasks in sequence (which happens at startup) doesn't call `save()` more often than required.
-    private func scheduleSave(for context: ModelContext) {
-        guard context.hasChanges else {
-            return
+    private func scheduleSave(for context: ModelContext, rescheduleNotifications: Bool) {
+        if saveTask == nil, context.hasChanges {
+            // as we run on the MainActor in the task, if the saveTask is not nil,
+            // we know that the Task isn't executed yet but will on the "next" tick.
+
+            saveTask = _Concurrency.Task { @MainActor [logger] in
+                defer {
+                    saveTask = nil
+                }
+
+                do {
+                    try context.save()
+                } catch {
+                    logger.error("Failed to save the scheduler model context: \(error)")
+                }
+            }
         }
 
-        guard saveTask == nil else {
-            return // se docs above
-        }
-
-        saveTask = _Concurrency.Task { [logger] in
-            defer {
-                saveTask = nil
-            }
-
-            do {
-                try context.save()
-            } catch {
-                logger.error("Failed to save the scheduler model context: \(error)")
-            }
+        if rescheduleNotifications {
+            notifications.scheduleNotificationsUpdate(using: self)
         }
     }
 
@@ -213,19 +211,23 @@ public final class Scheduler {
     ///   - category: The user-visible category information of a task.
     ///   - schedule: The schedule for the events of this task.
     ///   - completionPolicy: The policy to decide when an event can be completed by the user.
+    ///   - scheduleNotifications: Automatically schedule notifications for upcoming events.
+    ///   - notificationThread: The behavior how task notifications are grouped in the notification center.
     ///   - tags: Custom tags associated with the task.
     ///   - effectiveFrom: The date from which this version of the task is effective. You typically do not want to modify this parameter.
     ///     If you do specify a custom value, make sure to specify it relative to `now`.
     ///   - contextClosure: The closure that allows to customize the ``Task/Context`` that is stored with the task.
     /// - Returns: Returns the latest version of the `task` and if the task was updated or created indicated by `didChange`.
     @discardableResult
-    public func createOrUpdateTask( // swiftlint:disable:this function_default_parameter_at_end
+    public func createOrUpdateTask( // swiftlint:disable:this function_default_parameter_at_end function_body_length
         id: String,
         title: String.LocalizationValue,
         instructions: String.LocalizationValue,
         category: Task.Category? = nil,
         schedule: Schedule,
         completionPolicy: AllowedCompletionPolicy = .sameDay,
+        scheduleNotifications: Bool = false,
+        notificationThread: NotificationThread = .global,
         tags: [String]? = nil, // swiftlint:disable:this discouraged_optional_collection
         effectiveFrom: Date = .now,
         with contextClosure: ((inout Task.Context) -> Void)? = nil
@@ -259,14 +261,18 @@ public final class Scheduler {
                 category: category,
                 schedule: schedule,
                 completionPolicy: completionPolicy,
+                scheduleNotifications: scheduleNotifications,
+                notificationThread: notificationThread,
                 tags: tags,
                 effectiveFrom: effectiveFrom,
                 with: contextClosure
             )
 
             if result.didChange {
-                scheduleSave(for: context)
+                let notifications = Task.requiresNotificationRescheduling(previous: existingTask, updated: result.task)
+                scheduleSave(for: context, rescheduleNotifications: notifications)
             }
+
 
             return result
         } else {
@@ -277,12 +283,15 @@ public final class Scheduler {
                 category: category,
                 schedule: schedule,
                 completionPolicy: completionPolicy,
+                scheduleNotifications: scheduleNotifications,
+                notificationThread: notificationThread,
                 tags: tags ?? [],
                 effectiveFrom: effectiveFrom,
                 with: contextClosure ?? { _ in }
             )
             context.insert(task)
-            scheduleSave(for: context)
+            scheduleSave(for: context, rescheduleNotifications: scheduleNotifications)
+
             return (task, true)
         }
     }
@@ -297,7 +306,7 @@ public final class Scheduler {
         }
 
         context.insert(outcome)
-        scheduleSave(for: context)
+        scheduleSave(for: context, rescheduleNotifications: false)
     }
 
     /// Delete a task from the store.
@@ -331,7 +340,7 @@ public final class Scheduler {
             context.delete(task)
         }
 
-        scheduleSave(for: context)
+        scheduleSave(for: context, rescheduleNotifications: true)
     }
 
     /// Delete all versions of the supplied task from the store.
@@ -367,7 +376,7 @@ public final class Scheduler {
             task.id == taskId
         })
 
-        scheduleSave(for: context)
+        scheduleSave(for: context, rescheduleNotifications: true)
     }
 
     /// Query the list of tasks.
@@ -381,15 +390,23 @@ public final class Scheduler {
     ///   - range: The closed date range in which queried task versions need to be effective.
     ///   - predicate: Specify additional conditions to filter the list of task that is fetched from the store.
     ///   - sortDescriptors: Additionally sort descriptors. The list of task is always sorted by its ``Task/effectiveFrom``.
+    ///   - fetchLimit: The maximum number of models the query can return.
     ///   - prefetchOutcomes: Flag to indicate if the ``Task/outcomes`` relationship should be pre-fetched. By default this is `false` and relationship data is loaded lazily.
     /// - Returns: The list of `Task` that are effective in the specified date range and match the specified `predicate`. The result is ordered by the specified `sortDescriptors`.
     public func queryTasks(
         for range: ClosedRange<Date>,
         predicate: Predicate<Task> = #Predicate { _ in true },
         sortBy sortDescriptors: [SortDescriptor<Task>] = [],
+        fetchLimit: Int? = nil,
         prefetchOutcomes: Bool = false
     ) throws -> [Task] {
-        try queryTask(with: inClosedRangePredicate(for: range), combineWith: predicate, sortBy: sortDescriptors, prefetchOutcomes: prefetchOutcomes)
+        try queryTasks(
+            with: inClosedRangePredicate(for: range),
+            combineWith: predicate,
+            sortBy: sortDescriptors,
+            fetchLimit: fetchLimit,
+            prefetchOutcomes: prefetchOutcomes
+        )
     }
 
     
@@ -404,15 +421,39 @@ public final class Scheduler {
     ///   - range: The date range in which queried task versions need to be effective.
     ///   - predicate: Specify additional conditions to filter the list of task that is fetched from the store.
     ///   - sortDescriptors: Additionally sort descriptors. The list of task is always sorted by its ``Task/effectiveFrom``.
+    ///   - fetchLimit: The maximum number of models the query can return.
     ///   - prefetchOutcomes: Flag to indicate if the ``Task/outcomes`` relationship should be pre-fetched. By default this is `false` and relationship data is loaded lazily.
     /// - Returns: The list of `Task` that are effective in the specified date range and match the specified `predicate`. The result is ordered by the specified `sortDescriptors`.
     public func queryTasks(
         for range: Range<Date>,
         predicate: Predicate<Task> = #Predicate { _ in true },
         sortBy sortDescriptors: [SortDescriptor<Task>] = [],
+        fetchLimit: Int? = nil,
         prefetchOutcomes: Bool = false
     ) throws -> [Task] {
-        try queryTask(with: inRangePredicate(for: range), combineWith: predicate, sortBy: sortDescriptors, prefetchOutcomes: prefetchOutcomes)
+        try queryTasks(
+            with: inRangePredicate(for: range),
+            combineWith: predicate,
+            sortBy: sortDescriptors,
+            fetchLimit: fetchLimit,
+            prefetchOutcomes: prefetchOutcomes
+        )
+    }
+
+    func queryTasks(
+        for range: PartialRangeFrom<Date>,
+        predicate: Predicate<Task> = #Predicate { _ in true },
+        sortBy sortDescriptors: [SortDescriptor<Task>] = [],
+        fetchLimit: Int? = nil,
+        prefetchOutcomes: Bool = false
+    ) throws -> [Task] {
+        try queryTasks(
+            with: inPartialRangeFromPredicate(for: range),
+            combineWith: predicate,
+            sortBy: sortDescriptors,
+            fetchLimit: fetchLimit,
+            prefetchOutcomes: prefetchOutcomes
+        )
     }
 
     /// Query the list of events.
@@ -435,8 +476,32 @@ public final class Scheduler {
         let tasks = try queryTasks(for: range, predicate: taskPredicate)
         let outcomes = try queryOutcomes(for: range, predicate: taskPredicate)
 
-        let outcomesByOccurrence = outcomes.reduce(into: [:]) { partialResult, outcome in
-            partialResult[outcome.occurrenceStartDate] = outcome
+        return assembleEvents(for: range, tasks: tasks, outcomes: outcomes)
+    }
+}
+
+
+extension Scheduler: Module, EnvironmentAccessible, Sendable {}
+
+
+extension Scheduler {
+    private struct OccurrenceId: Hashable {
+        let taskId: Task.ID
+        let startDate: Date
+
+        init(task: Task, startDate: Date) {
+            self.taskId = task.id
+            self.startDate = startDate
+        }
+    }
+
+    func assembleEvents<S: Sequence<Task>>(
+        for range: Range<Date>,
+        tasks: S,
+        outcomes: [Outcome]? // swiftlint:disable:this discouraged_optional_collection
+    ) -> [Event] {
+        let outcomesByOccurrence = outcomes?.reduce(into: [:]) { partialResult, outcome in
+            partialResult[OccurrenceId(task: outcome.task, startDate: outcome.occurrenceStartDate)] = outcome
         }
 
         return tasks
@@ -463,16 +528,31 @@ public final class Scheduler {
 
                 return task.schedule
                     .occurrences(in: lowerBound..<upperBound)
-                    .map { occurrence in
-                        if let outcome = outcomesByOccurrence[occurrence.start] {
-                            Event(task: task, occurrence: occurrence, outcome: .value(outcome))
+                    .map { occurrence -> Event in
+                        if let outcomesByOccurrence {
+                            if let outcome = outcomesByOccurrence[OccurrenceId(task: task, startDate: occurrence.start)] {
+                                Event(task: task, occurrence: occurrence, outcome: .value(outcome))
+                            } else {
+                                Event(task: task, occurrence: occurrence, outcome: .createWith(self))
+                            }
                         } else {
-                            Event(task: task, occurrence: occurrence, outcome: .createWith(self))
+                            Event(task: task, occurrence: occurrence, outcome: .preventCreation)
                         }
                     }
             }
             .sorted { lhs, rhs in
                 lhs.occurrence < rhs.occurrence
+            }
+    }
+
+    func hasEventOccurrence<S: Sequence<Task>>(in range: Range<Date>, tasks: S) -> Bool {
+        tasks
+            .lazy
+            .compactMap { task in
+                task.schedule.nextOccurrence(in: range)
+            }
+            .contains { _ in
+                true
             }
     }
 
@@ -499,16 +579,25 @@ public final class Scheduler {
     }
 }
 
-
-extension Scheduler: Module, EnvironmentAccessible, Sendable {}
-
 // MARK: - Fetch Implementations
 
 extension Scheduler {
-    private func queryTask(
+    func hasTasksWithNotifications(for range: PartialRangeFrom<Date>) throws -> Bool {
+        let rangePredicate = inPartialRangeFromPredicate(for: range)
+        let descriptor = FetchDescriptor<Task>(
+            predicate: #Predicate { task in
+                rangePredicate.evaluate(task) && task.scheduleNotifications
+            }
+        )
+
+        return try context.fetchCount(descriptor) > 0
+    }
+
+    private func queryTasks( // swiftlint:disable:this function_default_parameter_at_end
         with basePredicate: Predicate<Task>,
         combineWith userPredicate: Predicate<Task>,
         sortBy sortDescriptors: [SortDescriptor<Task>],
+        fetchLimit: Int? = nil,
         prefetchOutcomes: Bool
     ) throws -> [Task] {
         var descriptor = FetchDescriptor<Task>(
@@ -517,6 +606,7 @@ extension Scheduler {
             },
             sortBy: sortDescriptors
         )
+        descriptor.fetchLimit = fetchLimit
         descriptor.sortBy.append(SortDescriptor(\.effectiveFrom, order: .forward))
 
         // make sure querying the next version is always efficient
@@ -530,11 +620,13 @@ extension Scheduler {
     }
 
     private func queryOutcomes(for range: Range<Date>, predicate taskPredicate: Predicate<Task>) throws -> [Outcome] {
-        let descriptor = FetchDescriptor<Outcome>(
+        var descriptor = FetchDescriptor<Outcome>(
             predicate: #Predicate { outcome in
                 range.contains(outcome.occurrenceStartDate) && taskPredicate.evaluate(outcome.task)
             }
         )
+
+        descriptor.relationshipKeyPathsForPrefetching = [\.task]
 
         return try context.fetch(descriptor)
     }
@@ -574,6 +666,17 @@ extension Scheduler {
             } else {
                 // task lifetime is effectively an `PartialRangeFrom`. So all we do is to check if the `range` overlaps with the lower bound
                 task.effectiveFrom < range.upperBound
+            }
+        }
+    }
+
+    private func inPartialRangeFromPredicate(for range: PartialRangeFrom<Date>) -> Predicate<Task> {
+        #Predicate<Task> { task in
+            if let effectiveTo = task.nextVersion?.effectiveFrom {
+                task.effectiveFrom <= range.lowerBound
+                    && range.lowerBound < effectiveTo
+            } else {
+                task.effectiveFrom <= range.lowerBound
             }
         }
     }

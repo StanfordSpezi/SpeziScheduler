@@ -87,19 +87,43 @@ public struct DefaultTileHeader: View {
         }
     }
 
+    private func occurrenceStartTimeText() -> Text {
+        Text(event.occurrence.start, style: .time)
+    }
+
+    private func occurrenceDurationText() -> Text {
+        Text(
+            "\(Text(event.occurrence.start, style: .time)) to \(Text(event.occurrence.end, style: .time))",
+            bundle: .module,
+            comment: "start time till end time"
+        )
+    }
+
+    private func dateOffsetText() -> Text {
+        Text(.currentDate, format: dateReferenceFormat(to: event.occurrence.start))
+    }
+
     private func dateSubheadline() -> Text? {
         switch event.occurrence.schedule.duration {
         case .allDay:
             nil
         case .tillEndOfDay:
-            Text(event.occurrence.start, style: .time)
+            if Calendar.current.isDateInToday(event.occurrence.start) {
+                occurrenceStartTimeText()
+            } else {
+                Text("\(dateOffsetText()), \(occurrenceStartTimeText())")
+            }
         case .duration:
-            Text(
-                "\(Text(event.occurrence.start, style: .time)) to \(Text(event.occurrence.end, style: .time))",
-                bundle: .module,
-                comment: "start time till end time"
-            )
+            if Calendar.current.isDateInToday(event.occurrence.start) {
+                occurrenceDurationText()
+            } else {
+                Text("\(dateOffsetText()), \(occurrenceDurationText())")
+            }
         }
+    }
+
+    private func dateReferenceFormat(to date: Date) -> SystemFormatStyle.DateReference {
+        SystemFormatStyle.DateReference(to: date, allowedFields: [.year, .month, .week, .day, .hour], maxFieldCount: 1, thresholdField: .month)
     }
 }
 

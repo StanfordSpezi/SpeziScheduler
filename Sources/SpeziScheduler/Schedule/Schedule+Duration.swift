@@ -11,14 +11,29 @@ extension Schedule {
     /// The duration of an occurrence.
     ///
     /// While we maintain atto-second accuracy for arithmetic operations on duration, the schedule will always retrieve the duration in a resolution of seconds.
+    ///
+    /// ## Topics
+    ///
+    /// ### Creating a Duration
+    /// - ``allDay``
+    /// - ``tillEndOfDay``
+    /// - ``seconds(_:)``
+    /// - ``minutes(_:)-5tlmc``
+    /// - ``minutes(_:)-ym89``
+    /// - ``hours(_:)-8ihgw``
+    /// - ``hours(_:)-5557k``
+    ///
+    /// ### Properties
+    /// - ``isAllDay``
     public enum Duration {
         /// An all-day occurrence.
         ///
         /// The start the will always the the `startOfDay` date.
         case allDay
-        /// An occurrence that
+        /// An occurrence that ends at the end of day.
         case tillEndOfDay
         /// Fixed length occurrence.
+        @_documentation(visibility: internal)
         case duration(Swift.Duration)
     }
 }
@@ -26,7 +41,7 @@ extension Schedule {
 
 extension Schedule.Duration {
     /// Determine if a duration is all day.
-    public var isAllDay: Bool {
+    @inlinable public var isAllDay: Bool {
         self == .allDay
     }
 
@@ -60,6 +75,7 @@ extension Schedule.Duration {
     /// let duration: Duration = .minutes(27.5)
     /// ```
     /// - Returns: A `Duration` representing a given number of minutes.
+    @inlinable
     public static func minutes(_ minutes: Double) -> Schedule.Duration {
         .duration(.seconds(minutes * 60))
     }
@@ -80,9 +96,10 @@ extension Schedule.Duration {
     /// Creates a new duration given a number of hours by converting into the closest second scale value.
     ///
     /// ```swift
-    /// let duration: Duration = .hours(4)
+    /// let duration: Duration = .hours(4.5)
     /// ```
     /// - Returns: A `Duration` representing a given number of hours.
+    @inlinable
     public static func hours(_ hours: Double) -> Schedule.Duration {
         .minutes(hours * 60)
     }

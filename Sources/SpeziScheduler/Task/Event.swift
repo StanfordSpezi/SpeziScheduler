@@ -33,12 +33,14 @@ public struct Event {
         case value(Outcome)
         /// For testing support to avoid associating a scheduler.
         case mocked
+        /// Cannot create new outcomes with this instance of event.
+        case preventCreation
 
         var value: Outcome? {
             switch self {
             case let .value(value):
                 value
-            case .createWith, .mocked:
+            case .createWith, .mocked, .preventCreation:
                 nil
             }
         }
@@ -129,6 +131,8 @@ public struct Event {
             return outcome
         case .mocked:
             return createNewOutCome(with: closure)
+        case .preventCreation:
+            preconditionFailure("Tried to complete an event that has an incomplete representation: \(self)")
         }
     }
 

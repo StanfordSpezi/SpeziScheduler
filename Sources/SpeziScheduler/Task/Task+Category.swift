@@ -16,6 +16,16 @@ extension Task {
     /// ```swift
     /// let myCategory: Task.Category = .custom("my-category")
     /// ```
+    ///
+    /// ## Topics
+    ///
+    /// ### Default Categories
+    /// - ``questionnaire``
+    /// - ``measurement``
+    /// - ``medication``
+    ///
+    /// ### Creating a new Category
+    /// - ``custom(_:)``
     public struct Category {
         /// The category name.
         @_spi(APISupport)

@@ -14,10 +14,13 @@
 		2FA7382C290ADFAA007ACEB9 /* TestApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FA7382B290ADFAA007ACEB9 /* TestApp.swift */; };
 		2FE0B6E72A14C65900818AE9 /* SpeziScheduler in Frameworks */ = {isa = PBXBuildFile; productRef = 2FE0B6E62A14C65900818AE9 /* SpeziScheduler */; };
 		2FE0B6EA2A14D82600818AE9 /* XCTestExtensions in Frameworks */ = {isa = PBXBuildFile; productRef = 2FE0B6E92A14D82600818AE9 /* XCTestExtensions */; };
+		A926A5352C9D87B100C92F94 /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A926A5342C9D87B100C92F94 /* NotificationsView.swift */; };
 		A977F6732C92F4C00071A1D1 /* SpeziSchedulerUI in Frameworks */ = {isa = PBXBuildFile; productRef = A977F6722C92F4C00071A1D1 /* SpeziSchedulerUI */; };
 		A98B09C42C90913F0076E99A /* TestAppScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98B09C32C9091390076E99A /* TestAppScheduler.swift */; };
 		A98B09C62C90B02B0076E99A /* Task+About.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98B09C52C90B0260076E99A /* Task+About.swift */; };
-		A98B09C82C90C8E40076E99A /* QuestionnaireEventDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98B09C72C90C8E30076E99A /* QuestionnaireEventDetailView.swift */; };
+		A98B09C82C90C8E40076E99A /* EventDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98B09C72C90C8E30076E99A /* EventDetailView.swift */; };
+		A9947BEA2CC128FA0068AA8A /* XCTSpeziNotificationsUI in Frameworks */ = {isa = PBXBuildFile; productRef = A9947BE92CC128FA0068AA8A /* XCTSpeziNotificationsUI */; };
+		A9947BEC2CC12DA70068AA8A /* XCTSpeziNotifications in Frameworks */ = {isa = PBXBuildFile; productRef = A9947BEB2CC12DA70068AA8A /* XCTSpeziNotifications */; };
 		A9C2951D2C899FA10038EF1B /* ScheduleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C2951C2C899FA10038EF1B /* ScheduleView.swift */; };
 /* End PBXBuildFile section */
 
@@ -40,9 +43,12 @@
 		2FA7382B290ADFAA007ACEB9 /* TestApp.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TestApp.swift; sourceTree = "<group>"; };
 		2FB0758A299DDB9000C0B37F /* TestApp.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = TestApp.xctestplan; sourceTree = "<group>"; };
 		2FE0B6E52A14C64E00818AE9 /* SpeziScheduler */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = SpeziScheduler; path = ../..; sourceTree = "<group>"; };
+		A926A5342C9D87B100C92F94 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
+		A960461B2C9840E800EA8022 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		A960461C2C9853C700EA8022 /* TestApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TestApp.entitlements; sourceTree = "<group>"; };
 		A98B09C32C9091390076E99A /* TestAppScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestAppScheduler.swift; sourceTree = "<group>"; };
 		A98B09C52C90B0260076E99A /* Task+About.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Task+About.swift"; sourceTree = "<group>"; };
-		A98B09C72C90C8E30076E99A /* QuestionnaireEventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionnaireEventDetailView.swift; sourceTree = "<group>"; };
+		A98B09C72C90C8E30076E99A /* EventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailView.swift; sourceTree = "<group>"; };
 		A9C2951C2C899FA10038EF1B /* ScheduleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -52,6 +58,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2F68C3C8292EA52000B3E12C /* Spezi in Frameworks */,
+				A9947BEA2CC128FA0068AA8A /* XCTSpeziNotificationsUI in Frameworks */,
 				A977F6732C92F4C00071A1D1 /* SpeziSchedulerUI in Frameworks */,
 				2FE0B6E72A14C65900818AE9 /* SpeziScheduler in Frameworks */,
 			);
@@ -62,6 +69,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2FE0B6EA2A14D82600818AE9 /* XCTestExtensions in Frameworks */,
+				A9947BEC2CC12DA70068AA8A /* XCTSpeziNotifications in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -92,13 +100,16 @@
 		2F6D139428F5F384007C25D6 /* TestApp */ = {
 			isa = PBXGroup;
 			children = (
-				2F6D139928F5F386007C25D6 /* Assets.xcassets */,
-				A98B09C72C90C8E30076E99A /* QuestionnaireEventDetailView.swift */,
+				A960461C2C9853C700EA8022 /* TestApp.entitlements */,
+				A960461B2C9840E800EA8022 /* Info.plist */,
+				A926A5342C9D87B100C92F94 /* NotificationsView.swift */,
+				A98B09C72C90C8E30076E99A /* EventDetailView.swift */,
 				A9C2951C2C899FA10038EF1B /* ScheduleView.swift */,
 				A98B09C52C90B0260076E99A /* Task+About.swift */,
 				2FA7382B290ADFAA007ACEB9 /* TestApp.swift */,
 				2F9F4D8429B80A1500ABE259 /* TestAppDelegate.swift */,
 				A98B09C32C9091390076E99A /* TestAppScheduler.swift */,
+				2F6D139928F5F386007C25D6 /* Assets.xcassets */,
 			);
 			path = TestApp;
 			sourceTree = "<group>";
@@ -138,6 +149,7 @@
 				2F68C3C7292EA52000B3E12C /* Spezi */,
 				2FE0B6E62A14C65900818AE9 /* SpeziScheduler */,
 				A977F6722C92F4C00071A1D1 /* SpeziSchedulerUI */,
+				A9947BE92CC128FA0068AA8A /* XCTSpeziNotificationsUI */,
 			);
 			productName = Example;
 			productReference = 2F6D139228F5F384007C25D6 /* TestApp.app */;
@@ -159,6 +171,7 @@
 			name = TestAppUITests;
 			packageProductDependencies = (
 				2FE0B6E92A14D82600818AE9 /* XCTestExtensions */,
+				A9947BEB2CC12DA70068AA8A /* XCTSpeziNotifications */,
 			);
 			productName = ExampleUITests;
 			productReference = 2F6D13AC28F5F386007C25D6 /* TestAppUITests.xctest */;
@@ -193,6 +206,7 @@
 			mainGroup = 2F6D138928F5F384007C25D6;
 			packageReferences = (
 				2FE0B6E82A14D82600818AE9 /* XCRemoteSwiftPackageReference "XCTestExtensions" */,
+				A9947BE82CC128FA0068AA8A /* XCRemoteSwiftPackageReference "SpeziNotifications" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2F6D139328F5F384007C25D6 /* Products */;
@@ -230,10 +244,11 @@
 			files = (
 				2F9F4D8529B80A1500ABE259 /* TestAppDelegate.swift in Sources */,
 				A98B09C62C90B02B0076E99A /* Task+About.swift in Sources */,
-				A98B09C82C90C8E40076E99A /* QuestionnaireEventDetailView.swift in Sources */,
+				A98B09C82C90C8E40076E99A /* EventDetailView.swift in Sources */,
 				A98B09C42C90913F0076E99A /* TestAppScheduler.swift in Sources */,
 				A9C2951D2C899FA10038EF1B /* ScheduleView.swift in Sources */,
 				2FA7382C290ADFAA007ACEB9 /* TestApp.swift in Sources */,
+				A926A5352C9D87B100C92F94 /* NotificationsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -317,6 +332,7 @@
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
 				XROS_DEPLOYMENT_TARGET = 1.0;
 			};
 			name = Debug;
@@ -375,6 +391,7 @@
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
 				VALIDATE_PRODUCT = YES;
 				XROS_DEPLOYMENT_TARGET = 1.0;
 			};
@@ -385,6 +402,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TestApp/TestApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
@@ -392,6 +410,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTING_SEARCH_PATHS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TestApp/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -421,6 +440,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TestApp/TestApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
@@ -428,6 +448,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTING_SEARCH_PATHS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TestApp/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -543,6 +564,14 @@
 				minimumVersion = 1.0.0;
 			};
 		};
+		A9947BE82CC128FA0068AA8A /* XCRemoteSwiftPackageReference "SpeziNotifications" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/StanfordSpezi/SpeziNotifications";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -562,6 +591,16 @@
 		A977F6722C92F4C00071A1D1 /* SpeziSchedulerUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SpeziSchedulerUI;
+		};
+		A9947BE92CC128FA0068AA8A /* XCTSpeziNotificationsUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A9947BE82CC128FA0068AA8A /* XCRemoteSwiftPackageReference "SpeziNotifications" */;
+			productName = XCTSpeziNotificationsUI;
+		};
+		A9947BEB2CC12DA70068AA8A /* XCTSpeziNotifications */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A9947BE82CC128FA0068AA8A /* XCRemoteSwiftPackageReference "SpeziNotifications" */;
+			productName = XCTSpeziNotifications;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

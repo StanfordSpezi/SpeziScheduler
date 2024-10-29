@@ -115,7 +115,7 @@ public struct EventScheduleList<Tile: View>: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .accessibilityHidden(true)
                 }
-                .symbolRenderingMode(.multicolor)
+                    .symbolRenderingMode(.multicolor)
             } description: {
                 if let localizedError = fetchError as? LocalizedError,
                    let reason = localizedError.failureReason {
@@ -154,7 +154,7 @@ public struct EventScheduleList<Tile: View>: View {
     /// - Parameters:
     ///   - date: The date for which the event schedule is display.
     ///   - content: A closure that is called to display each event occurring today.
-    public init(date: Date = .today, content: @escaping (Event) -> Tile) {
+    public init(date: Date = .today, @ViewBuilder content: @escaping (Event) -> Tile) {
         self.date = Calendar.current.startOfDay(for: date)
         self.eventTile = content
 
