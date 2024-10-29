@@ -129,20 +129,18 @@ public final class Scheduler {
             return // we have a container injected for testing purposes
         }
 
-        let testing: Bool
+        let configuration: ModelConfiguration
 #if targetEnvironment(simulator) || TEST
-        testing = true
+        configuration = ModelConfiguration(isStoredInMemoryOnly: true)
 #elseif os(macOS)
-        testing = Self.isTesting
-#else
-        testing = false
-#endif
-
-        let configuration: ModelConfiguration = if testing {
-            ModelConfiguration(isStoredInMemoryOnly: true)
+        if Self.isTesting {
+            configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         } else {
-            ModelConfiguration(url: URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite"))
+            configuration = ModelConfiguration(url: URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite"))
         }
+#else
+        configuration = ModelConfiguration(url: URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite"))
+#endif
         
         do {
             _container = .success(try ModelContainer(for: Task.self, Outcome.self, configurations: configuration))
