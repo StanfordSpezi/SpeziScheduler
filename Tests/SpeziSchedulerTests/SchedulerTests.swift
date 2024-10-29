@@ -16,7 +16,9 @@ import XCTSpezi
 final class SchedulerTests: XCTestCase {
     @MainActor
     override func setUp() async throws {
+#if os(macOS)
         Scheduler.isTesting = true
+#endif
     }
 
     @MainActor
