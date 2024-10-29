@@ -250,8 +250,6 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
     ///   - event: The event instance.
     ///   - alignment: The horizontal alignment of the tile.
     ///   - header: A custom header that is shown on the top of the tile. You can use the [`TileHeader`](https://swiftpackageindex.com/stanfordspezi/speziviews/documentation/speziviews/tileheader)
-    ///   - more: An optional view that is presented as a sheet if the user presses the "more information" button. The view can be used to provide additional explanation or instructions for a task.
-    ///   - footer: A footer that is shown below the body of the tile. You may use the ``EventActionButton``.
     @_disfavoredOverload
     public init(
         _ event: Event,
