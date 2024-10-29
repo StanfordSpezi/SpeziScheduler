@@ -154,7 +154,7 @@ public struct EventScheduleList<Tile: View>: View {
     /// - Parameters:
     ///   - date: The date for which the event schedule is display.
     ///   - content: A closure that is called to display each event occurring today.
-    public init(date: Date = .today, content: @escaping (Event) -> Tile) {
+    public init(date: Date = .today, @ViewBuilder content: @escaping (Event) -> Tile) {
         self.date = Calendar.current.startOfDay(for: date)
         self.eventTile = content
 

@@ -37,7 +37,7 @@ struct ScheduleView: View {
                 if event.task.id == TaskIdentifier.socialSupportQuestionnaire {
                     InstructionsTile(event, alignment: alignment) {
                         event.complete()
-                    } action: {
+                    } more: {
                         EventDetailView(event)
                     }
                 } else {
