@@ -70,8 +70,12 @@ import SwiftUI
 /// - ``queryEvents(for:predicate:)``
 ///
 /// ### Permanently delete a Task version
-/// - ``deleteTasks(_:)-d90p``
-/// - ``deleteTasks(_:)-2prl9``
+/// - ``deleteTasks(_:)-5n7iv``
+/// - ``deleteTasks(_:)-8h2bj``
+///
+/// ### Permanently delete all Task versions
+/// - ``deleteAllVersions(of:)``
+/// - ``deleteAllVersions(ofTask:)``
 @MainActor
 public final class Scheduler {
     /// We disable that for now. We might need to restore some information to cancel notifications.
@@ -160,6 +164,10 @@ public final class Scheduler {
     /// `didSave` notification. We delay saving the context by a bit, by queuing a task for the next possible execution. This helps to avoid that adding a new task model
     /// blocks longer than needed and makes sure that creating multiple tasks in sequence (which happens at startup) doesn't call `save()` more often than required.
     private func scheduleSave(for context: ModelContext) {
+        guard context.hasChanges else {
+            return
+        }
+
         guard saveTask == nil else {
             return // se docs above
         }
@@ -266,20 +274,6 @@ public final class Scheduler {
             return (task, true)
         }
     }
-    
-    /// Delete a task from the store.
-    ///
-    /// This permanently deletes a task (version) from the store.
-    /// - Important: This will only delete this particular version of the Task and outcomes that are associated with this version of the task!
-    ///   It will not delete previous versions of the task. Deleting a version of a task might reactive the schedule from the previous version.
-    ///
-    /// - Tip: If you want to stop a task from reoccurring, simply create a new version of a task with an appropriate ``Task/effectiveFrom`` date and make sure
-    ///     that the ``Task/schedule`` doesn't produce any more occurrences.
-    ///
-    /// - Parameter tasks: The variadic list of task to delete.
-    public func deleteTasks(_ tasks: Task...) {
-        self.deleteTasks(tasks)
-    }
 
     func addOutcome(_ outcome: Outcome) {
         let context: ModelContext
@@ -297,24 +291,73 @@ public final class Scheduler {
     /// Delete a task from the store.
     ///
     /// This permanently deletes a task (version) from the store.
-    /// - Important: This will only delete this particular version of the Task and outcomes that are associated with this version of the task!
+    /// - Important: This will delete this particular version of the Task, all future versions and outcomes that are associated with these versions of the task!
+    ///   It will not delete previous versions of the task. Deleting a version of a task might reactive the schedule from the previous version.
+    ///
+    /// - Tip: If you want to stop a task from reoccurring, simply create a new version of a task with an appropriate ``Task/effectiveFrom`` date and make sure
+    ///     that the ``Task/schedule`` doesn't produce any more occurrences.
+    ///
+    /// - Parameter tasks: The variadic list of task to delete.
+    public func deleteTasks(_ tasks: Task...) throws {
+        try self.deleteTasks(tasks)
+    }
+
+    /// Delete a task from the store.
+    ///
+    /// This permanently deletes a task (version) from the store.
+    /// - Important: This will delete this particular version of the Task, all future versions and outcomes that are associated with these versions of the task!
     ///   It will not delete previous versions of the task. Deleting a version of a task might reactive the schedule from the previous version.
     ///
     /// - Tip: If you want to stop a task from reoccurring, simply create a new version of a task with an appropriate ``Task/effectiveFrom`` date and make sure
     ///     that the ``Task/schedule`` doesn't produce any more occurrences.
     ///
     /// - Parameter tasks: The list of task to delete.
-    public func deleteTasks(_ tasks: [Task]) {
-        guard let context = try? context else {
-            logger.error("Failed to delete tasks as container failed to be configured: \(tasks.map { $0.id }.joined(separator: ", "))")
-            return
-        }
+    public func deleteTasks(_ tasks: [Task]) throws {
+        let context = try context
 
         for task in tasks {
             context.delete(task)
         }
+
+        scheduleSave(for: context)
+    }
+
+    /// Delete all versions of the supplied task from the store.
+    ///
+    /// This permanently deletes all versions of a task from the store.
+    ///
+    /// - Important: This will also delete all outcomes associated with the task!
+    ///
+    /// - Tip: If you want to stop a task from reoccurring, simply create a new version of a task with an appropriate ``Task/effectiveFrom`` date and make sure
+    ///     that the ``Task/schedule`` doesn't produce any more occurrences.
+    ///
+    /// - Parameter task: The task and all versions of it to delete.
+    public func deleteAllVersions(of task: Task) throws {
+        try deleteAllVersions(ofTask: task.id)
     }
     
+    /// Delete all versions of the supplied task from the store.
+    ///
+    /// This permanently deletes all versions of a task from the store.
+    ///
+    /// - Important: This will also delete all outcomes associated with the task!
+    ///
+    /// - Tip: If you want to stop a task from reoccurring, simply create a new version of a task with an appropriate ``Task/effectiveFrom`` date and make sure
+    ///     that the ``Task/schedule`` doesn't produce any more occurrences.
+    ///
+    /// - Parameter taskId: The task id for which you want to delete all versions. Refer to ``Task/id``.
+    public func deleteAllVersions(ofTask taskId: String) throws {
+        // try context.fetch
+
+        let context = try context
+
+        try context.delete(model: Task.self, where: #Predicate { task in
+            task.id == taskId
+        })
+
+        scheduleSave(for: context)
+    }
+
     /// Query the list of tasks.
     ///
     /// This method queries all tasks (and task versions) for the specified parameters.

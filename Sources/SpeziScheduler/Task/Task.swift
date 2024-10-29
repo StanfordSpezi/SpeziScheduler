@@ -147,7 +147,7 @@ public final class Task {
     /// A reference to a new version of this task.
     ///
     /// If not `nil`, this reference specifies the next version of this task.
-    @Relationship(deleteRule: .deny)
+    @Relationship(deleteRule: .cascade)
     public private(set) var nextVersion: Task?
 
     /// Additional userInfo stored alongside the task.

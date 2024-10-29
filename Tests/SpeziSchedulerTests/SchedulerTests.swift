@@ -70,6 +70,8 @@ final class SchedulerTests: XCTestCase {
         XCTAssertEqual(task0.id, "test-task")
         XCTAssertEqual(task0.example, "Additional Storage Stuff")
         XCTAssertEqual(task0.title, "Hello World")
+
+        XCTAssertNoThrow(try module.deleteTasks(result.task))
     }
 
     @MainActor
@@ -176,5 +178,8 @@ final class SchedulerTests: XCTestCase {
         XCTAssertEqual(components1.hour, 16)
         XCTAssertEqual(components1.minute, 30)
         XCTAssertEqual(components1.second, 49)
+
+
+        XCTAssertNoThrow(try module.deleteAllVersions(ofTask: "test-task"))
     }
 }

@@ -28,8 +28,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/StanfordSpezi/SpeziFoundation", from: "2.0.0"),
-        .package(url: "https://github.com/StanfordSpezi/Spezi", from: "1.7.0"),
-        .package(url: "https://github.com/StanfordSpezi/SpeziViews", branch: "feature/additional-infrastructure"),
+        .package(url: "https://github.com/StanfordSpezi/Spezi", from: "1.8.0"),
+        .package(url: "https://github.com/StanfordSpezi/SpeziViews", from: "1.7.0"),
         .package(url: "https://github.com/StanfordSpezi/SpeziStorage", from: "1.1.2"),
         .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0-prerelease-2024-08-14"),
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", from: "1.17.2")
