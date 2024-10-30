@@ -29,7 +29,7 @@ import SwiftData
 ///
 /// Tasks support storing additional metadata information.
 ///
-/// - Tip: Refer to the ``Property()`` macro on how to create new data types that can be stored alongside a task.
+/// - Tip: Refer to the ``Property(coding:)`` macro on how to create new data types that can be stored alongside a task.
 ///
 /// You can set additional information by supplying an additional closure that modifies the ``Context`` when creating or updating a task.
 /// The code example below assume that the `measurementType` exists to store the type of measurement the user should record to complete the task.

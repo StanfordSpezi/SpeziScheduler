@@ -53,7 +53,7 @@ extension UserInfoStorage {
         }
 
         do {
-            let decoder = PropertyListDecoder()
+            let decoder = source.coding.decoder
             let value = try decoder.decode(SingleValueWrapper<Source.Value>.self, from: data)
 
             cache.repository.set(source, value: value.value)
@@ -69,7 +69,8 @@ extension UserInfoStorage {
 
         if let newValue {
             do {
-                userInfo[source.identifier] = try PropertyListEncoder().encode(SingleValueWrapper(value: newValue))
+                let encoder = source.coding.encoder
+                userInfo[source.identifier] = try encoder.encode(SingleValueWrapper(value: newValue))
             } catch {
                 logger.error("Failed to encode userInfo value \(String(describing: newValue)) for \(source): \(error)")
             }

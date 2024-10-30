@@ -74,7 +74,7 @@ class MySchedulerModule: Module {
 - ``Task/Category-swift.struct``
 - ``Event``
 - ``Outcome``
-- ``Property()``
+- ``Property(coding:)``
 - ``AllowedCompletionPolicy``
 
 ### Notifications
@@ -82,6 +82,7 @@ class MySchedulerModule: Module {
 - ``SchedulerNotifications``
 - ``SchedulerNotificationsConstraint``
 - ``NotificationTime``
+- ``NotificationThread``
 
 ### Date Extensions
 
