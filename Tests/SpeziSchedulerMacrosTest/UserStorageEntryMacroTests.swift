@@ -42,6 +42,7 @@ final class UserStorageEntryMacroTests: XCTestCase { // swiftlint:disable:this t
                     typealias Value = String
             
                     static let identifier: String = "testMacro"
+                    static let coding = UserStorageCoding.propertyList
                 }
             }
             """,
@@ -72,6 +73,7 @@ final class UserStorageEntryMacroTests: XCTestCase { // swiftlint:disable:this t
                     typealias Value = String
             
                     static let identifier: String = "testMacro"
+                    static let coding = UserStorageCoding.propertyList
                 }
             }
             """,
@@ -102,6 +104,7 @@ final class UserStorageEntryMacroTests: XCTestCase { // swiftlint:disable:this t
                     typealias Value = String
             
                     static let identifier: String = "testMacro"
+                    static let coding = UserStorageCoding.propertyList
                 }
             }
             """,
@@ -132,6 +135,7 @@ final class UserStorageEntryMacroTests: XCTestCase { // swiftlint:disable:this t
                     typealias Value = String
             
                     static let identifier: String = "testMacro"
+                    static let coding = UserStorageCoding.propertyList
                 }
             }
             """,
@@ -162,6 +166,7 @@ final class UserStorageEntryMacroTests: XCTestCase { // swiftlint:disable:this t
                     typealias Value = String
             
                     static let identifier: String = "testMacro"
+                    static let coding = UserStorageCoding.propertyList
                 }
             }
             """,
@@ -294,6 +299,97 @@ final class UserStorageEntryMacroTests: XCTestCase { // swiftlint:disable:this t
                     column: 5
                 )
             ],
+            macros: testMacros
+        )
+    }
+
+    func testJsonCoding() { // swiftlint:disable:this function_body_length
+        assertMacroExpansion(
+            """
+            extension Task.Context {
+                @Property(coding: .json) var testMacro: String?
+            }
+            """,
+            expandedSource:
+            """
+            extension Task.Context {
+                var testMacro: String? {
+                    get {
+                        self[__Key_testMacro.self]
+                    }
+                    set {
+                        self[__Key_testMacro.self] = newValue
+                    }
+                }
+            
+                private struct __Key_testMacro: TaskStorageKey {
+                    typealias Value = String
+            
+                    static let identifier: String = "testMacro"
+                    static let coding = UserStorageCoding.json
+                }
+            }
+            """,
+            macros: testMacros
+        )
+
+        assertMacroExpansion(
+            """
+            extension Task.Context {
+                @Property(coding: UserInfoCoding.json) var testMacro: String?
+            }
+            """,
+            expandedSource:
+            """
+            extension Task.Context {
+                var testMacro: String? {
+                    get {
+                        self[__Key_testMacro.self]
+                    }
+                    set {
+                        self[__Key_testMacro.self] = newValue
+                    }
+                }
+            
+                private struct __Key_testMacro: TaskStorageKey {
+                    typealias Value = String
+            
+                    static let identifier: String = "testMacro"
+                    static let coding = UserStorageCoding.json
+                }
+            }
+            """,
+            macros: testMacros
+        )
+    }
+
+    func testCustomCoding() {
+        assertMacroExpansion(
+            """
+            extension Task.Context {
+                @Property(coding: UserInfoCoding(encoder: TestEncoder(), decoder: TestDecoder())) var testMacro: String?
+            }
+            """,
+            expandedSource:
+            """
+            extension Task.Context {
+                var testMacro: String? {
+                    get {
+                        self[__Key_testMacro.self]
+                    }
+                    set {
+                        self[__Key_testMacro.self] = newValue
+                    }
+                }
+            
+                private struct __Key_testMacro: TaskStorageKey {
+                    typealias Value = String
+            
+                    static let identifier: String = "testMacro"
+                    static let coding = UserInfoCoding(encoder: TestEncoder(), decoder: TestDecoder())
+                }
+            }
+            """,
             macros: testMacros
         )
     }

@@ -57,7 +57,7 @@ extension UserStorageEntryMacro: AccessorMacro {
 
 
 extension UserStorageEntryMacro: PeerMacro {
-    public static func expansion( // swiftlint:disable:this function_body_length
+    public static func expansion( // swiftlint:disable:this function_body_length cyclomatic_complexity
         of node: AttributeSyntax,
         providingPeersOf declaration: some DeclSyntaxProtocol,
         in context: some MacroExpansionContext
@@ -94,6 +94,22 @@ extension UserStorageEntryMacro: PeerMacro {
                 message: "'@Property' can only be applied to 'var' declarations inside of extensions to 'Outcome' or 'Task.Context'",
                 id: .invalidSyntax
             )
+        }
+
+        let codingExpression: ExprSyntax
+        if case let .argumentList(argumentList) = node.arguments,
+           let coding = argumentList.first(where: { $0.label?.text == "coding" }) {
+            if var memberAccess = coding.expression.as(MemberAccessExprSyntax.self) {
+                memberAccess.base = ExprSyntax(DeclReferenceExprSyntax(baseName: .identifier("UserStorageCoding")))
+                codingExpression = ExprSyntax(memberAccess)
+            } else {
+                codingExpression = coding.expression
+            }
+        } else {
+            codingExpression = ExprSyntax(MemberAccessExprSyntax(
+                base: ExprSyntax(DeclReferenceExprSyntax(baseName: .identifier("UserStorageCoding"))),
+                declName: DeclReferenceExprSyntax(baseName: .identifier("propertyList"))
+            ))
         }
 
         let keyProtocol: TokenSyntax
@@ -147,6 +163,7 @@ extension UserStorageEntryMacro: PeerMacro {
 
             """
             static let identifier: String = "\(identifier)"
+            static let coding = \(codingExpression)
             """
         }
 

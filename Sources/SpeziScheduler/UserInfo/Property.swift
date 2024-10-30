@@ -6,6 +6,8 @@
 // SPDX-License-Identifier: MIT
 //
 
+import SpeziFoundation
+
 
 /// Add additional properties to an `Outcome` or `Task`.
 ///
@@ -34,6 +36,14 @@
 ///     @Property var measurement: WeightMeasurement?
 /// }
 /// ```
+///
+///
+/// ## Topics
+///
+/// ### Customize Encoding and Decoding
+/// - ``UserStorageCoding``
 @attached(accessor, names: named(get), named(set))
 @attached(peer, names: prefixed(__Key_))
-public macro Property() = #externalMacro(module: "SpeziSchedulerMacros", type: "UserStorageEntryMacro")
+public macro Property<Encoder: TopLevelEncoder, Decoder: TopLevelDecoder>(
+    coding: UserStorageCoding<Encoder, Decoder> = .propertyList
+) = #externalMacro(module: "SpeziSchedulerMacros", type: "UserStorageEntryMacro")

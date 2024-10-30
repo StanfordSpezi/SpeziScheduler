@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+import Foundation
 import SpeziFoundation
 
 
@@ -13,8 +14,13 @@ import SpeziFoundation
 ///
 /// Refer to the documentation of ``TaskStorageKey`` and ``OutcomeStorageKey`` on how to create userInfo entries.
 public protocol _UserInfoKey<Anchor>: KnowledgeSource where Value: Codable { // swiftlint:disable:this type_name
+    associatedtype Encoder: TopLevelEncoder, Sendable where Encoder.Output == Data
+    associatedtype Decoder: TopLevelDecoder, Sendable where Decoder.Input == Data
+
     /// The persistent identifier of the user info key.
     static var identifier: String { get }
+    /// The encoder and decoder used with the user storage.
+    static var coding: UserStorageCoding<Encoder, Decoder> { get }
 }
 
 
