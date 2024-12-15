@@ -38,13 +38,13 @@ extension Schedule {
         }
     }
 
-    static func notificationMatchingHint( // swiftlint:disable:this function_parameter_count function_default_parameter_at_end
+    static func notificationMatchingHint( // swiftlint:disable:this function_parameter_count
         forMatchingInterval interval: Int,
         calendar: Calendar,
         hour: Int,
         minute: Int,
         second: Int,
-        weekday: Int? = nil,
+        weekday: Int? = nil, // swiftlint:disable:this function_default_parameter_at_end
         consider duration: Duration
     ) -> NotificationMatchingHint? {
         guard interval == 1 else {
