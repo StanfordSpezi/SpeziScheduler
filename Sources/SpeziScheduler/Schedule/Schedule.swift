@@ -196,7 +196,7 @@ public struct Schedule {
 }
 
 
-extension Schedule: Equatable, Sendable, Codable {/*
+extension Schedule: Hashable, Sendable, Codable {/*
     private enum CodingKeys: String, CodingKey {
         case startDate
         case scheduleDuration
