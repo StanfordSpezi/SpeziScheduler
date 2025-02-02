@@ -481,7 +481,7 @@ public final class Scheduler {
 }
 
 
-extension Scheduler: Module, EnvironmentAccessible, Sendable {}
+extension Scheduler: Module, EnvironmentAccessible, DefaultInitializable, Sendable {}
 
 
 extension Scheduler {
