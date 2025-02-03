@@ -475,7 +475,6 @@ public final class Scheduler {
     ) throws -> [Event] {
         let tasks = try queryTasks(for: range, predicate: taskPredicate)
         let outcomes = try queryOutcomes(for: range, predicate: taskPredicate)
-
         return assembleEvents(for: range, tasks: tasks, outcomes: outcomes)
     }
 }
@@ -620,15 +619,9 @@ extension Scheduler {
     }
 
     private func queryOutcomes(for range: Range<Date>, predicate taskPredicate: Predicate<Task>) throws -> [Outcome] {
-        var descriptor = FetchDescriptor<Outcome>(
-            predicate: #Predicate { outcome in
-                range.contains(outcome.occurrenceStartDate) && taskPredicate.evaluate(outcome.task)
-            }
-        )
-
-        descriptor.relationshipKeyPathsForPrefetching = [\.task]
-
-        return try context.fetch(descriptor)
+        try context.fetch(FetchDescriptor<Outcome>()).filter { (outcome: Outcome) in
+            try range.contains(outcome.occurrenceStartDate) && taskPredicate.evaluate(outcome.task)
+        }
     }
 
     private func queryTaskIdentifiers(
