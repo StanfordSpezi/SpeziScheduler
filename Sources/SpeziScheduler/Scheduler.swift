@@ -219,11 +219,11 @@ public final class Scheduler {
     ///   - contextClosure: The closure that allows to customize the ``Task/Context`` that is stored with the task.
     /// - Returns: Returns the latest version of the `task` and if the task was updated or created indicated by `didChange`.
     @discardableResult
-    public func createOrUpdateTask( // swiftlint:disable:this function_default_parameter_at_end function_body_length
+    public func createOrUpdateTask( // swiftlint:disable:this function_body_length
         id: String,
         title: String.LocalizationValue,
         instructions: String.LocalizationValue,
-        category: Task.Category? = nil,
+        category: Task.Category? = nil, // swiftlint:disable:this function_default_parameter_at_end
         schedule: Schedule,
         completionPolicy: AllowedCompletionPolicy = .sameDay,
         scheduleNotifications: Bool = false,
@@ -480,7 +480,7 @@ public final class Scheduler {
 }
 
 
-extension Scheduler: Module, EnvironmentAccessible, Sendable {}
+extension Scheduler: Module, EnvironmentAccessible, DefaultInitializable, Sendable {}
 
 
 extension Scheduler {
@@ -592,11 +592,11 @@ extension Scheduler {
         return try context.fetchCount(descriptor) > 0
     }
 
-    private func queryTasks( // swiftlint:disable:this function_default_parameter_at_end
+    private func queryTasks(
         with basePredicate: Predicate<Task>,
         combineWith userPredicate: Predicate<Task>,
         sortBy sortDescriptors: [SortDescriptor<Task>],
-        fetchLimit: Int? = nil,
+        fetchLimit: Int? = nil, // swiftlint:disable:this function_default_parameter_at_end
         prefetchOutcomes: Bool
     ) throws -> [Task] {
         var descriptor = FetchDescriptor<Task>(
