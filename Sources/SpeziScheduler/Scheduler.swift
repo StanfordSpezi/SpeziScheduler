@@ -90,7 +90,7 @@ public final class Scheduler {
     @Dependency(SchedulerNotifications.self)
     private var notifications
 
-    private var _container: Result<ModelContainer, Error>?
+    private var _container: Result<ModelContainer, any Error>?
 
     private var container: ModelContainer {
         get throws {

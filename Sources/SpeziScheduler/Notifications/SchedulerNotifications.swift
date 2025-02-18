@@ -552,7 +552,7 @@ extension SchedulerNotifications {
 
             lazy var content = {
                 let content = task.notificationContent()
-                if let standard = standard as? SchedulerNotificationsConstraint {
+                if let standard = standard as? any SchedulerNotificationsConstraint {
                     standard.notificationContent(for: task, content: content)
                 }
                 return content
@@ -592,7 +592,7 @@ extension SchedulerNotifications {
 
             lazy var content = {
                 let content = event.task.notificationContent()
-                if let standard = standard as? SchedulerNotificationsConstraint {
+                if let standard = standard as? any SchedulerNotificationsConstraint {
                     standard.notificationContent(for: event.task, content: content)
                 }
                 return content

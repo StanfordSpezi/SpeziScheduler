@@ -117,7 +117,7 @@ public struct EventScheduleList<Tile: View>: View {
                 }
                     .symbolRenderingMode(.multicolor)
             } description: {
-                if let localizedError = fetchError as? LocalizedError,
+                if let localizedError = fetchError as? any LocalizedError,
                    let reason = localizedError.failureReason {
                     Text(reason)
                 } else {
