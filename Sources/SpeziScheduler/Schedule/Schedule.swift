@@ -435,13 +435,11 @@ extension Schedule {
 
     private func recurrencesSequence(in range: Range<Date>? = nil) -> LazyFilterSequence<some Sequence<Date>> {
         let start = start
-        let rangeUsedWithRule: Range<Date>?
-
-        // When using `afterOccurrences(_:)` as an `end` condition, recurrence rule counts occurrences only base do on the specified range not
+        // When using `afterOccurrences(_:)` as an `end` condition, recurrence rule counts occurrences only based on the specified range not
         // based on the start date. Therefore, we must make sure that the lower-bound of the range is always set to the start date.
         // Once SF-0010 is available, we could access if `end.occurrences` is not `nil` and only apply the custom range in this case.
-        // See https://github.com/apple/swift-foundation/blob/main/Proposals/0010-calendar-recurrence-rule-end-count-and-date.md.
-        rangeUsedWithRule = range.map { range in
+        // See https://github.com/apple/swift-foundation/blob/main/Proposals/0010-calendar-recurrence-rule-end-count-and-date.md
+        let rangeUsedWithRule = range.map { range in
             if start > range.upperBound {
                 // range upper bound might be before start, the range should just return zero occurrences
                 range
@@ -449,30 +447,12 @@ extension Schedule {
                 start..<range.upperBound
             }
         }
-
-        return if let recurrence {
-            recurrence.recurrences(of: start, in: rangeUsedWithRule)
-                .lazy
-                .filter { date in
-                    if let range {
-                        date >= range.lowerBound
-                    } else {
-                        true
-                    }
-                }
-        } else {
-            // workaround to make sure we return the same opaque but generic sequence (just equals to `start`)
-            Calendar.RecurrenceRule(calendar: .current, frequency: .daily, end: .afterOccurrences(1))
-                .recurrences(of: start, in: rangeUsedWithRule)
-                .lazy
-                .filter { date in
-                    if let range {
-                        date >= range.lowerBound
-                    } else {
-                        true
-                    }
-                }
-        }
+        return (recurrence ?? .init(calendar: .current, frequency: .daily, end: .afterOccurrences(1)))
+            .recurrences(of: start, in: rangeUsedWithRule)
+            .lazy
+            .filter { date in
+                range?.contains(date) ?? true
+            }
     }
 }
 
