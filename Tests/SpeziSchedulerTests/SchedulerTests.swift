@@ -192,7 +192,7 @@ final class SchedulerTests: XCTestCase {
     
     @MainActor
     func testFetchingEventsAfterCompletion() async throws {
-        let todayRange = Date.today..<Date.tomorrow//.addingTimeInterval(-1)
+        let todayRange = Date.today..<Date.tomorrow
         let module = Scheduler()
         withDependencyResolution {
             module

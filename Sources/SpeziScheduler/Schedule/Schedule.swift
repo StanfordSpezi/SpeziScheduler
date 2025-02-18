@@ -490,5 +490,3 @@ extension Data {
         }
     }
 }
-
-// swiftlint:disable:this file_length

@@ -653,6 +653,7 @@ extension Scheduler {
     private func queryOutcomes(for range: Range<Date>, predicate taskPredicate: Predicate<Task>) throws -> [Outcome] {
         var descriptor = FetchDescriptor<Outcome>(
             predicate: #Predicate { outcome in
+                // swiftlint:disable:next line_length
                 range.lowerBound <= outcome.occurrenceStartDate && outcome.occurrenceStartDate < range.upperBound && taskPredicate.evaluate(outcome.task)
             }
         )
@@ -676,6 +677,7 @@ extension Scheduler {
     private func queryOutcomeIdentifiers(for range: Range<Date>, predicate taskPredicate: Predicate<Task>) throws -> Set<PersistentIdentifier> {
         let descriptor = FetchDescriptor<Outcome>(
             predicate: #Predicate { outcome in
+                // swiftlint:disable:next line_length
                 range.lowerBound <= outcome.occurrenceStartDate && outcome.occurrenceStartDate < range.upperBound && taskPredicate.evaluate(outcome.task)
             }
         )
