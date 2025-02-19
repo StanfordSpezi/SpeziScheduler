@@ -186,7 +186,38 @@ final class SchedulerTests: XCTestCase {
         XCTAssertEqual(components1.minute, 30)
         XCTAssertEqual(components1.second, 49)
 
-
         XCTAssertNoThrow(try module.deleteAllVersions(ofTask: "test-task"))
+    }
+    
+    
+    @MainActor
+    func testFetchingEventsAfterCompletion() async throws {
+        let todayRange = Date.today..<Date.tomorrow
+        let module = Scheduler()
+        withDependencyResolution {
+            module
+        }
+        
+        try module.eraseDatabase()
+        XCTAssertTrue(try module.queryAllTasks().isEmpty)
+        XCTAssertTrue(try module.queryAllOutcomes().isEmpty)
+        XCTAssertTrue(try module.queryEvents(for: todayRange).isEmpty)
+        
+        try module.createOrUpdateTask(
+            id: "test-task",
+            title: "Test Task",
+            instructions: "",
+            schedule: .daily(hour: 0, minute: 0, startingAt: .now)
+        )
+        
+        let events = try module.queryEvents(for: todayRange)
+        XCTAssertTrue(events.allSatisfy { todayRange.contains($0.occurrence.start) })
+        XCTAssertEqual(events.count, 1)
+        XCTAssertFalse(try XCTUnwrap(events.first).completed)
+        try XCTUnwrap(events.first).complete()
+        XCTAssertTrue(try XCTUnwrap(events.first).completed)
+        XCTAssertTrue(try XCTUnwrap(try module.queryEvents(for: todayRange).first).completed)
+        try await _Concurrency.Task.sleep(for: .seconds(0.5))
+        XCTAssertTrue(try XCTUnwrap(try module.queryEvents(for: todayRange).first).completed)
     }
 }

@@ -30,7 +30,7 @@ let package = Package(
         .package(url: "https://github.com/StanfordSpezi/SpeziFoundation", from: "2.0.0"),
         .package(url: "https://github.com/StanfordSpezi/Spezi", from: "1.8.0"),
         .package(url: "https://github.com/StanfordSpezi/SpeziViews", from: "1.7.0"),
-        .package(url: "https://github.com/StanfordSpezi/SpeziStorage", from: "1.1.2"),
+        .package(url: "https://github.com/StanfordSpezi/SpeziStorage", from: "2.1.0"),
         .package(url: "https://github.com/StanfordSpezi/SpeziNotifications.git", from: "1.0.2"),
         .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
         .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0-prerelease-2024-08-14"),
@@ -44,6 +44,7 @@ let package = Package(
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
                 .product(name: "SwiftDiagnostics", package: "swift-syntax")
             ],
+            swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
             plugins: [] + swiftLintPlugin()
         ),
         .target(
@@ -57,6 +58,7 @@ let package = Package(
                 .product(name: "SpeziLocalStorage", package: "SpeziStorage"),
                 .product(name: "Algorithms", package: "swift-algorithms")
             ],
+            swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
             plugins: [] + swiftLintPlugin()
         ),
         .target(
@@ -68,6 +70,7 @@ let package = Package(
             resources: [
                 .process("Resources")
             ],
+            swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
             plugins: [] + swiftLintPlugin()
         ),
         .testTarget(
@@ -77,6 +80,7 @@ let package = Package(
                 .product(name: "XCTSpezi", package: "Spezi"),
                 .product(name: "SpeziLocalStorage", package: "SpeziStorage")
             ],
+            swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
             plugins: [] + swiftLintPlugin()
         ),
         .testTarget(
@@ -87,6 +91,7 @@ let package = Package(
                 .product(name: "XCTSpezi", package: "Spezi"),
                 .product(name: "SnapshotTesting", package: "swift-snapshot-testing")
             ],
+            swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
             plugins: [] + swiftLintPlugin()
         ),
         .testTarget(
@@ -96,6 +101,7 @@ let package = Package(
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax")
             ],
+            swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
             plugins: [] + swiftLintPlugin()
         )
     ]

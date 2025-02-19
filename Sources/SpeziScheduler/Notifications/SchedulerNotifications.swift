@@ -552,7 +552,7 @@ extension SchedulerNotifications {
 
             lazy var content = {
                 let content = task.notificationContent()
-                if let standard = standard as? SchedulerNotificationsConstraint {
+                if let standard = standard as? any SchedulerNotificationsConstraint {
                     standard.notificationContent(for: task, content: content)
                 }
                 return content
@@ -592,7 +592,7 @@ extension SchedulerNotifications {
 
             lazy var content = {
                 let content = event.task.notificationContent()
-                if let standard = standard as? SchedulerNotificationsConstraint {
+                if let standard = standard as? any SchedulerNotificationsConstraint {
                     standard.notificationContent(for: event.task, content: content)
                 }
                 return content
@@ -737,14 +737,21 @@ extension SchedulerNotifications {
 
 // MARK: - Legacy Notifications
 
+extension LocalStorageKeys {
+    fileprivate static let legacyTasks = LocalStorageKey<[LegacyTaskModel]>(
+        "spezi.scheduler.tasks", // the legacy scheduler 1.0 used to store tasks at this location.
+        setting: .encryptedUsingKeychain(),
+        encoder: JSONEncoder(),
+        decoder: JSONDecoder()
+    )
+}
+
 extension SchedulerNotifications {
     /// Cancel scheduled and delivered notifications of the legacy SpeziScheduler 1.0
     fileprivate func purgeLegacyEventNotifications() {
-        let legacyStorageKey = "spezi.scheduler.tasks" // the legacy scheduler 1.0 used to store tasks at this location.
-
         let legacyTasks: [LegacyTaskModel]
         do {
-            legacyTasks = try localStorage.read(storageKey: legacyStorageKey)
+            legacyTasks = try localStorage.load(.legacyTasks) ?? []
         } catch {
             let nsError = error as NSError
             if nsError.domain == CocoaError.errorDomain
@@ -763,7 +770,7 @@ extension SchedulerNotifications {
 
         // We don't support migration, so just remove it.
         do {
-            try localStorage.delete(storageKey: legacyStorageKey)
+            try localStorage.delete(.legacyTasks)
         } catch {
             logger.warning("Failed to remove legacy scheduler task storage: \(error)")
         }

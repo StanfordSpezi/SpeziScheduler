@@ -90,7 +90,7 @@ public final class Scheduler {
     @Dependency(SchedulerNotifications.self)
     private var notifications
 
-    private var _container: Result<ModelContainer, Error>?
+    private var _container: Result<ModelContainer, any Error>?
 
     private var container: ModelContainer {
         get throws {
@@ -308,6 +308,7 @@ public final class Scheduler {
         context.insert(outcome)
         scheduleSave(for: context, rescheduleNotifications: false)
     }
+    
 
     /// Delete a task from the store.
     ///
@@ -475,8 +476,41 @@ public final class Scheduler {
     ) throws -> [Event] {
         let tasks = try queryTasks(for: range, predicate: taskPredicate)
         let outcomes = try queryOutcomes(for: range, predicate: taskPredicate)
-
         return assembleEvents(for: range, tasks: tasks, outcomes: outcomes)
+    }
+    
+    
+    // MARK: TestingSupport functions
+    
+    /// Fetches all ``Task``s stored in the module.
+    @_spi(TestingSupport)
+    public func queryAllTasks() throws -> [Task] {
+        try self.context.fetch(FetchDescriptor<Task>())
+    }
+    
+    /// Fetches all ``Outcome``s stored in the module.
+    @_spi(TestingSupport)
+    public func queryAllOutcomes() throws -> [Outcome] {
+        try self.context.fetch(FetchDescriptor<Outcome>())
+    }
+    
+    /// Deletes all tasks and associated data (e.g. outcomes) from the store.
+    ///
+    /// - Note: This function is intended for internal usage, to completely wipe the scheduler module to ensure a clean slate when running unit tests.
+    @_spi(TestingSupport)
+    public func deleteAllTasks() throws {
+        try deleteTasks(try queryAllTasks())
+    }
+    
+    /// Deletes all data from the ``Scheduler`` module's underlying data store.
+    ///
+    /// - Note: This function is intended for internal usage, to completely wipe the scheduler module to ensure a clean slate when running unit tests.
+    @_spi(TestingSupport)
+    public func eraseDatabase() throws {
+        let context = try context
+        try context.delete(model: Task.self)
+        try context.delete(model: Outcome.self)
+        try context.save()
     }
 }
 
@@ -503,7 +537,6 @@ extension Scheduler {
         let outcomesByOccurrence = outcomes?.reduce(into: [:]) { partialResult, outcome in
             partialResult[OccurrenceId(task: outcome.task, startDate: outcome.occurrenceStartDate)] = outcome
         }
-
         return tasks
             .flatMap { task in
                 // If there is a newer task version, we only calculate the events till that the current task is effective.
@@ -516,7 +549,6 @@ extension Scheduler {
                 } else {
                     upperBound = range.upperBound
                 }
-
                 let lowerBound: Date
                 if task.previousVersion != nil {
                     // if there is a previous version, the previous version is responsible should the lowerBound be less than the
@@ -525,7 +557,6 @@ extension Scheduler {
                 } else {
                     lowerBound = range.lowerBound
                 }
-
                 return task.schedule
                     .occurrences(in: lowerBound..<upperBound)
                     .map { occurrence -> Event in
@@ -622,12 +653,15 @@ extension Scheduler {
     private func queryOutcomes(for range: Range<Date>, predicate taskPredicate: Predicate<Task>) throws -> [Outcome] {
         var descriptor = FetchDescriptor<Outcome>(
             predicate: #Predicate { outcome in
-                range.contains(outcome.occurrenceStartDate) && taskPredicate.evaluate(outcome.task)
+                // Since, for some reason, `range.contains(outcome.occurrenceStartDate)` doesn't work in a #Predicate
+                // (it just filters out everything, even if the start date does in fact fall into the range),
+                // we instead need to rewrite what could otherwise be a `contains` call into explicit checks against the range's lower and upper bound.
+                // See also: https://github.com/StanfordSpezi/SpeziScheduler/pull/55#issuecomment-2667153659
+                // swiftlint:disable:next line_length
+                range.lowerBound <= outcome.occurrenceStartDate && outcome.occurrenceStartDate < range.upperBound && taskPredicate.evaluate(outcome.task)
             }
         )
-
         descriptor.relationshipKeyPathsForPrefetching = [\.task]
-
         return try context.fetch(descriptor)
     }
 
@@ -647,7 +681,12 @@ extension Scheduler {
     private func queryOutcomeIdentifiers(for range: Range<Date>, predicate taskPredicate: Predicate<Task>) throws -> Set<PersistentIdentifier> {
         let descriptor = FetchDescriptor<Outcome>(
             predicate: #Predicate { outcome in
-                range.contains(outcome.occurrenceStartDate) && taskPredicate.evaluate(outcome.task)
+                // Since, for some reason, `range.contains(outcome.occurrenceStartDate)` doesn't work in a #Predicate
+                // (it just filters out everything, even if the start date does in fact fall into the range),
+                // we instead need to rewrite what could otherwise be a `contains` call into explicit checks against the range's lower and upper bound.
+                // See also: https://github.com/StanfordSpezi/SpeziScheduler/pull/55#issuecomment-2667153659
+                // swiftlint:disable:next line_length
+                range.lowerBound <= outcome.occurrenceStartDate && outcome.occurrenceStartDate < range.upperBound && taskPredicate.evaluate(outcome.task)
             }
         )
 
