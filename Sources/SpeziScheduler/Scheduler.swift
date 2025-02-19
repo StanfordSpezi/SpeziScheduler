@@ -653,6 +653,10 @@ extension Scheduler {
     private func queryOutcomes(for range: Range<Date>, predicate taskPredicate: Predicate<Task>) throws -> [Outcome] {
         var descriptor = FetchDescriptor<Outcome>(
             predicate: #Predicate { outcome in
+                // Since, for some reason, `range.contains(outcome.occurrenceStartDate)` doesn't work in a #Predicate
+                // (it just filters out everything, even if the start date does in fact fall into the range),
+                // we instead need to rewrite what could otherwise be a `contains` call into explicit checks against the range's lower and upper bound.
+                // See also: https://github.com/StanfordSpezi/SpeziScheduler/pull/55#issuecomment-2667153659
                 // swiftlint:disable:next line_length
                 range.lowerBound <= outcome.occurrenceStartDate && outcome.occurrenceStartDate < range.upperBound && taskPredicate.evaluate(outcome.task)
             }
@@ -677,6 +681,10 @@ extension Scheduler {
     private func queryOutcomeIdentifiers(for range: Range<Date>, predicate taskPredicate: Predicate<Task>) throws -> Set<PersistentIdentifier> {
         let descriptor = FetchDescriptor<Outcome>(
             predicate: #Predicate { outcome in
+                // Since, for some reason, `range.contains(outcome.occurrenceStartDate)` doesn't work in a #Predicate
+                // (it just filters out everything, even if the start date does in fact fall into the range),
+                // we instead need to rewrite what could otherwise be a `contains` call into explicit checks against the range's lower and upper bound.
+                // See also: https://github.com/StanfordSpezi/SpeziScheduler/pull/55#issuecomment-2667153659
                 // swiftlint:disable:next line_length
                 range.lowerBound <= outcome.occurrenceStartDate && outcome.occurrenceStartDate < range.upperBound && taskPredicate.evaluate(outcome.task)
             }
