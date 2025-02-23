@@ -328,7 +328,7 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
     } else if let first = events.first {
         List {
             InstructionsTile(first) {
-                first.complete()
+                try? first.complete()
             }
         }
     } else {
@@ -346,7 +346,7 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
     } else if let first = events.first {
         List {
             InstructionsTile(first, alignment: .center) {
-                first.complete()
+                try? first.complete()
             } more: {
                 Text("More information about the task!")
             }

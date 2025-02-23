@@ -10,7 +10,7 @@ import Foundation
 
 
 /// Policy to decide when an event is allowed to be completed.
-public enum AllowedCompletionPolicy {
+public enum AllowedCompletionPolicy: Hashable, Sendable, Codable {
     /// The event is allowed to completed if the event is occurring today.
     case sameDay
     /// The event is allowed to be completed if the date is after the start date and time.
@@ -39,7 +39,7 @@ extension AllowedCompletionPolicy {
         case .sameDayAfterStart:
             Calendar.current.isDateInToday(date) && date >= event.occurrence.start
         case .duringEvent:
-            event.occurrence.start..<event.occurrence.end ~= date
+            (event.occurrence.start..<event.occurrence.end).contains(date)
         }
     }
     
@@ -55,12 +55,10 @@ extension AllowedCompletionPolicy {
         case .afterStart, .sameDayAfterStart, .duringEvent:
             event.occurrence.start
         }
-
         // ensure event is in the future, otherwise we are already allowed or we will never be allowed again.
         guard date < completionDate else {
             return nil
         }
-
         return completionDate
     }
     
@@ -78,16 +76,11 @@ extension AllowedCompletionPolicy {
         case .duringEvent:
             event.occurrence.end
         }
-
         if let endDate {
             guard date < endDate else {
                 return nil
             }
         }
-
         return endDate
     }
 }
-
-
-extension AllowedCompletionPolicy: Hashable, Sendable, Codable {}
