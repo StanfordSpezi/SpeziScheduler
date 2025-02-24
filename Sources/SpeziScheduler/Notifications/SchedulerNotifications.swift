@@ -389,8 +389,7 @@ extension SchedulerNotifications {
                 if upcomingEventsForCurrentTask.count > 1,
                    Set(eventsDistances).count == 1,
                    let hint = event.task.schedule.notificationMatchingHint,
-                   event.task.schedule.canBeScheduledAsRepeatingCalendarTrigger(allDayNotificationTime: allDayNotificationTime, now: now)
-                {
+                   event.task.schedule.canBeScheduledAsRepeatingCalendarTrigger(allDayNotificationTime: allDayNotificationTime, now: now) {
                     // ... if they are (and we actually have multiple events), we can schedule them via a single, repeating UNCalendarNotificationTrigger ...
                     let content = event.task.notificationContent()
                     if let standard = standard as? any SchedulerNotificationsConstraint {
@@ -401,7 +400,6 @@ extension SchedulerNotifications {
                         identifier: Self.notificationId(for: event.task),
                         content: content,
                         trigger: UNCalendarNotificationTrigger(
-                            //dateMatching: cal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: event.occurrence.start),
                             dateMatching: hint.dateComponents(calendar: cal, allDayNotificationTime: allDayNotificationTime),
                             repeats: true
                         )
