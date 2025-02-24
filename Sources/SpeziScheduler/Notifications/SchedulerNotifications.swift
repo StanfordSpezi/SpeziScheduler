@@ -272,7 +272,7 @@ public final class SchedulerNotifications: Module, DefaultInitializable, Environ
         let task = _Concurrency.Task { @MainActor in
             try await scheduleNotifications(for: scheduler)
         }
-        #if !os(macOS) && !os(watchOS)
+        #if !(os(macOS) || os(watchOS))
         let identifier = _Application.shared.beginBackgroundTask(withName: "Scheduler Notifications") {
             task.cancel()
         }
@@ -393,7 +393,7 @@ extension SchedulerNotifications {
                     // ... if they are (and we actually have multiple events), we can schedule them via a single, repeating UNCalendarNotificationTrigger ...
                     let content = event.task.notificationContent()
                     if let standard = standard as? any SchedulerNotificationsConstraint {
-                        standard.updateNotificationContent(for: event, content: content)
+                        standard.notificationContent(for: event.task, content: content)
                     }
                     let cal = event.task.schedule.recurrence?.calendar ?? cal
                     try await notifications.add(request: UNNotificationRequest(
@@ -412,7 +412,7 @@ extension SchedulerNotifications {
                     upcomingEventsForCurrentTask.removeFirst()
                     let content = event.task.notificationContent()
                     if let standard = standard as? any SchedulerNotificationsConstraint {
-                        standard.updateNotificationContent(for: event, content: content)
+                        standard.notificationContent(for: event.task, content: content)
                     }
                     let notificationDate = Schedule.notificationTime(
                         for: event.occurrence.start,
