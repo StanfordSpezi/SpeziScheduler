@@ -496,6 +496,17 @@ extension Scheduler {
     
     
     /// Query all upcoming events for a specific task, in a specific time period.
+    public func queryEvents(forTaskWithId taskId: String, in range: Range<Date>) throws -> [Event] {
+        let context = try context
+        guard let task = try context.fetch(FetchDescriptor<Task>(predicate: #Predicate { task in
+            task.id == taskId && task.nextVersion == nil
+        })).first else {
+            return []
+        }
+        return try queryEvents(for: task, in: range)
+    }
+    
+    /// Query all upcoming events for a specific task, in a specific time period.
     public func queryEvents(for task: Task, in range: Range<Date>) throws -> [Event] {
         let taskId = task.id
         let outcomes = try queryOutcomes(for: range, predicate: #Predicate { $0.id == taskId })

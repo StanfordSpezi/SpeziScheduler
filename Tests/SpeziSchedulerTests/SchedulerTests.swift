@@ -203,12 +203,12 @@ final class SchedulerTests: XCTestCase {
         XCTAssertTrue(try module.queryAllOutcomes().isEmpty)
         XCTAssertTrue(try module.queryEvents(for: todayRange).isEmpty)
         
-        try module.createOrUpdateTask(
+        let task = try module.createOrUpdateTask(
             id: "test-task",
             title: "Test Task",
             instructions: "",
             schedule: .daily(hour: 0, minute: 0, startingAt: .now)
-        )
+        ).task
         
         let events = try module.queryEvents(for: todayRange)
         XCTAssertTrue(events.allSatisfy { todayRange.contains($0.occurrence.start) })
@@ -219,5 +219,6 @@ final class SchedulerTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(try module.queryEvents(for: todayRange).first).isCompleted)
         try await _Concurrency.Task.sleep(for: .seconds(0.5))
         XCTAssertTrue(try XCTUnwrap(try module.queryEvents(for: todayRange).first).isCompleted)
+        XCTAssertEqual(try module.queryEvents(for: task, in: todayRange), try module.queryEvents(forTaskWithId: task.id, in: todayRange))
     }
 }
