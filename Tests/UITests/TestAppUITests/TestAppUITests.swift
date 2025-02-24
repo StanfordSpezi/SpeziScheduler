@@ -49,8 +49,9 @@ class TestAppUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Completed"].waitForExistence(timeout: 2.0))
     }
 
+    
     @MainActor
-    func testNotificationScheduling() throws {
+    func testNotificationScheduling() throws { // swiftlint:disable:this function_body_length
         #if os(visionOS)
         throw XCTSkip()
         #endif
