@@ -224,8 +224,7 @@ public final class SchedulerNotifications: Module, DefaultInitializable, Environ
             logger.debug("Background fetch is not enabled. Skipping registering background task for notification scheduling.")
             #endif
         }
-        _Concurrency.Task.detached {
-            try await _Concurrency.Task.sleep(for: .seconds(4))
+        _Concurrency.Task { @MainActor in
             await self.checkForInitialScheduling(scheduler: scheduler)
         }
     }

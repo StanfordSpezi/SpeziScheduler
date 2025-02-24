@@ -106,6 +106,18 @@ extension Event {
         case preventedByCompletionPolicy
     }
     
+    
+    @available(*, deprecated, renamed: "complete(ignoreCompletionPolicy:with:)")
+    @MainActor @discardableResult @_disfavoredOverload
+    public func complete() -> Outcome {
+        do {
+            return try complete(ignoreCompletionPolicy: true)
+        } catch {
+            // if the completion policy is ignored, complete will not throw.
+            preconditionFailure("Unreachable")
+        }
+    }
+    
     /// Complete the event with additional information.
     ///
     /// - parameter ignoreCompletionPolicy: Allows for forced completion of the event, even if the underlying task's ``AllowedCompletionPolicy`` would otherwise prohibit it. Defaults to `false`.
