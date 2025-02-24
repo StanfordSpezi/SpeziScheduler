@@ -107,8 +107,15 @@ extension Event {
     }
     
     
+    /// Complete the event.
+    ///
+    /// It the event is already completed, this will have no effect.
+    ///
+    /// - Warning: This function will ignore the underlying task's ``Task/completionPolicy``.
     @available(*, deprecated, renamed: "complete(ignoreCompletionPolicy:with:)")
-    @MainActor @discardableResult @_disfavoredOverload
+    @MainActor
+    @discardableResult
+    @_disfavoredOverload
     public func complete() -> Outcome {
         do {
             return try complete(ignoreCompletionPolicy: true)
