@@ -503,12 +503,6 @@ extension Scheduler {
     }
     
     
-//    /// Determines whether any of the task's scheduled events for the specified time range have already been completed.
-//    func hasCompletedEvents(for task: Task, in range: Range<Date>) throws -> Bool {
-//        
-//    }
-    
-    
     // MARK: TestingSupport functions
     
     /// Fetches all ``Task``s stored in the module.

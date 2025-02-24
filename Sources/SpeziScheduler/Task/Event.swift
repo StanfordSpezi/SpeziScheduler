@@ -106,15 +106,6 @@ extension Event {
         case preventedByCompletionPolicy
     }
     
-//    /// Complete the event.
-//    ///
-//    /// Does nothing if the event is already completed.
-//    @MainActor
-//    @discardableResult
-//    public func complete(ignoreCompletionPolicy: Bool = false) throws(CompletionError) -> Outcome {
-//        try self.complete { _ in }
-//    }
-    
     /// Complete the event with additional information.
     ///
     /// - parameter ignoreCompletionPolicy: Allows for forced completion of the event, even if the underlying task's ``AllowedCompletionPolicy`` would otherwise prohibit it. Defaults to `false`.

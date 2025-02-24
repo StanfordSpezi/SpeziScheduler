@@ -16,7 +16,7 @@ import UserNotifications
 /// ```swift
 /// actor MyActor: Standard, SchedulerNotificationsConstraint {
 ///     @MainActor
-///     func updateNotificationContent(for task: borrowing Task, content: borrowing UNMutableNotificationContent) {
+///     func updateNotificationContent(for event: borrowing Event, content: borrowing UNMutableNotificationContent) {
 ///         content.subtitle = "Complete the Questionnaire"
 ///     }
 /// }
