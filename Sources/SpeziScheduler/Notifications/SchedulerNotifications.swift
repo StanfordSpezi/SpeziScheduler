@@ -386,7 +386,11 @@ extension SchedulerNotifications {
                     // the reason being that the Calendar/DateComponents approach will be correct w.r.t. to eg leap years, DST transitions, etc.
                     cal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: event0.occurrence.start, to: event1.occurrence.start)
                 }
-                if upcomingEventsForCurrentTask.count > 1 && Set(eventsDistances).count == 1 {
+                if upcomingEventsForCurrentTask.count > 1,
+                   Set(eventsDistances).count == 1,
+                   let hint = event.task.schedule.notificationMatchingHint,
+                   event.task.schedule.canBeScheduledAsRepeatingCalendarTrigger(allDayNotificationTime: allDayNotificationTime, now: now)
+                {
                     // ... if they are (and we actually have multiple events), we can schedule them via a single, repeating UNCalendarNotificationTrigger ...
                     let content = event.task.notificationContent()
                     if let standard = standard as? any SchedulerNotificationsConstraint {
@@ -394,10 +398,11 @@ extension SchedulerNotifications {
                     }
                     let cal = event.task.schedule.recurrence?.calendar ?? cal
                     try await notifications.add(request: UNNotificationRequest(
-                        identifier: Self.notificationId(for: event),
+                        identifier: Self.notificationId(for: event.task),
                         content: content,
                         trigger: UNCalendarNotificationTrigger(
-                            dateMatching: cal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: event.occurrence.start),
+                            //dateMatching: cal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: event.occurrence.start),
+                            dateMatching: hint.dateComponents(calendar: cal, allDayNotificationTime: allDayNotificationTime),
                             repeats: true
                         )
                     ))
@@ -411,14 +416,15 @@ extension SchedulerNotifications {
                     if let standard = standard as? any SchedulerNotificationsConstraint {
                         standard.updateNotificationContent(for: event, content: content)
                     }
-                    let cal = event.task.schedule.recurrence?.calendar ?? cal
+                    let notificationDate = Schedule.notificationTime(
+                        for: event.occurrence.start,
+                        duration: event.occurrence.schedule.duration,
+                        allDayNotificationTime: allDayNotificationTime
+                    )
                     try await notifications.add(request: UNNotificationRequest(
                         identifier: Self.notificationId(for: event),
                         content: content,
-                        trigger: UNCalendarNotificationTrigger(
-                            dateMatching: cal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: event.occurrence.start),
-                            repeats: false
-                        )
+                        trigger: UNTimeIntervalNotificationTrigger(timeInterval: notificationDate.timeIntervalSinceNow, repeats: false)
                     ))
                     numScheduledNotificationRequests += 1
                 }
