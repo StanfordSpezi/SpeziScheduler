@@ -52,9 +52,6 @@ class TestAppUITests: XCTestCase {
     
     @MainActor
     func testNotificationScheduling() throws { // swiftlint:disable:this function_body_length
-        #if os(visionOS)
-        throw XCTSkip()
-        #endif
         let app = XCUIApplication()
         app.deleteAndLaunch(withSpringboardAppName: "TestApp")
 
