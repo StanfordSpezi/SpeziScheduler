@@ -124,7 +124,7 @@ extension Event {
         ignoreCompletionPolicy: Bool = false,
         with closure: (Outcome) -> Void = { _ in }
     ) throws(CompletionError) -> Outcome {
-        guard task.completionPolicy.isAllowedToComplete(event: self) else {
+        guard ignoreCompletionPolicy || task.completionPolicy.isAllowedToComplete(event: self) else {
             throw .preventedByCompletionPolicy
         }
         switch outcomeState.outcome {
