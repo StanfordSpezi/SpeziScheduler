@@ -60,7 +60,7 @@ class TestAppUITests: XCTestCase {
 
         XCTAssert(app.wait(for: .runningForeground, timeout: 2.0))
         
-        let notificationsTabButton = app.buttons.matching(NSPredicate(format: "identifier = 'mail.fill' AND label = 'Notifications'")).firstMatch
+        let notificationsTabButton = app.tabBars.buttons["Notifications"]
         XCTAssert(notificationsTabButton.waitForExistence(timeout: 2.0))
         notificationsTabButton.tap()
 
