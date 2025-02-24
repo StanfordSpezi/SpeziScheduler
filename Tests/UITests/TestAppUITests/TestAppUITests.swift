@@ -51,7 +51,7 @@ class TestAppUITests: XCTestCase {
 
     
     @MainActor
-    func testNotificationScheduling() throws { // swiftlint:disable:this function_body_length
+    func testNotificationScheduling() throws {
         let app = XCUIApplication()
         app.deleteAndLaunch(withSpringboardAppName: "TestApp")
 
