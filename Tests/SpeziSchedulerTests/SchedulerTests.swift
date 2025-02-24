@@ -213,11 +213,11 @@ final class SchedulerTests: XCTestCase {
         let events = try module.queryEvents(for: todayRange)
         XCTAssertTrue(events.allSatisfy { todayRange.contains($0.occurrence.start) })
         XCTAssertEqual(events.count, 1)
-        XCTAssertFalse(try XCTUnwrap(events.first).completed)
+        XCTAssertFalse(try XCTUnwrap(events.first).isCompleted)
         try XCTUnwrap(events.first).complete()
-        XCTAssertTrue(try XCTUnwrap(events.first).completed)
-        XCTAssertTrue(try XCTUnwrap(try module.queryEvents(for: todayRange).first).completed)
+        XCTAssertTrue(try XCTUnwrap(events.first).isCompleted)
+        XCTAssertTrue(try XCTUnwrap(try module.queryEvents(for: todayRange).first).isCompleted)
         try await _Concurrency.Task.sleep(for: .seconds(0.5))
-        XCTAssertTrue(try XCTUnwrap(try module.queryEvents(for: todayRange).first).completed)
+        XCTAssertTrue(try XCTUnwrap(try module.queryEvents(for: todayRange).first).isCompleted)
     }
 }

@@ -36,7 +36,17 @@ struct ScheduleView: View {
             EventScheduleList(date: date) { event in
                 if event.task.id == TaskIdentifier.socialSupportQuestionnaire {
                     InstructionsTile(event, alignment: alignment) {
-                        try? event.complete()
+                        do {
+                            try event.complete()
+                        } catch Event.CompletionError.preventedByCompletionPolicy {
+                            // SAFETY: we should never end up in here.
+                            // The InstructionsTile internally uses an EventActionButton, which is evaluating the event's task completion policy,
+                            // and will auto-disable itself if the event isn't allowed to be completed
+                            preconditionFailure("Event completion failed unexpectedly")
+                        } catch {
+                            // once https://github.com/swiftlang/swift/issues/79570 is fixed, we'll be able to remove this branch
+                            preconditionFailure("truly unreachable")
+                        }
                     } more: {
                         EventDetailView(event)
                     }

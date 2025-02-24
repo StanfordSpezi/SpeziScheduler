@@ -67,7 +67,7 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
     }
 
     private var tileAlignment: HorizontalAlignment {
-        if event.completed {
+        if event.isCompleted {
             .leading
         } else {
             alignment
@@ -76,7 +76,7 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
 
     public var body: some View {
         SimpleTile(alignment: tileAlignment) {
-            if event.completed {
+            if event.isCompleted {
                 CompletedTileHeader(alignment: tileAlignment) {
                     Text(event.task.title)
                 }
@@ -108,7 +108,7 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
             Text(event.task.instructions)
                 .font(.callout)
         } footer: {
-            if !event.completed {
+            if !event.isCompleted {
                 footer
             }
         }
@@ -328,7 +328,7 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
     } else if let first = events.first {
         List {
             InstructionsTile(first) {
-                try? first.complete()
+                _ = try? first.complete()
             }
         }
     } else {
@@ -346,7 +346,7 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
     } else if let first = events.first {
         List {
             InstructionsTile(first, alignment: .center) {
-                try? first.complete()
+                _ = try? first.complete()
             } more: {
                 Text("More information about the task!")
             }
