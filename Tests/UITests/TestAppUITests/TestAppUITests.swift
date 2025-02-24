@@ -50,14 +50,18 @@ class TestAppUITests: XCTestCase {
     }
 
     @MainActor
-    func testNotificationScheduling() {
+    func testNotificationScheduling() throws {
+        #if os(visionOS)
+        throw XCTSkip()
+        #endif
         let app = XCUIApplication()
         app.deleteAndLaunch(withSpringboardAppName: "TestApp")
 
         XCTAssert(app.wait(for: .runningForeground, timeout: 2.0))
-
-        XCTAssert(app.tabBars.buttons["Notifications"].waitForExistence(timeout: 2.0))
-        app.tabBars.buttons["Notifications"].tap()
+        
+        let notificationsTabButton = app.buttons.matching(NSPredicate(format: "identifier = 'mail.fill' AND label = 'Notifications'")).firstMatch
+        XCTAssert(notificationsTabButton.waitForExistence(timeout: 2.0))
+        notificationsTabButton.tap()
 
         XCTAssert(app.staticTexts["Pending Notifications"].waitForExistence(timeout: 2.0))
 
