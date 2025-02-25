@@ -386,30 +386,7 @@ extension SchedulerNotifications {
                     // the reason being that the Calendar/DateComponents approach will be correct w.r.t. to eg leap years, DST transitions, etc.
                     cal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: event0.occurrence.start, to: event1.occurrence.start)
                 }
-                if upcomingEventsForCurrentTask.count > 1,
-                   Set(eventsDistances).count == 1,
-                   let hint = event.task.schedule.notificationMatchingHint,
-                   event.task.schedule.canBeScheduledAsRepeatingCalendarTrigger(allDayNotificationTime: allDayNotificationTime, now: now) {
-                    // ... if they are (and we actually have multiple events), we can schedule them via a single, repeating UNCalendarNotificationTrigger ...
-                    let content = event.task.notificationContent()
-                    if let standard = standard as? any SchedulerNotificationsConstraint {
-                        standard.notificationContent(for: event.task, content: content)
-                    }
-                    let cal = event.task.schedule.recurrence?.calendar ?? cal
-                    try await notifications.add(request: UNNotificationRequest(
-                        identifier: Self.notificationId(for: event.task),
-                        content: content,
-                        trigger: UNCalendarNotificationTrigger(
-                            dateMatching: hint.dateComponents(calendar: cal, allDayNotificationTime: allDayNotificationTime),
-                            repeats: true
-                        )
-                    ))
-                    numScheduledNotificationRequests += 1
-                    // ... we have scheduled all events for this task, and can therefore remove them all from our workset
-                    upcomingEventsForCurrentTask.removeAll()
-                } else {
-                    // ... if the events are not spaced equidistant, we need to schedule them individually
-                    upcomingEventsForCurrentTask.removeFirst()
+                let scheduleSingleEvent = { [unowned self] () async throws -> Void in
                     let content = event.task.notificationContent()
                     if let standard = standard as? any SchedulerNotificationsConstraint {
                         standard.notificationContent(for: event.task, content: content)
@@ -425,6 +402,44 @@ extension SchedulerNotifications {
                         trigger: UNTimeIntervalNotificationTrigger(timeInterval: notificationDate.timeIntervalSinceNow, repeats: false)
                     ))
                     numScheduledNotificationRequests += 1
+                }
+                if upcomingEventsForCurrentTask.count > 1,
+                   Set(eventsDistances).count == 1,
+                   let hint = event.task.schedule.notificationMatchingHint,
+                   event.task.schedule.canBeScheduledAsRepeatingCalendarTrigger(allDayNotificationTime: allDayNotificationTime, now: now) {
+                    // ... if they are (and we actually have multiple events), we can schedule them via a single, repeating UNCalendarNotificationTrigger ...
+                    let content = event.task.notificationContent()
+                    if let standard = standard as? any SchedulerNotificationsConstraint {
+                        standard.notificationContent(for: event.task, content: content)
+                    }
+                    let cal = event.task.schedule.recurrence?.calendar ?? cal
+                    let triggerDateComponents = hint.dateComponents(calendar: cal, allDayNotificationTime: allDayNotificationTime)
+                    let trigger = UNCalendarNotificationTrigger(
+                        dateMatching: triggerDateComponents,
+                        repeats: true
+                    )
+                    if trigger.nextTriggerDate() == cal.date(from: triggerDateComponents) {
+                        // ... if the notification would actually get delivered at the date of the next event, we can use this trigger ...
+                        // reasons why this wouldn't work: we have a daily event, but its supposed to start only 2 days from now.
+                        // the UNUserNotificationRequest API doesn't let us express this (you can't specify a start and/or end date),
+                        // so if we were to schedule it via the UNCalendarNotificationRequest, we'd get notifications starting tomorrow,
+                        // even though we'd want them to start 2 days from now.
+                        try await notifications.add(request: UNNotificationRequest(
+                            identifier: Self.notificationId(for: event.task),
+                            content: content,
+                            trigger: trigger
+                        ))
+                        numScheduledNotificationRequests += 1
+                        // ... we have scheduled all events for this task, and can therefore remove them all from our workset
+                        upcomingEventsForCurrentTask.removeAll()
+                    } else {
+                        // ... otherwise we'll have to schedule it via the individual scheduling branch
+                        try await scheduleSingleEvent()
+                    }
+                } else {
+                    // ... if the events are not spaced equidistant, we need to schedule them individually
+                    upcomingEventsForCurrentTask.removeFirst()
+                    try await scheduleSingleEvent()
                 }
             }
         }
