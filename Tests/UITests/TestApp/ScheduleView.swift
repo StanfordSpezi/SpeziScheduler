@@ -19,9 +19,6 @@ enum DateSelection: Hashable {
 
 
 struct ScheduleView: View {
-    @EventQuery(in: Date.today..<Date.tomorrow)
-    private var events
-
     @Environment(SchedulerModel.self)
     private var model
 
@@ -74,9 +71,15 @@ struct ScheduleView: View {
                     EventDetailView(event)
                 }
             } else {
-                InstructionsTile(event, more: {
+                InstructionsTile(event) {
+                    try! event.complete()
+                } more: {
                     EventDetailView(event)
-                })
+                }
+
+//                InstructionsTile(event, more: {
+//                    EventDetailView(event)
+//                })
             }
         }
     }
