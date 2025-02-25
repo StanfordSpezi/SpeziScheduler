@@ -220,6 +220,9 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     ///   - tags: Custom tags associated with the task.
     ///   - effectiveFrom: The date from which this version of the task is effective. You typically do not want to modify this parameter.
     ///     If you do specify a custom value, make sure to specify it relative to `now`.
+    ///   - shadowedOutcomesHandling: How the scheduler should deal with shadowed outcomes when updating a task.
+    ///     You need to specify this parameter if you want to be able to proactively complete upcoming events.
+    ///     In this case, the call to `createOrUpdateTask` might
     ///   - contextClosure: The closure that allows to customize the ``Task/Context`` that is stored with the task.
     /// - Returns: Returns the latest version of the `task` and if the task was updated or created indicated by `didChange`.
     @discardableResult
@@ -243,6 +246,20 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         }
         let results = try context.fetch(FetchDescriptor<Task>(predicate: taskPredicate))
         if let existingTask = results.first {
+            func didChange<V: Equatable>(_ value: V?, for keyPath: KeyPath<Task, V>) -> Bool {
+                value != nil && value != existingTask[keyPath: keyPath]
+            }
+            guard didChange(title, for: \.title)
+                    || didChange(instructions, for: \.instructions)
+                    || didChange(category, for: \.category)
+                    || didChange(schedule, for: \.schedule)
+                    || didChange(completionPolicy, for: \.completionPolicy)
+                    || didChange(tags, for: \.tags)
+                    || didChange(scheduleNotifications, for: \.scheduleNotifications)
+                    || didChange(notificationThread, for: \.notificationThread) else {
+                return (existingTask, false) // nothing changed
+            }
+            
             let outcomesThatWouldBeShadowed = try context.fetch(FetchDescriptor<Outcome>(
                 predicate: #Predicate { outcome in
                     taskPredicate.evaluate(outcome.task) && outcome.occurrenceStartDate >= effectiveFrom
@@ -495,7 +512,9 @@ extension Scheduler {
     }
     
     
-    /// Query all upcoming events for a specific task, in a specific time period.
+    /// Query all events for a specific task, in a specific time period.
+    ///
+    /// - Note: This will query for events belonging to the latest version of the task.
     public func queryEvents(forTaskWithId taskId: String, in range: Range<Date>) throws -> [Event] {
         let context = try context
         guard let task = try context.fetch(FetchDescriptor<Task>(predicate: #Predicate { task in

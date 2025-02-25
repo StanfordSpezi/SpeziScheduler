@@ -386,7 +386,7 @@ extension SchedulerNotifications {
                     // the reason being that the Calendar/DateComponents approach will be correct w.r.t. to eg leap years, DST transitions, etc.
                     cal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: event0.occurrence.start, to: event1.occurrence.start)
                 }
-                let scheduleSingleEvent = { [unowned self] () async throws -> Void in
+                let scheduleSingleEvent = { [unowned self] () async throws in // swiftlint:disable:this unowned_variable_capture
                     let content = event.task.notificationContent()
                     if let standard = standard as? any SchedulerNotificationsConstraint {
                         standard.notificationContent(for: event.task, content: content)

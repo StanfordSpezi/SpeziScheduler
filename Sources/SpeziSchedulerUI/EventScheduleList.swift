@@ -29,7 +29,8 @@ import SwiftUI
 /// .navigationTitle("Schedule")
 /// ```
 public struct EventScheduleList<Tile: View>: View {
-    @Environment(\.calendar) private var cal
+    @Environment(\.calendar)
+    private var cal
     
     private let makeEventTile: @MainActor (Event) -> Tile
     

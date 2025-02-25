@@ -110,7 +110,7 @@ public struct EventQuery {
     /// Create a new event query.
     /// - Parameters:
     ///   - range: The date range to query events for.
-    ///   - predicate: An additional ``Task`` predicate.
+    ///   - predicate: Optional `Predicate` allowing you to filter which events should be included in the query, based on their ``Task``.
     public init(
         in range: Range<Date>,
         predicate: Predicate<Task> = #Predicate { _ in true }
