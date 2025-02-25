@@ -53,6 +53,7 @@ struct ScheduleView: View {
     }
     
     @ViewBuilder private var scheduleList: some View {
+        @Bindable var model = model
         EventScheduleList(date: date) { event in
             if event.task.id == TaskIdentifier.socialSupportQuestionnaire {
                 InstructionsTile(event, alignment: alignment) {
@@ -72,14 +73,14 @@ struct ScheduleView: View {
                 }
             } else {
                 InstructionsTile(event) {
-                    try! event.complete()
+                    do {
+                        try event.complete()
+                    } catch {
+                        model.viewState = .error(AnyLocalizedError(error: error))
+                    }
                 } more: {
                     EventDetailView(event)
                 }
-
-//                InstructionsTile(event, more: {
-//                    EventDetailView(event)
-//                })
             }
         }
     }
