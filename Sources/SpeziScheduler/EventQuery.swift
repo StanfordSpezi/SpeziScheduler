@@ -60,6 +60,9 @@ public struct EventQuery {
 
     /// Binding to the `EventQuery`.
     public struct Binding {
+        /// The range for which the query fetches events.
+        public let range: Range<Date>
+        
         /// An error encountered during the most recent attempt to fetch events.
         ///
         /// This property contains the error from the most recent fetch. It is `nil` if the most recent fetch succeeded.
@@ -86,7 +89,7 @@ public struct EventQuery {
 
     private let configuration: Configuration
     private let storage = Storage()
-    private var binding = Binding()
+    private var binding: Binding
 
     /// The fetched events.
     ///
@@ -112,7 +115,8 @@ public struct EventQuery {
         in range: Range<Date>,
         predicate: Predicate<Task> = #Predicate { _ in true }
     ) {
-        self.configuration = Configuration(range: range, taskPredicate: predicate)
+        configuration = Configuration(range: range, taskPredicate: predicate)
+        binding = Binding(range: range)
     }
 }
 
