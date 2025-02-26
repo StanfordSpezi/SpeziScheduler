@@ -159,23 +159,19 @@ extension EventQuery: DynamicProperty {
             // We always keep track of the set of models we are interested in. Only if that changes we query the "real thing".
             // Creating `Event` instances also incurs some overhead and sorting.
             // Querying just the identifiers can be up to 10x faster.
-            let anchor = try measure(name: "Event Anchor Query") {
-                try scheduler.queryEventsAnchor(for: configuration.range, predicate: configuration.taskPredicate)
-            }
+            let anchor = try scheduler.queryEventsAnchor(for: configuration.range, predicate: configuration.taskPredicate)
 
             guard anchor != storage.fetchedIdentifiers else {
                 binding.fetchError = nil
                 return
             }
 
-            let events = try measure(name: "Event Query") {
-                // Fetch also has a `batchSize` property we could explore in the future. It returns the results as a `FetchResultsCollection`.
-                // It isn't documented how it works exactly, however, one could assume that it lazily loads (or just initializes) model objects
-                // when iterating through the sequence. However, it probably doesn't really provide any real benefit. Users are expected to be interested
-                // in all the results they query for (after all the provide a predicate). Further, we would need to adjust the underlying
-                // type of the property wrapper to return a collection of type `FetchResultsCollection`.
-                try scheduler.queryEvents(for: configuration.range, predicate: configuration.taskPredicate)
-            }
+            // Fetch also has a `batchSize` property we could explore in the future. It returns the results as a `FetchResultsCollection`.
+            // It isn't documented how it works exactly, however, one could assume that it lazily loads (or just initializes) model objects
+            // when iterating through the sequence. However, it probably doesn't really provide any real benefit. Users are expected to be interested
+            // in all the results they query for (after all the provide a predicate). Further, we would need to adjust the underlying
+            // type of the property wrapper to return a collection of type `FetchResultsCollection`.
+            let events = try scheduler.queryEvents(for: configuration.range, predicate: configuration.taskPredicate)
 
             storage.fetchedEvents = events
             storage.fetchedIdentifiers = anchor

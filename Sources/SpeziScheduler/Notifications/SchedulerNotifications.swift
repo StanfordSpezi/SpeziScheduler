@@ -371,6 +371,7 @@ extension SchedulerNotifications {
             }
             // ... we go over each task's list of upcoming events ...
             for idx in upcomingEventsByTask.indices {
+                print("===========================")
                 var upcomingEventsForCurrentTask: [Event] {
                     get { upcomingEventsByTask[idx] }
                     set { upcomingEventsByTask[idx] = newValue }
@@ -418,7 +419,18 @@ extension SchedulerNotifications {
                         dateMatching: triggerDateComponents,
                         repeats: true
                     )
-                    if trigger.nextTriggerDate() == cal.date(from: triggerDateComponents) {
+                    
+                    let nextTriggerDate = event.occurrence.start
+                    
+                    guard let nextNotificationTriggerDate = trigger.nextTriggerDate() else {
+                        fatalError() // TODO is this smth we need to worry about? can this ever be nil in our case?
+                    }
+                    
+                    print("   - nextTriggerDate[s]: \(nextTriggerDate)")
+                    print("   - nextTriggerDate[n]: \(nextNotificationTriggerDate)")
+                    
+                    if nextNotificationTriggerDate == nextTriggerDate {
+                        print("Scheduling \(event.task.id) as a task-level repeating notification")
                         // ... if the notification would actually get delivered at the date of the next event, we can use this trigger ...
                         // reasons why this wouldn't work: we have a daily event, but its supposed to start only 2 days from now.
                         // the UNUserNotificationRequest API doesn't let us express this (you can't specify a start and/or end date),
@@ -433,10 +445,18 @@ extension SchedulerNotifications {
                         // ... we have scheduled all events for this task, and can therefore remove them all from our workset
                         upcomingEventsForCurrentTask.removeAll()
                     } else {
+                        print("Scheduling \(event.task.id) as an event-level non-repeating notification")
+                        print(" -> trigger.nextDate: \(trigger.nextTriggerDate()); triggerDateComponents: \(triggerDateComponents)")
                         // ... otherwise we'll have to schedule it via the individual scheduling branch
                         try await scheduleSingleEvent()
+                        upcomingEventsForCurrentTask.removeFirst()
                     }
                 } else {
+                    print("NOT Scheduling \(event.task.id) as repeating task-level notification")
+                    print("- \(upcomingEventsForCurrentTask.count)")
+                    print("- \(Set(eventsDistances).count)")
+                    print("- \(event.task.schedule.notificationMatchingHint)")
+                    print("- \(event.task.schedule.canBeScheduledAsRepeatingCalendarTrigger(allDayNotificationTime: allDayNotificationTime, now: now))")
                     // ... if the events are not spaced equidistant, we need to schedule them individually
                     upcomingEventsForCurrentTask.removeFirst()
                     try await scheduleSingleEvent()
@@ -602,6 +622,18 @@ extension SchedulerNotifications {
 extension UNNotificationRequest {
     var isSpeziSchedulerRequest: Bool {
         identifier.starts(with: SchedulerNotifications.baseNotificationId)
+    }
+}
+
+
+extension DateComponents {
+    func isEqual<each T: Equatable>(to other: Self, on keyPath: repeat KeyPath<Self, each T>) -> Bool {
+        for keypath in repeat each keyPath {
+            guard self[keyPath: keypath] == other[keyPath: keypath] else {
+                return false
+            }
+        }
+        return true
     }
 }
 
