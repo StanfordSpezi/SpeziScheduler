@@ -423,7 +423,8 @@ extension SchedulerNotifications {
                     let nextTriggerDate = event.occurrence.start
                     
                     guard let nextNotificationTriggerDate = trigger.nextTriggerDate() else {
-                        fatalError() // TODO is this smth we need to worry about? can this ever be nil in our case?
+                        // this should probably be practically unreachable.
+                        continue
                     }
                     
                     if nextNotificationTriggerDate == nextTriggerDate {
