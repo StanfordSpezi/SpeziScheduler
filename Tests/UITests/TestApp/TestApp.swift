@@ -7,6 +7,7 @@
 //
 
 import SpeziScheduler
+import SpeziSchedulerUI
 import SwiftUI
 
 
@@ -22,7 +23,6 @@ struct UITestsApp: App {
                 Tab("Schedule", systemImage: "list.clipboard.fill") {
                     ScheduleView()
                 }
-
                 Tab("Notifications", systemImage: "mail.fill") {
                     NotificationsView()
                 }

@@ -14,8 +14,7 @@ extension Schedule {
     enum NotificationMatchingHint: Codable, Sendable, Hashable {
         case components(hour: Int, minute: Int, second: Int, weekday: Int?)
         case allDayNotification(weekday: Int?)
-
-        @available(*, deprecated, message: "MOVE AWAY FROM THIS???")
+        
         func dateComponents(calendar: Calendar, allDayNotificationTime: NotificationTime) -> DateComponents {
             switch self {
             case let .components(hour, minute, second, weekday):
@@ -26,8 +25,8 @@ extension Schedule {
             }
         }
     }
-
-    @available(*, deprecated, message: "MOVE AWAY FROM THIS")
+    
+    
     static func notificationTime(for start: Date, duration: Duration, allDayNotificationTime: NotificationTime) -> Date {
         if duration.isAllDay {
             let time = allDayNotificationTime
@@ -39,7 +38,8 @@ extension Schedule {
             return start
         }
     }
-
+    
+    
     static func notificationMatchingHint( // swiftlint:disable:this function_parameter_count
         forMatchingInterval interval: Int,
         calendar: Calendar,
