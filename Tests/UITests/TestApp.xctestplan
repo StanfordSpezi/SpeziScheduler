@@ -9,6 +9,20 @@
     }
   ],
   "defaultOptions" : {
+    "codeCoverage" : {
+      "targets" : [
+        {
+          "containerPath" : "container:..\/..",
+          "identifier" : "SpeziScheduler",
+          "name" : "SpeziScheduler"
+        },
+        {
+          "containerPath" : "container:..\/..",
+          "identifier" : "SpeziSchedulerUI",
+          "name" : "SpeziSchedulerUI"
+        }
+      ]
+    },
     "targetForVariableExpansion" : {
       "containerPath" : "container:UITests.xcodeproj",
       "identifier" : "2F6D139128F5F384007C25D6",
