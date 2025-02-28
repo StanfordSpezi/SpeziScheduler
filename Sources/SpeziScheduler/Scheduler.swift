@@ -246,20 +246,6 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         }
         let results = try context.fetch(FetchDescriptor<Task>(predicate: taskPredicate))
         if let existingTask = results.first {
-//            func didChange<V: Equatable>(_ value: V?, for keyPath: KeyPath<Task, V>) -> Bool {
-//                value != nil && value != existingTask[keyPath: keyPath]
-//            }
-//            guard didChange(title, for: \.title)
-//                    || didChange(instructions, for: \.instructions)
-//                    || didChange(category, for: \.category)
-//                    || didChange(schedule, for: \.schedule)
-//                    || didChange(completionPolicy, for: \.completionPolicy)
-//                    || didChange(tags, for: \.tags)
-//                    || didChange(scheduleNotifications, for: \.scheduleNotifications)
-//                    || didChange(notificationThread, for: \.notificationThread) else {
-//                return (existingTask, false) // nothing changed
-//            }
-            
             let outcomesThatWouldBeShadowed = try context.fetch(FetchDescriptor<Outcome>(
                 predicate: #Predicate { outcome in
                     taskPredicate.evaluate(outcome.task) && outcome.occurrenceStartDate >= effectiveFrom

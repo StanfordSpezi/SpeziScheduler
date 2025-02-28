@@ -318,7 +318,6 @@ extension SchedulerNotifications {
         }
         
         // 3: create new requests, based on the tasks, their schedules, etc
-        
         let settings = await notificationSettings()
         switch settings.authorizationStatus {
         case .notDetermined:
@@ -419,14 +418,11 @@ extension SchedulerNotifications {
                         dateMatching: triggerDateComponents,
                         repeats: true
                     )
-                    
                     let nextTriggerDate = event.occurrence.start
-                    
                     guard let nextNotificationTriggerDate = trigger.nextTriggerDate() else {
                         // this should probably be practically unreachable.
                         continue
                     }
-                    
                     if nextNotificationTriggerDate == nextTriggerDate {
                         // ... if the notification would actually get delivered at the date of the next event, we can use this trigger ...
                         // reasons why this wouldn't work: we have a daily event, but its supposed to start only 2 days from now.
@@ -612,18 +608,6 @@ extension SchedulerNotifications {
 extension UNNotificationRequest {
     var isSpeziSchedulerRequest: Bool {
         identifier.starts(with: SchedulerNotifications.baseNotificationId)
-    }
-}
-
-
-extension DateComponents {
-    func isEqual<each T: Equatable>(to other: Self, on keyPath: repeat KeyPath<Self, each T>) -> Bool {
-        for keypath in repeat each keyPath {
-            guard self[keyPath: keypath] == other[keyPath: keypath] else {
-                return false
-            }
-        }
-        return true
     }
 }
 
