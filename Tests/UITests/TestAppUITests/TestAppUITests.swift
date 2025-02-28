@@ -54,12 +54,24 @@ class TestAppUITests: XCTestCase {
     func testNotificationScheduling() throws {
         let app = XCUIApplication()
         app.deleteAndLaunch(withSpringboardAppName: "TestApp")
+        
+        func goToTab(_ name: String, line: UInt = #line) {
+            let tab = app.tabBars.buttons[name]
+            XCTAssert(tab.waitForExistence(timeout: 2.0), line: line)
+            tab.tap()
+        }
 
         XCTAssert(app.wait(for: .runningForeground, timeout: 2.0))
         
-        let notificationsTabButton = app.tabBars.buttons["Notifications"]
-        XCTAssert(notificationsTabButton.waitForExistence(timeout: 2.0))
-        notificationsTabButton.tap()
+        func checkButtonExists(_ name: String, line: UInt = #line) {
+            XCTAssert(app.buttons[name].waitForExistence(timeout: 2), line: line)
+        }
+        
+        checkButtonExists("Complete Measurement")
+        checkButtonExists("Complete Questionnaire")
+        checkButtonExists("Complete Enter Lab Results")
+        
+        goToTab("Notifications")
 
         XCTAssert(app.staticTexts["Pending Notifications"].waitForExistence(timeout: 2.0))
 
@@ -70,6 +82,8 @@ class TestAppUITests: XCTestCase {
 
         app.confirmNotificationAuthorization()
 
+        // Check for Medication notification
+        
         XCTAssertGreaterThan(app.staticTexts.matching(identifier: "Medication").count, 5) // ensure events are scheduled
 
         app.staticTexts["Weight Measurement"].tap()
@@ -87,7 +101,23 @@ class TestAppUITests: XCTestCase {
             nextTrigger: "in 10 seconds",
             nextTriggerExistenceTimeout: 60
         )
+        
+        // Check for Weight Measurement notification
+        app.staticTexts["Weight Measurement"].tap()
 
+        XCTAssert(app.navigationBars.staticTexts["Weight Measurement"].waitForExistence(timeout: 2.0))
+        app.assertNotificationDetails(
+            identifier: "edu.stanford.spezi.scheduler.notification.task.test-measurement",
+            title: "Weight Measurement",
+            body: "Take a weight measurement every day.",
+            category: "edu.stanford.spezi.scheduler.notification.category.measurement",
+            thread: "edu.stanford.spezi.scheduler.notification",
+            sound: true,
+            interruption: .timeSensitive,
+            type: "Calendar",
+            nextTrigger: "in 10 seconds",
+            nextTriggerExistenceTimeout: 60
+        )
 
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let notification = springboard.otherElements["Notification"].descendants(matching: .any)["NotificationShortLookView"]
@@ -114,5 +144,78 @@ class TestAppUITests: XCTestCase {
             nextTrigger: "in 1 week",
             nextTriggerExistenceTimeout: 60
         )
+    }
+    
+    
+    @MainActor
+    func testNotificationSchedulingDontNotifyForAlreadyCompletedEvents() throws {
+        let app = XCUIApplication()
+        app.deleteAndLaunch(withSpringboardAppName: "TestApp")
+
+        XCTAssert(app.wait(for: .runningForeground, timeout: 2.0))
+        
+        func checkButtonExists(_ name: String, line: UInt = #line) {
+            XCTAssert(app.buttons[name].waitForExistence(timeout: 2), line: line)
+        }
+        
+        XCTAssert(app.buttons["Complete Enter Lab Results"].waitForExistence(timeout: 2))
+        
+        app.goToTab("Notifications")
+
+        XCTAssert(app.staticTexts["Pending Notifications"].waitForExistence(timeout: 2.0))
+
+        XCTAssert(app.navigationBars.buttons["Request Notification Authorization"].waitForExistence(timeout: 2.0))
+        XCTAssert(app.staticTexts["Enter Lab Results"].exists, "It seems that provisional notification authorization didn't work.")
+
+        app.staticTexts["Enter Lab Results"].tap()
+
+        XCTAssert(app.navigationBars.staticTexts["Enter Lab Results"].waitForExistence(timeout: 2.0))
+        app.assertNotificationDetails(
+            identifier: "edu.stanford.spezi.scheduler.notification.task.enter-lab-results",
+            title: "Enter Lab Results",
+            body: "You should enter Lab Results into the app at least once every 7 days!",
+            category: "edu.stanford.spezi.scheduler.notification.category.lab-results",
+            thread: "edu.stanford.spezi.scheduler.notification",
+            sound: true,
+            interruption: .timeSensitive,
+            type: "Calendar",
+            nextTrigger: "in 10 seconds",
+            nextTriggerExistenceTimeout: 60
+        )
+        
+        // Complete the task for today
+        app.goToTab("Schedule")
+        app.buttons["Complete Enter Lab Results"].tap()
+        sleep(1)
+        app.goToTab("Notifications")
+        
+        app.staticTexts["Enter Lab Results"].firstMatch.tap()
+
+        XCTAssert(app.navigationBars.staticTexts["Enter Lab Results"].waitForExistence(timeout: 2.0))
+        app.staticTexts.matching(NSPredicate(format: #"identifier MATCHES '.*edu\.stanford\.spezi\.scheduler\.notification\.event\.enter-lab-results.*'"#))
+        app.assertNotificationDetails(
+            // we can't specify the identifier here, since this is now an event-level-scheduled notification, which includes the event's timestamp.
+            // we instead assert the identifier above
+            identifier: nil,
+            title: "Enter Lab Results",
+            body: "You should enter Lab Results into the app at least once every 7 days!",
+            category: "edu.stanford.spezi.scheduler.notification.category.lab-results",
+            thread: "edu.stanford.spezi.scheduler.notification",
+            sound: true,
+            interruption: .timeSensitive,
+            type: "Interval",
+            nextTrigger: "in 23 hours, 59 minutes",
+            nextTriggerExistenceTimeout: 60
+        )
+    }
+}
+
+
+extension XCUIApplication {
+    func goToTab(_ name: String, line: UInt = #line) {
+        let tab = self.tabBars.buttons[name]
+        XCTAssert(tab.waitForExistence(timeout: 2.0), line: line)
+        tab.tap()
+        tab.tap()
     }
 }
