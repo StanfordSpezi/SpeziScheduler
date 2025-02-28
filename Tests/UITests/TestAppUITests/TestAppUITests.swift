@@ -51,7 +51,7 @@ class TestAppUITests: XCTestCase {
 
     
     @MainActor
-    func testNotificationScheduling() throws {
+    func testNotificationScheduling() throws { // swiftlint:disable:this function_body_length
         let app = XCUIApplication()
         app.deleteAndLaunch(withSpringboardAppName: "TestApp")
         
@@ -192,7 +192,9 @@ class TestAppUITests: XCTestCase {
         app.staticTexts["Enter Lab Results"].firstMatch.tap()
 
         XCTAssert(app.navigationBars.staticTexts["Enter Lab Results"].waitForExistence(timeout: 2.0))
-        app.staticTexts.matching(NSPredicate(format: #"identifier MATCHES '.*edu\.stanford\.spezi\.scheduler\.notification\.event\.enter-lab-results.*'"#))
+        app.staticTexts.matching(
+            NSPredicate(format: #"identifier MATCHES '.*edu\.stanford\.spezi\.scheduler\.notification\.event\.enter-lab-results.*'"#)
+        )
         app.assertNotificationDetails(
             // we can't specify the identifier here, since this is now an event-level-scheduled notification, which includes the event's timestamp.
             // we instead assert the identifier above
