@@ -81,28 +81,9 @@ class TestAppUITests: XCTestCase {
         app.navigationBars.buttons["Request Notification Authorization"].tap()
 
         app.confirmNotificationAuthorization()
-
-        // Check for Medication notification
         
         XCTAssertGreaterThan(app.staticTexts.matching(identifier: "Medication").count, 5) // ensure events are scheduled
 
-        app.staticTexts["Weight Measurement"].tap()
-
-        XCTAssert(app.navigationBars.staticTexts["Weight Measurement"].waitForExistence(timeout: 2.0))
-        app.assertNotificationDetails(
-            identifier: "edu.stanford.spezi.scheduler.notification.task.test-measurement",
-            title: "Weight Measurement",
-            body: "Take a weight measurement every day.",
-            category: "edu.stanford.spezi.scheduler.notification.category.measurement",
-            thread: "edu.stanford.spezi.scheduler.notification",
-            sound: true,
-            interruption: .timeSensitive,
-            type: "Calendar",
-            nextTrigger: "in 10 seconds",
-            nextTriggerExistenceTimeout: 60
-        )
-        
-        // Check for Weight Measurement notification
         app.staticTexts["Weight Measurement"].tap()
 
         XCTAssert(app.navigationBars.staticTexts["Weight Measurement"].waitForExistence(timeout: 2.0))
