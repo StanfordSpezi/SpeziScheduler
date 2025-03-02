@@ -174,7 +174,7 @@ class TestAppUITests: XCTestCase {
 
         XCTAssert(app.navigationBars.staticTexts["Enter Lab Results"].waitForExistence(timeout: 2.0))
         app.staticTexts.matching(
-            NSPredicate(format: #"identifier MATCHES '.*edu\.stanford\.spezi\.scheduler\.notification\.event\.enter-lab-results.*'"#)
+            NSPredicate(format: #"identifier MATCHES '.*edu\.stanford\.spezi\.scheduler\.notification\.event\.enter-lab-results\..*'"#)
         )
         app.assertNotificationDetails(
             // we can't specify the identifier here, since this is now an event-level-scheduled notification, which includes the event's timestamp.
