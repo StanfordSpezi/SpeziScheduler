@@ -13,8 +13,7 @@ import SwiftData
 
 /// A task that a user is supposed to perform.
 ///
-/// A task represents some form of action or work that a patient or user is supposed to perform. It includes a
-/// ``title`` and ``instructions``.
+/// A task represents some form of action or work that a patient or user is supposed to perform. It includes a ``title`` and ``instructions``.
 /// A task might occur once or multiple times. The occurrence of a task is referred to as an ``Event``.
 /// The ``Schedule`` defines when and how often a task reoccurs.
 ///
@@ -153,6 +152,13 @@ public final class Task {
     /// Determine if this task is the latest instance.
     public var isLatestVersion: Bool {
         nextVersion == nil // next version is always pre-fetched
+    }
+    
+    /// The latest version of this task.
+    ///
+    /// This is also the version that will currently be used by the ``Scheduler``.
+    public var latestVersion: Task {
+        nextVersion?.latestVersion ?? self
     }
 
     /// A reference to a previous version of this task.
@@ -342,7 +348,6 @@ public final class Task {
             effectiveFrom: effectiveFrom,
             context: context ?? Context()
         )
-
 
         // @EventQuery is implicitly observing the `nextVersion` property. So we do not necessarily need to save the model here for it to update
         self.nextVersion = newVersion // automatically sets the previous version as well

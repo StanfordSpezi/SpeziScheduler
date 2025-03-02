@@ -15,6 +15,11 @@
           "containerPath" : "container:..\/..",
           "identifier" : "SpeziScheduler",
           "name" : "SpeziScheduler"
+        },
+        {
+          "containerPath" : "container:..\/..",
+          "identifier" : "SpeziSchedulerUI",
+          "name" : "SpeziSchedulerUI"
         }
       ]
     },

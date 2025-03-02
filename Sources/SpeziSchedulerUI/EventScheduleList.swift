@@ -16,6 +16,8 @@ import SwiftUI
 ///
 /// The view renders all task occurring on a specified date in a list view.
 ///
+/// Example: display all tasks scheduled for today:
+///
 /// ```swift
 /// EventScheduleList { event in
 ///     InstructionsTile(event) {
@@ -24,55 +26,60 @@ import SwiftUI
 ///         QuestionnaireEventDetailView(event)
 ///     }
 /// }
-///     .navigationTitle("Schedule")
+/// .navigationTitle("Schedule")
 /// ```
 public struct EventScheduleList<Tile: View>: View {
-    private let date: Date
-    private let endOfDayExclusive: Date
-
-    @EventQuery(in: Date.today..<Date.tomorrow)
-    private var events
-
+    @Environment(\.calendar)
+    private var cal
+    
+    private let makeEventTile: @MainActor (Event) -> Tile
+    
+    @EventQuery private var events: [Event]
     @ManagedViewUpdate private var viewUpdate
-
-    private var eventTile: (Event) -> Tile
-
+    
+    private var range: Range<Date> {
+        $events.range
+    }
+    
     private var hasValidData: Bool {
         $events.fetchError == nil && !events.isEmpty
     }
 
     private var listTitle: Text {
-        if Calendar.current.isDateInToday(date) {
+        switch range {
+        case cal.rangeOfDay(for: .now):
             Text("Today", bundle: .module)
-        } else if Calendar.current.isDateInTomorrow(date) {
+        case cal.rangeOfDay(for: cal.startOfNextDay(for: .now)):
             Text("Tomorrow", bundle: .module)
-        } else if Calendar.current.isDateInYesterday(date) {
+        case cal.rangeOfDay(for: cal.startOfPrevDay(for: .now)):
             Text("Yesterday", bundle: .module)
-        } else {
-            Text(date, format: Date.FormatStyle(date: .numeric))
+        default:
+            Text(range.lowerBound, format: Date.FormatStyle(date: .numeric))
         }
     }
 
     private var unavailableTitle: Text {
-        if Calendar.current.isDateInToday(date) {
+        switch range {
+        case cal.rangeOfDay(for: .now):
             Text("No Events Today", bundle: .module)
-        } else if Calendar.current.isDateInTomorrow(date) {
+        case cal.rangeOfDay(for: cal.startOfNextDay(for: .now)):
             Text("No Events Tomorrow", bundle: .module)
-        } else if Calendar.current.isDateInYesterday(date) {
+        case cal.rangeOfDay(for: cal.startOfPrevDay(for: .now)):
             Text("No Events Yesterday", bundle: .module)
-        } else {
+        default:
             Text("No Events", bundle: .module)
         }
     }
 
     private var unavailableDescription: Text {
-        if Calendar.current.isDateInToday(date) {
+        switch range {
+        case cal.rangeOfDay(for: .now):
             Text("There are no events scheduled for today.", bundle: .module)
-        } else if Calendar.current.isDateInTomorrow(date) {
+        case cal.rangeOfDay(for: cal.startOfNextDay(for: .now)):
             Text("There are no events scheduled for tomorrow.", bundle: .module)
-        } else if Calendar.current.isDateInYesterday(date) {
+        case cal.rangeOfDay(for: cal.startOfPrevDay(for: .now)):
             Text("There are no events scheduled for yesterday.", bundle: .module)
-        } else {
+        default:
             Text("There are no events scheduled that date.", bundle: .module)
         }
     }
@@ -89,21 +96,19 @@ public struct EventScheduleList<Tile: View>: View {
                         .fontDesign(.rounded)
                         .fontWeight(.bold)
                 }
-
-
                 ForEach(events) { event in
                     Section {
-                        eventTile(event)
+                        makeEventTile(event)
                     }
                 }
             }
         }
 #if !os(macOS)
-            .listSectionSpacing(.compact)
+        .listSectionSpacing(.compact)
 #endif
-            .overlay {
-                contentUnavailableOverlay
-            }
+        .overlay {
+            contentUnavailableOverlay
+        }
     }
 
     @ViewBuilder private var contentUnavailableOverlay: some View {
@@ -115,7 +120,7 @@ public struct EventScheduleList<Tile: View>: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .accessibilityHidden(true)
                 }
-                    .symbolRenderingMode(.multicolor)
+                .symbolRenderingMode(.multicolor)
             } description: {
                 if let localizedError = fetchError as? any LocalizedError,
                    let reason = localizedError.failureReason {
@@ -152,15 +157,18 @@ public struct EventScheduleList<Tile: View>: View {
     
     /// Create a new event schedule list.
     /// - Parameters:
-    ///   - date: The date for which the event schedule is display.
-    ///   - content: A closure that is called to display each event occurring today.
-    public init(date: Date = .today, @ViewBuilder content: @escaping (Event) -> Tile) {
-        self.date = Calendar.current.startOfDay(for: date)
-        self.eventTile = content
-
-        guard let endOfDayExclusive = Calendar.current.date(byAdding: .day, value: 1, to: date) else {
-            preconditionFailure("Failed to construct endOfDayExclusive from base \(date).")
-        }
-        self.endOfDayExclusive = endOfDayExclusive
+    ///   - date: The date for which events should be displayed. Defaults to today.
+    ///   - content: A closure that constructs the views for the individual ``Event``s.
+    public init(date: Date = .today, @ViewBuilder content makeEventTile: @MainActor @escaping (Event) -> Tile) {
+        self.init(for: Calendar.current.rangeOfDay(for: date), content: makeEventTile)
+    }
+    
+    
+    /// Create a new event schedule list.
+    ///
+    /// - parameter range: The (exclusive) range for which events should be displayed.
+    public init(for range: Range<Date>, @ViewBuilder content makeEventTile: @MainActor @escaping (Event) -> Tile) {
+        self._events = .init(in: range)
+        self.makeEventTile = makeEventTile
     }
 }

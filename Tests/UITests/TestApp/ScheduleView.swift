@@ -19,9 +19,6 @@ enum DateSelection: Hashable {
 
 
 struct ScheduleView: View {
-    @EventQuery(in: Date.today..<Date.tomorrow)
-    private var events
-
     @Environment(SchedulerModel.self)
     private var model
 
@@ -33,19 +30,7 @@ struct ScheduleView: View {
     var body: some View {
         @Bindable var model = model
         NavigationStack {
-            EventScheduleList(date: date) { event in
-                if event.task.id == TaskIdentifier.socialSupportQuestionnaire {
-                    InstructionsTile(event, alignment: alignment) {
-                        event.complete()
-                    } more: {
-                        EventDetailView(event)
-                    }
-                } else {
-                    InstructionsTile(event, more: {
-                        EventDetailView(event)
-                    })
-                }
-            }
+            scheduleList
                 .navigationTitle("Schedule")
                 .viewStateAlert(state: $model.viewState)
                 .toolbar {
@@ -65,6 +50,17 @@ struct ScheduleView: View {
                     }
                 }
         }
+    }
+    
+    @ViewBuilder private var scheduleList: some View {
+        EventScheduleList(date: date) { event in
+            InstructionsTile(event, alignment: alignment) {
+                completeEvent(event)
+            } more: {
+                EventDetailView(event)
+            }
+        }
+        .taskCategoryAppearance(for: Task.Category.labResults, label: "Enter Lab Results")
     }
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
@@ -92,6 +88,20 @@ struct ScheduleView: View {
         _Concurrency.Task {
             try? await _Concurrency.Task.sleep(for: .seconds(5))
             hidden = false
+        }
+    }
+    
+    private func completeEvent(_ event: Event) {
+        do {
+            try event.complete()
+        } catch Event.CompletionError.preventedByCompletionPolicy {
+            // SAFETY: we should never end up in here.
+            // The InstructionsTile internally uses an EventActionButton, which is evaluating the event's task completion policy,
+            // and will auto-disable itself if the event isn't allowed to be completed
+            preconditionFailure("Event completion failed unexpectedly")
+        } catch {
+            // once https://github.com/swiftlang/swift/issues/79570 is fixed, we'll be able to remove this branch
+            preconditionFailure("truly unreachable")
         }
     }
 }

@@ -203,21 +203,28 @@ final class SchedulerTests: XCTestCase {
         XCTAssertTrue(try module.queryAllOutcomes().isEmpty)
         XCTAssertTrue(try module.queryEvents(for: todayRange).isEmpty)
         
-        try module.createOrUpdateTask(
+        let task = try module.createOrUpdateTask(
             id: "test-task",
             title: "Test Task",
             instructions: "",
             schedule: .daily(hour: 0, minute: 0, startingAt: .now)
-        )
+        ).task
         
         let events = try module.queryEvents(for: todayRange)
         XCTAssertTrue(events.allSatisfy { todayRange.contains($0.occurrence.start) })
         XCTAssertEqual(events.count, 1)
-        XCTAssertFalse(try XCTUnwrap(events.first).completed)
+        XCTAssertFalse(try XCTUnwrap(events.first).isCompleted)
         try XCTUnwrap(events.first).complete()
-        XCTAssertTrue(try XCTUnwrap(events.first).completed)
-        XCTAssertTrue(try XCTUnwrap(try module.queryEvents(for: todayRange).first).completed)
+        XCTAssertTrue(try XCTUnwrap(events.first).isCompleted)
+        XCTAssertTrue(try XCTUnwrap(try module.queryEvents(for: todayRange).first).isCompleted)
         try await _Concurrency.Task.sleep(for: .seconds(0.5))
-        XCTAssertTrue(try XCTUnwrap(try module.queryEvents(for: todayRange).first).completed)
+        XCTAssertTrue(try XCTUnwrap(try module.queryEvents(for: todayRange).first).isCompleted)
+        do {
+            let events1 = try module.queryEvents(for: task, in: todayRange)
+            let events2 = try module.queryEvents(forTaskWithId: task.id, in: todayRange)
+            XCTAssertTrue(events1.elementsEqual(events2) { lhs, rhs in
+                lhs.task == rhs.task && lhs.occurrence == rhs.occurrence && lhs.isCompleted == rhs.isCompleted
+            })
+        }
     }
 }

@@ -60,6 +60,9 @@ public struct EventQuery {
 
     /// Binding to the `EventQuery`.
     public struct Binding {
+        /// The range for which the query fetches events.
+        public let range: Range<Date>
+        
         /// An error encountered during the most recent attempt to fetch events.
         ///
         /// This property contains the error from the most recent fetch. It is `nil` if the most recent fetch succeeded.
@@ -86,7 +89,7 @@ public struct EventQuery {
 
     private let configuration: Configuration
     private let storage = Storage()
-    private var binding = Binding()
+    private var binding: Binding
 
     /// The fetched events.
     ///
@@ -107,12 +110,13 @@ public struct EventQuery {
     /// Create a new event query.
     /// - Parameters:
     ///   - range: The date range to query events for.
-    ///   - predicate: An additional ``Task`` predicate.
+    ///   - predicate: Optional `Predicate` allowing you to filter which events should be included in the query, based on their ``Task``.
     public init(
         in range: Range<Date>,
         predicate: Predicate<Task> = #Predicate { _ in true }
     ) {
-        self.configuration = Configuration(range: range, taskPredicate: predicate)
+        configuration = Configuration(range: range, taskPredicate: predicate)
+        binding = Binding(range: range)
     }
 }
 
@@ -155,23 +159,19 @@ extension EventQuery: DynamicProperty {
             // We always keep track of the set of models we are interested in. Only if that changes we query the "real thing".
             // Creating `Event` instances also incurs some overhead and sorting.
             // Querying just the identifiers can be up to 10x faster.
-            let anchor = try measure(name: "Event Anchor Query") {
-                try scheduler.queryEventsAnchor(for: configuration.range, predicate: configuration.taskPredicate)
-            }
+            let anchor = try scheduler.queryEventsAnchor(for: configuration.range, predicate: configuration.taskPredicate)
 
             guard anchor != storage.fetchedIdentifiers else {
                 binding.fetchError = nil
                 return
             }
 
-            let events = try measure(name: "Event Query") {
-                // Fetch also has a `batchSize` property we could explore in the future. It returns the results as a `FetchResultsCollection`.
-                // It isn't documented how it works exactly, however, one could assume that it lazily loads (or just initializes) model objects
-                // when iterating through the sequence. However, it probably doesn't really provide any real benefit. Users are expected to be interested
-                // in all the results they query for (after all the provide a predicate). Further, we would need to adjust the underlying
-                // type of the property wrapper to return a collection of type `FetchResultsCollection`.
-                try scheduler.queryEvents(for: configuration.range, predicate: configuration.taskPredicate)
-            }
+            // Fetch also has a `batchSize` property we could explore in the future. It returns the results as a `FetchResultsCollection`.
+            // It isn't documented how it works exactly, however, one could assume that it lazily loads (or just initializes) model objects
+            // when iterating through the sequence. However, it probably doesn't really provide any real benefit. Users are expected to be interested
+            // in all the results they query for (after all the provide a predicate). Further, we would need to adjust the underlying
+            // type of the property wrapper to return a collection of type `FetchResultsCollection`.
+            let events = try scheduler.queryEvents(for: configuration.range, predicate: configuration.taskPredicate)
 
             storage.fetchedEvents = events
             storage.fetchedIdentifiers = anchor

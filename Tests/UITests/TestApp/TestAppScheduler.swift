@@ -25,6 +25,7 @@ enum TaskIdentifier {
     static let socialSupportQuestionnaire = "test-task"
     static let testMeasurement = "test-measurement"
     static let testMedication = "test-medication"
+    static let enterLabResults = "enter-lab-results"
 }
 
 
@@ -40,7 +41,7 @@ final class TestAppScheduler: Module {
     init() {}
 
 
-    func configure() {
+    func configure() { // swiftlint:disable:this function_body_length
         do {
             try scheduler.createOrUpdateTask(
                 id: TaskIdentifier.socialSupportQuestionnaire,
@@ -71,15 +72,24 @@ final class TestAppScheduler: Module {
                 context.about = "Take a measurement with your nearby bluetooth scale while the app is running in foreground."
             }
 
-            let nextWeek: Date = .nextWeek
-
             try scheduler.createOrUpdateTask(
                 id: TaskIdentifier.testMedication,
                 title: "Medication",
                 instructions: "Take your medication",
                 category: .medication,
-                schedule: .daily(hour: time.hour, minute: time.minute, second: time.second, startingAt: nextWeek),
+                schedule: .daily(hour: time.hour, minute: time.minute, second: time.second, startingAt: .nextWeek),
                 scheduleNotifications: true // a daily task that starts next week requires event-level notification scheduling
+            )
+            
+            try scheduler.createOrUpdateTask(
+                id: TaskIdentifier.enterLabResults,
+                title: "Enter Lab Results",
+                instructions: "You should enter Lab Results into the app at least once every 7 days!",
+                category: .labResults,
+                schedule: .daily(hour: time.hour, minute: time.minute, second: time.second, startingAt: now),
+                completionPolicy: .sameDay,
+                scheduleNotifications: true,
+                shadowedOutcomesHandling: .delete
             )
         } catch {
             logger.error("Failed to scheduled TestApp tasks: \(error)")
@@ -98,7 +108,11 @@ final class TestAppScheduler: Module {
               let second = components.second else {
             preconditionFailure("Consistency error")
         }
-
         return NotificationTime(hour: hour, minute: minute, second: second)
     }
+}
+
+
+extension Task.Category {
+    static let labResults = Self.custom("lab-results")
 }

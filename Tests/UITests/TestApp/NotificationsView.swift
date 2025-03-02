@@ -43,9 +43,9 @@ struct NotificationsView: View {
                     }
                 }
         }
-            .task {
-                await queryAuthorization()
-            }
+        .task {
+            await queryAuthorization()
+        }
     }
 
     private func queryAuthorization() async {

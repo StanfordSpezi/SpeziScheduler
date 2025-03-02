@@ -22,14 +22,12 @@ struct EventDetailView: View {
         NavigationStack {
             List {
                 DefaultTileHeader(event, alignment: .center)
-
                 Section {
                     Text(event.task.instructions)
                 } header: {
                     Text("Instructions")
                         .detailHeader()
                 }
-
                 if let about = event.task.about {
                     Section {
                         Text(LocalizedStringResource(about))
@@ -39,13 +37,13 @@ struct EventDetailView: View {
                     }
                 }
             }
-                .navigationTitle("More Information")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    Button("Close") {
-                        dismiss()
-                    }
+            .navigationTitle("More Information")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                Button("Close") {
+                    dismiss()
                 }
+            }
         }
     }
 

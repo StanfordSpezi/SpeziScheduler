@@ -20,7 +20,7 @@ import Foundation
 /// - ``end``
 /// - ``schedule``
 @DebugDescription
-public struct Occurrence {
+public struct Occurrence: Hashable, Sendable {
     /// The start date.
     public let start: Date
     /// The end date.
@@ -37,13 +37,9 @@ public struct Occurrence {
 
     init(start: Date, schedule: Schedule) {
         let (start, end) = schedule.dates(for: start)
-
         self.init(start: start, end: end, schedule: schedule)
     }
 }
-
-
-extension Occurrence: Equatable, Sendable {}
 
 
 extension Occurrence: Comparable {
@@ -55,11 +51,6 @@ extension Occurrence: Comparable {
 
 extension Occurrence: CustomStringConvertible {
     public var description: String {
-        """
-        Occurrence(\
-        start: \(start), \
-        end: \(end)\
-        )
-        """
+        "Occurrence(start: \(start), end: \(end))"
     }
 }

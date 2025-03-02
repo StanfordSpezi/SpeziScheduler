@@ -8,11 +8,18 @@
 
 import Spezi
 import SpeziScheduler
+import UserNotifications
+
+
+actor TestAppStandard: Standard, SchedulerNotificationsConstraint {
+    @MainActor
+    func notificationContent(for task: borrowing Task, content: borrowing UNMutableNotificationContent) {}
+}
 
 
 class TestAppDelegate: SpeziAppDelegate {
     override var configuration: Configuration {
-        Configuration {
+        Configuration(standard: TestAppStandard()) {
             Scheduler()
             SchedulerNotifications()
             TestAppScheduler()

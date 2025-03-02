@@ -25,10 +25,10 @@ extension SchedulerNotifications {
     /// The reverse dns notation use as a prefix for all notifications scheduled by SpeziScheduler.
     static nonisolated let baseNotificationId = "edu.stanford.spezi.scheduler.notification"
 
-    /// /// The reverse dns notation use as a prefix for all task-level scheduled notifications (calendar trigger).
+    /// The reverse dns notation use as a prefix for all task-level scheduled notifications (calendar trigger).
     static nonisolated let baseTaskNotificationId = "\(baseNotificationId).task"
 
-    /// /// The reverse dns notation use as a prefix for all event-level scheduled notifications (interval trigger).
+    /// The reverse dns notation use as a prefix for all event-level scheduled notifications (interval trigger).
     static nonisolated let baseEventNotificationId = "\(baseNotificationId).event"
 
     /// Retrieve the category identifier for a notification for a task, derived from its task category.

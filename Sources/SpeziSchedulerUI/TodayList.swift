@@ -26,82 +26,17 @@ import SwiftUI
 /// }
 ///     .navigationTitle("Schedule")
 /// ```
+@available(*, deprecated, renamed: "EventScheduleList", message: "Use EventScheduleList instead, which by default displays today's events.")
 public struct TodayList<Tile: View>: View {
-    @EventQuery(in: Date.today..<Date.tomorrow)
-    private var events
-
-    @ManagedViewUpdate private var viewUpdate
-
-    private var eventTile: (Event) -> Tile
-
+    private let makeEventTile: @MainActor (Event) -> Tile
+    
     public var body: some View {
-        if let fetchError = $events.fetchError {
-            ContentUnavailableView {
-                Label {
-                    Text("Failed to fetch Events", bundle: .module)
-                } icon: {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .accessibilityHidden(true)
-                }
-                    .symbolRenderingMode(.multicolor)
-            } description: {
-                if let localizedError = fetchError as? any LocalizedError,
-                   let reason = localizedError.failureReason {
-                    Text(reason)
-                } else {
-                    Text("An unknown error occurred.")
-                }
-            } actions: {
-                Button {
-                    viewUpdate.refresh()
-                } label: {
-                    Label {
-                        Text("Retry", bundle: .module)
-                    } icon: {
-                        Image(systemName: "arrow.clockwise")
-                            .accessibilityHidden(true)
-                    }
-                }
-            }
-        } else if events.isEmpty {
-            ContentUnavailableView {
-                Label {
-                    Text("No Events Today", bundle: .module)
-                } icon: {
-                    Image(systemName: "pencil.and.list.clipboard")
-                        .accessibilityHidden(true)
-                }
-            } description: {
-                Text("There are no events scheduled for today.")
-            }
-        } else {
-            List {
-                Section {
-                    Text("Today")
-                        .foregroundStyle(.secondary)
-                        .listRowInsets(.init(top: 0, leading: 0, bottom: 0, trailing: 0))
-                        .listRowBackground(Color.clear)
-                        .font(.title)
-                        .fontDesign(.rounded)
-                        .fontWeight(.bold)
-                }
-
-
-                ForEach(events) { event in
-                    Section {
-                        eventTile(event)
-                    }
-                }
-            }
-#if !os(macOS)
-                .listSectionSpacing(.compact)
-#endif
-        }
+        EventScheduleList(content: makeEventTile)
     }
     
     /// Create a new today list.
     /// - Parameter content: A closure that is called to display each event occurring today.
-    public init(@ViewBuilder content: @escaping (Event) -> Tile) {
-        self.eventTile = content
+    public init(@ViewBuilder content: @MainActor @escaping (Event) -> Tile) {
+        self.makeEventTile = content
     }
 }
