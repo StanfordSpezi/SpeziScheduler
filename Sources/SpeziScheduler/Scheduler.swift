@@ -200,6 +200,11 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     }
     
     
+    public func _saveModelContext() throws {
+        try context.save()
+    }
+    
+    
     /// Add a new task or update its content if it exists and its properties changed.
     ///
     /// This method will check if the task with the specified `id` is already present in the model container. If not, it inserts a new instance of this task.
