@@ -282,6 +282,38 @@ public final class Task {
             with: contextClosure
         )
     }
+    
+    
+    func wouldNecessitateNewTaskVersion(
+        title: String.LocalizationValue?,
+        instructions: String.LocalizationValue?,
+        category: Category?,
+        schedule: Schedule?,
+        completionPolicy: AllowedCompletionPolicy?,
+        scheduleNotifications: Bool?, // swiftlint:disable:this discouraged_optional_boolean
+        notificationThread: NotificationThread?,
+        tags: [String]?, // swiftlint:disable:this discouraged_optional_collection
+        effectiveFrom: Date,
+        with contextClosure: ((inout Context) -> Void)?
+    ) -> Bool {
+        let context: Context? = contextClosure.map { apply in
+            var context = Context()
+            apply(&context)
+            return context
+        }
+        func didChange<V: Equatable>(_ value: V?, for keyPath: KeyPath<Task, V>) -> Bool {
+            value != nil && value != self[keyPath: keyPath]
+        }
+        return didChange(title, for: \.title)
+            || didChange(instructions, for: \.instructions)
+            || didChange(category, for: \.category)
+            || didChange(schedule, for: \.schedule)
+            || didChange(completionPolicy, for: \.completionPolicy)
+            || didChange(tags, for: \.tags)
+            || didChange(scheduleNotifications, for: \.scheduleNotifications)
+            || didChange(notificationThread, for: \.notificationThread)
+            || didChange(context?.userInfo, for: \.userInfo)
+    }
 
     func createUpdatedVersion( // swiftlint:disable:this function_body_length function_parameter_count
         skipShadowCheck: Bool,
@@ -296,29 +328,25 @@ public final class Task {
         effectiveFrom: Date,
         with contextClosure: ((inout Context) -> Void)?
     ) throws -> (task: Task, didChange: Bool) {
-        let context: Context?
-        if let contextClosure {
-            var context0 = Context()
-            contextClosure(&context0)
-            context = context0
-        } else {
-            context = nil
+        guard wouldNecessitateNewTaskVersion(
+            title: title,
+            instructions: instructions,
+            category: category,
+            schedule: schedule,
+            completionPolicy: completionPolicy,
+            scheduleNotifications: scheduleNotifications,
+            notificationThread: notificationThread,
+            tags: tags,
+            effectiveFrom: effectiveFrom,
+            with: contextClosure
+        ) else {
+            return (self, false)
         }
-
-        func didChange<V: Equatable>(_ value: V?, for keyPath: KeyPath<Task, V>) -> Bool {
-            value != nil && value != self[keyPath: keyPath]
-        }
-
-        guard didChange(title, for: \.title)
-                || didChange(instructions, for: \.instructions)
-                || didChange(category, for: \.category)
-                || didChange(schedule, for: \.schedule)
-                || didChange(completionPolicy, for: \.completionPolicy)
-                || didChange(tags, for: \.tags)
-                || didChange(scheduleNotifications, for: \.scheduleNotifications)
-                || didChange(notificationThread, for: \.notificationThread)
-                || didChange(context?.userInfo, for: \.userInfo) else {
-            return (self, false) // nothing changed
+        
+        let context: Context? = contextClosure.map { apply in
+            var context = Context()
+            apply(&context)
+            return context
         }
 
         if nextVersion != nil {
