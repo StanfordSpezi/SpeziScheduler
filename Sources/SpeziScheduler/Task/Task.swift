@@ -284,7 +284,8 @@ public final class Task {
     }
     
     
-    func wouldNecessitateNewTaskVersion(
+    /// Determines whether an update of the task, based on the specified parameters, would result in a new version of the task.
+    func wouldNecessitateNewTaskVersion( // swiftlint:disable:this function_parameter_count
         title: String.LocalizationValue?,
         instructions: String.LocalizationValue?,
         category: Category?,
@@ -315,7 +316,7 @@ public final class Task {
             || didChange(context?.userInfo, for: \.userInfo)
     }
 
-    func createUpdatedVersion( // swiftlint:disable:this function_body_length function_parameter_count
+    func createUpdatedVersion( // swiftlint:disable:this function_parameter_count
         skipShadowCheck: Bool,
         title: String.LocalizationValue?,
         instructions: String.LocalizationValue?,
