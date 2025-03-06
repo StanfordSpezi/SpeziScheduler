@@ -191,6 +191,24 @@ class TestAppUITests: XCTestCase {
             nextTriggerExistenceTimeout: 60
         )
     }
+    
+    
+    @MainActor
+    func testShadowedOutcomesHandlingWhenReRegisteringSameTask() throws {
+        let app = XCUIApplication()
+        app.deleteAndLaunch(withSpringboardAppName: "TestApp")
+
+        XCTAssert(app.wait(for: .runningForeground, timeout: 2.0))
+        
+        let menuButton = app.buttons["Extra Tests"]
+        XCTAssert(menuButton.waitForExistence(timeout: 2))
+        menuButton.tryToTapReallySoftlyMaybeThisWillMakeItWork()
+        let testCaseButton = app.buttons["Shadowed Outcomes"]
+        XCTAssert(testCaseButton.waitForExistence(timeout: 2))
+        testCaseButton.tap()
+        
+        XCTAssertTrue(app.staticTexts["Passed"].waitForExistence(timeout: 2))
+    }
 }
 
 
@@ -200,5 +218,17 @@ extension XCUIApplication {
         XCTAssert(tab.waitForExistence(timeout: 2.0), line: line)
         tab.tap()
         tab.tap()
+    }
+}
+
+extension XCUIElement {
+    // This is required to work around an apparent XCTest bug when trying to tap e.g. the Health App's Profile button.
+    // See also: https://stackoverflow.com/a/33534187
+    func tryToTapReallySoftlyMaybeThisWillMakeItWork() {
+        if isHittable {
+            tap()
+        } else {
+            coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
     }
 }

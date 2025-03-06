@@ -18,6 +18,20 @@ enum DateSelection: Hashable {
 }
 
 
+enum AdditionalTestsTestCase: String, CaseIterable, Hashable, Identifiable {
+    case shadowedOutcomes = "Shadowed Outcomes"
+    
+    var id: Self { self }
+    
+    var view: some View {
+        switch self {
+        case .shadowedOutcomes:
+            ShadowedOutcomeTestingView()
+        }
+    }
+}
+
+
 struct ScheduleView: View {
     @Environment(SchedulerModel.self)
     private var model
@@ -26,15 +40,22 @@ struct ScheduleView: View {
     @State private var hidden = false // hide for screenshots
     @State private var dateSelection: DateSelection = .today
     @State private var date = Date()
+    @State private var additionalTestsTestCase: AdditionalTestsTestCase?
 
     var body: some View {
         @Bindable var model = model
         NavigationStack {
             scheduleList
                 .navigationTitle("Schedule")
+                .navigationBarTitleDisplayMode(.inline)
                 .viewStateAlert(state: $model.viewState)
                 .toolbar {
-                    toolbar
+                    if !hidden {
+                        toolbar
+                    }
+                }
+                .sheet(item: $additionalTestsTestCase) { testCase in
+                    testCase.view
                 }
                 .onChange(of: dateSelection, initial: true) {
                     switch dateSelection {
@@ -64,22 +85,29 @@ struct ScheduleView: View {
     }
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
-        ToolbarItemGroup(placement: .secondaryAction) {
-            if !hidden {
-                Picker("Alignment", selection: $alignment) {
-                    Text("Leading").tag(HorizontalAlignment.leading)
-                    Text("Center").tag(HorizontalAlignment.center)
-                    Text("Trailing").tag(HorizontalAlignment.trailing)
+        ToolbarItem(placement: .topBarLeading) {
+            Menu("Extra Tests") {
+                ForEach(AdditionalTestsTestCase.allCases, id: \.self) { testCase in
+                    Button(testCase.rawValue) {
+                        additionalTestsTestCase = testCase
+                    }
                 }
-
-                Picker("Date", selection: $dateSelection) {
-                    Text("Today").tag(DateSelection.today)
-                    Text("Tomorrow").tag(DateSelection.tomorrow)
-                    Text("Date").tag(DateSelection.date)
-                }
-
-                Button("Hide Content", action: hide)
             }
+        }
+        ToolbarItemGroup(placement: .secondaryAction) {
+            Picker("Alignment", selection: $alignment) {
+                Text("Leading").tag(HorizontalAlignment.leading)
+                Text("Center").tag(HorizontalAlignment.center)
+                Text("Trailing").tag(HorizontalAlignment.trailing)
+            }
+
+            Picker("Date", selection: $dateSelection) {
+                Text("Today").tag(DateSelection.today)
+                Text("Tomorrow").tag(DateSelection.tomorrow)
+                Text("Date").tag(DateSelection.date)
+            }
+
+            Button("Hide Content", action: hide)
         }
     }
 
