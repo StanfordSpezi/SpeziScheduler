@@ -251,6 +251,20 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
                     taskPredicate.evaluate(outcome.task) && outcome.occurrenceStartDate >= effectiveFrom
                 }
             ))
+            guard existingTask.wouldNecessitateNewTaskVersion(
+                title: title,
+                instructions: instructions,
+                category: category,
+                schedule: schedule,
+                completionPolicy: completionPolicy,
+                scheduleNotifications: scheduleNotifications,
+                notificationThread: notificationThread,
+                tags: tags,
+                effectiveFrom: effectiveFrom,
+                with: contextClosure
+            ) else {
+                return (existingTask, false)
+            }
             switch shadowedOutcomesHandling {
             case .throwError:
                 guard outcomesThatWouldBeShadowed.isEmpty else {

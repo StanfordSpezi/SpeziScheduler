@@ -17,8 +17,10 @@ public enum AllowedCompletionPolicy: Hashable, Sendable, Codable {
     case afterStart
     /// The event is allowed to be completed if the date is after the start date and time but is still occurring today.
     case sameDayAfterStart
-    /// The event is only allowed to completed while it is occurring.
+    /// The event is only allowed to be completed while it is occurring.
     case duringEvent
+    /// The event is allowed to be completed at any time before, during, or after its occurrence
+    case anytime
 }
 
 
@@ -26,37 +28,43 @@ extension AllowedCompletionPolicy {
     /// Determine if an event is currently allowed to be completed.
     /// - Parameters:
     ///   - event: The event.
-    ///   - date: The date that is considered as the `now` date.
+    ///   - now: The date that is considered as the `now` date.
     /// - Returns: `true` if the event is currently allowed to be completed. `false` otherwise. If the date at which the event is allowed to be completed is still in the future,
     ///     you can use the ``dateOnceCompletionIsAllowed(for:now:)`` and ``dateOnceCompletionBecomesDisallowed(for:now:)`` methods to retrieve the time
     ///     when you need to update your UI.
-    public func isAllowedToComplete(event: Event, now date: Date = .now) -> Bool {
+    public func isAllowedToComplete(event: Event, now: Date = .now) -> Bool {
         switch self {
         case .sameDay:
-            Calendar.current.isDateInToday(date)
+            Calendar.current.isDateInToday(now)
         case .afterStart:
-            date >= event.occurrence.start
+            now >= event.occurrence.start
         case .sameDayAfterStart:
-            Calendar.current.isDateInToday(date) && date >= event.occurrence.start
+            Calendar.current.isDateInToday(now) && now >= event.occurrence.start
         case .duringEvent:
-            (event.occurrence.start..<event.occurrence.end).contains(date)
+            (event.occurrence.start..<event.occurrence.end).contains(now)
+        case .anytime:
+            true
         }
     }
     
     /// Retrieve the date at which the result of `isAllowedToComplete` changes to allowed.
     /// - Parameters:
     ///   - event: The event.
-    ///   - date: The date that is considered as the `now` date.
-    /// - Returns: Returns the date at which the event is allowed to be completed, if it is in the future. Otherwise `nil`.
-    public func dateOnceCompletionIsAllowed(for event: Event, now date: Date = .now) -> Date? {
-        let completionDate = switch self {
+    ///   - now: The date that is considered as the `now` date.
+    /// - Returns: Returns the date at which the event is allowed to be completed, if it is in the future, otherwise `nil`.
+    ///     ``AllowedCompletionPolicy/anytime`` is an exception, and the function will return `Date.distantPast` in this case, since such events are always allowed to be completed.
+    public func dateOnceCompletionIsAllowed(for event: Event, now: Date = .now) -> Date? {
+        let completionDate: Date
+        switch self {
         case .sameDay:
-            Calendar.current.startOfDay(for: event.occurrence.start)
+            completionDate = Calendar.current.startOfDay(for: event.occurrence.start)
         case .afterStart, .sameDayAfterStart, .duringEvent:
-            event.occurrence.start
+            completionDate = event.occurrence.start
+        case .anytime:
+            return .distantPast
         }
         // ensure event is in the future, otherwise we are already allowed or we will never be allowed again.
-        guard date < completionDate else {
+        guard now < completionDate else {
             return nil
         }
         return completionDate
@@ -66,18 +74,22 @@ extension AllowedCompletionPolicy {
     /// - Parameters:
     ///   - event: The event.
     ///   - date: The date that is considered as the `now` date.
-    /// - Returns: Returns the date at which the event is no longer allowed to be completed, if it is in the future. Otherwise `nil`.
-    public func dateOnceCompletionBecomesDisallowed(for event: Event, now date: Date = .now) -> Date? {
-        let endDate: Date? = switch self {
+    /// - Returns: Returns the date at which the event is no longer allowed to be completed, if it is in the future, otherwise `nil`.
+    ///     For ``AllowedCompletionPolicy/anytime``, this function returns `Date.distantFuture`.
+    public func dateOnceCompletionBecomesDisallowed(for event: Event, now: Date = .now) -> Date? {
+        let endDate: Date?
+        switch self {
         case .sameDay, .sameDayAfterStart:
-            nil
+            endDate = nil
         case .afterStart:
-            nil // can be completed forever!
+            endDate = nil // can be completed forever!
         case .duringEvent:
-            event.occurrence.end
+            endDate = event.occurrence.end
+        case .anytime:
+            return .distantFuture
         }
         if let endDate {
-            guard date < endDate else {
+            guard now < endDate else {
                 return nil
             }
         }

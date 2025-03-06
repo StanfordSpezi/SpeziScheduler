@@ -16,6 +16,8 @@
 		2FE0B6EA2A14D82600818AE9 /* XCTestExtensions in Frameworks */ = {isa = PBXBuildFile; productRef = 2FE0B6E92A14D82600818AE9 /* XCTestExtensions */; };
 		80328A752D6CE4E60050ECB6 /* XCTSpeziNotifications in Frameworks */ = {isa = PBXBuildFile; productRef = 80328A742D6CE4E60050ECB6 /* XCTSpeziNotifications */; };
 		80328A772D6CE4E60050ECB6 /* XCTSpeziNotificationsUI in Frameworks */ = {isa = PBXBuildFile; productRef = 80328A762D6CE4E60050ECB6 /* XCTSpeziNotificationsUI */; };
+		805BAA032D79C23A00115B39 /* ShadowedOutcomeTestingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 805BAA022D79C23A00115B39 /* ShadowedOutcomeTestingView.swift */; };
+		805BAA052D79C2E700115B39 /* XCTestApp in Frameworks */ = {isa = PBXBuildFile; productRef = 805BAA042D79C2E700115B39 /* XCTestApp */; };
 		A926A5352C9D87B100C92F94 /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A926A5342C9D87B100C92F94 /* NotificationsView.swift */; };
 		A977F6732C92F4C00071A1D1 /* SpeziSchedulerUI in Frameworks */ = {isa = PBXBuildFile; productRef = A977F6722C92F4C00071A1D1 /* SpeziSchedulerUI */; };
 		A98B09C42C90913F0076E99A /* TestAppScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98B09C32C9091390076E99A /* TestAppScheduler.swift */; };
@@ -43,6 +45,7 @@
 		2FA7382B290ADFAA007ACEB9 /* TestApp.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TestApp.swift; sourceTree = "<group>"; };
 		2FB0758A299DDB9000C0B37F /* TestApp.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = TestApp.xctestplan; sourceTree = "<group>"; };
 		2FE0B6E52A14C64E00818AE9 /* SpeziScheduler */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = SpeziScheduler; path = ../..; sourceTree = "<group>"; };
+		805BAA022D79C23A00115B39 /* ShadowedOutcomeTestingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShadowedOutcomeTestingView.swift; sourceTree = "<group>"; };
 		A926A5342C9D87B100C92F94 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
 		A960461B2C9840E800EA8022 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A960461C2C9853C700EA8022 /* TestApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TestApp.entitlements; sourceTree = "<group>"; };
@@ -59,6 +62,7 @@
 			files = (
 				2F68C3C8292EA52000B3E12C /* Spezi in Frameworks */,
 				80328A772D6CE4E60050ECB6 /* XCTSpeziNotificationsUI in Frameworks */,
+				805BAA052D79C2E700115B39 /* XCTestApp in Frameworks */,
 				A977F6732C92F4C00071A1D1 /* SpeziSchedulerUI in Frameworks */,
 				2FE0B6E72A14C65900818AE9 /* SpeziScheduler in Frameworks */,
 			);
@@ -109,6 +113,7 @@
 				2FA7382B290ADFAA007ACEB9 /* TestApp.swift */,
 				2F9F4D8429B80A1500ABE259 /* TestAppDelegate.swift */,
 				A98B09C32C9091390076E99A /* TestAppScheduler.swift */,
+				805BAA022D79C23A00115B39 /* ShadowedOutcomeTestingView.swift */,
 				2F6D139928F5F386007C25D6 /* Assets.xcassets */,
 			);
 			path = TestApp;
@@ -150,6 +155,7 @@
 				2FE0B6E62A14C65900818AE9 /* SpeziScheduler */,
 				A977F6722C92F4C00071A1D1 /* SpeziSchedulerUI */,
 				80328A762D6CE4E60050ECB6 /* XCTSpeziNotificationsUI */,
+				805BAA042D79C2E700115B39 /* XCTestApp */,
 			);
 			productName = Example;
 			productReference = 2F6D139228F5F384007C25D6 /* TestApp.app */;
@@ -248,6 +254,7 @@
 				A98B09C42C90913F0076E99A /* TestAppScheduler.swift in Sources */,
 				A9C2951D2C899FA10038EF1B /* ScheduleView.swift in Sources */,
 				2FA7382C290ADFAA007ACEB9 /* TestApp.swift in Sources */,
+				805BAA032D79C23A00115B39 /* ShadowedOutcomeTestingView.swift in Sources */,
 				A926A5352C9D87B100C92F94 /* NotificationsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -599,6 +606,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 80328A732D6CE4E60050ECB6 /* XCRemoteSwiftPackageReference "SpeziNotifications" */;
 			productName = XCTSpeziNotificationsUI;
+		};
+		805BAA042D79C2E700115B39 /* XCTestApp */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2FE0B6E82A14D82600818AE9 /* XCRemoteSwiftPackageReference "XCTestExtensions" */;
+			productName = XCTestApp;
 		};
 		A977F6722C92F4C00071A1D1 /* SpeziSchedulerUI */ = {
 			isa = XCSwiftPackageProductDependency;
