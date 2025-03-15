@@ -67,7 +67,7 @@ import struct SwiftUI.AppStorage
 ///
 /// ### Notifications for Completed Events
 /// 
-/// When notifications are enabled, the app will send alerts based on the task’s schedule. 
+/// When notifications are enabled in a task, the app will send alerts based on the task’s schedule. 
 /// If you want to stop notifications for a specific event, you can call ``Event/complete()`` to mark the event as complete.
 /// This will prevent notifications only for that particular occurrence, while other events will still trigger notifications as scheduled.
 ///
