@@ -45,18 +45,12 @@ import struct SwiftUI.AppStorage
 /// // Step 2: Mark upcoming events as complete to stop notifications
 /// // Suppose you want to disable notifications for the next `daysAhead` days, you can complete those events in advance.
 /// @MainActor
-/// func disableNotificationForEvent(for taskID: String, daysAhead: Int) {
-///     let today = Date()
-///     guard let endDate = Calendar.current.date(byAdding: .day, value: daysAhead, to: today) else { return }
+/// func disableNotificationForEvent(for taskID: String, daysAhead: Int) throws {
+///     guard let endDate = Calendar.current.date(byAdding: .day, value: daysAhead, to: .now) else { return }
 ///
-///     do {
-///         let events = try scheduler.queryEvents(for: today..<endDate, predicate: #Predicate { $0.id == taskID })
-///         for event in events {
-///             try event.complete()
-///             print("Marked event on \(event.occurrence.start) as complete. Notification disabled for this event.")
-///         }
-///     } catch {
-///         print("Error completing events: \(error)")
+///     let events = try scheduler.queryEvents(for: today..<endDate, predicate: #Predicate { $0.id == taskID })
+///     for event in events {
+///         try event.complete()
 ///     }
 /// }
 ///
