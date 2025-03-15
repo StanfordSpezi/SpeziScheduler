@@ -29,7 +29,7 @@ import struct SwiftUI.AppStorage
 /// If you want to stop notifications for a specific event, you can call ``Event/complete()`` to mark the event as complete.
 /// This will prevent notifications only for that particular occurrence, while other events will still trigger notifications as scheduled.
 ///
-/// Below is an example of how to schedule a task with notifications and selectively disable notifications for certain events:
+/// You can schedule a ``Task`` with notifications and selectively disable notifications for certain ``Event``s:
 ///
 /// ```swift
 /// // Step 1: Schedule a recurring task with notifications
