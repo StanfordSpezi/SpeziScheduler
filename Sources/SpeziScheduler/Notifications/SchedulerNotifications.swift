@@ -24,42 +24,6 @@ import struct SwiftUI.AppStorage
 ///
 /// Notifications can be automatically scheduled for Tasks that are scheduled using the ``Scheduler`` module. You configure a Task for automatic notification scheduling by
 /// setting the ``Task/scheduleNotifications`` property.
-/// 
-/// When notifications are enabled, the app will send alerts based on the task’s schedule. 
-/// If you want to stop notifications for a specific event, you can call ``Event/complete()`` to mark the event as complete.
-/// This will prevent notifications only for that particular occurrence, while other events will still trigger notifications as scheduled.
-///
-/// You can schedule a ``Task`` with notifications and selectively disable notifications for certain ``Event``s:
-///
-/// ```swift
-/// // Step 1: Schedule a recurring task with notifications
-/// try scheduler.createOrUpdateTask(
-///     id: "task-id",
-///     title: "Daily Task Reminder",
-///     instructions: "Remember to complete your daily task!",
-///     category: .questionnaire,
-///     schedule: .daily(hour: 9, minute: 0, startingAt: .today),
-///     scheduleNotifications: true
-/// )
-///
-/// // Step 2: Mark upcoming events as complete to stop notifications
-/// // Suppose you want to disable notifications for the next `daysAhead` days, you can complete those events in advance.
-/// @MainActor
-/// func disableNotificationForEvent(for taskID: String, daysAhead: Int) throws {
-///     guard let endDate = Calendar.current.date(byAdding: .day, value: daysAhead, to: .now) else { return }
-///
-///     let events = try scheduler.queryEvents(for: today..<endDate, predicate: #Predicate { $0.id == taskID })
-///     for event in events {
-///         try event.complete()
-///     }
-/// }
-///
-/// // Step 3: Call this function whenever you want to disable notifications for upcoming events
-/// // For example, if a condition is met, disable notifications for the next 7 days:
-/// if condition == true {
-///     disableNotificationForEvent(for: "task-id", daysAhead: 7)
-/// }
-/// ```
 ///
 /// - Note: The `SchedulerNotifications` module is automatically configured by the `Scheduler` module using default configuration options. If you want to
 ///     customize the configuration, just provide the configured module in your `configuration` section of your
@@ -100,6 +64,45 @@ import struct SwiftUI.AppStorage
 ///
 /// - Important: If you disable ``automaticallyRequestProvisionalAuthorization``, make sure to call ``Scheduler/manuallyScheduleNotificationRefresh()`` once
 ///     you requested notification authorization from the user. Otherwise, SpeziScheduler won't schedule notifications properly.
+///
+/// ### Notifications for Completed Events
+/// 
+/// When notifications are enabled, the app will send alerts based on the task’s schedule. 
+/// If you want to stop notifications for a specific event, you can call ``Event/complete()`` to mark the event as complete.
+/// This will prevent notifications only for that particular occurrence, while other events will still trigger notifications as scheduled.
+///
+/// You can schedule a ``Task`` with notifications and selectively disable notifications for certain ``Event``s.
+///
+/// First, create a task that triggers notifications on a daily schedule:
+///
+/// ```swift
+/// // Schedule a recurring task with notifications
+/// try scheduler.createOrUpdateTask(
+///     id: "task-id",
+///     title: "Daily Task Reminder",
+///     instructions: "Remember to complete your daily task!",
+///     category: .questionnaire,
+///     schedule: .daily(hour: 9, minute: 0, startingAt: .today),
+///     scheduleNotifications: true
+/// )
+/// ```
+///
+/// If you want to stop notifications for specific future events, you can mark those events as complete:
+/// ```swift
+/// // Mark upcoming events as complete to stop notifications
+/// // Suppose you want to disable notifications for the next `daysAhead` days, you can complete those events in advance.
+/// @MainActor
+/// func disableNotificationForEvent(for taskID: String, daysAhead: Int) throws {
+///     guard let endDate = Calendar.current.date(byAdding: .day, value: daysAhead, to: .now) else { return }
+///
+///     let events = try scheduler.queryEvents(for: today..<endDate, predicate: #Predicate { $0.id == taskID })
+///     for event in events {
+///         try event.complete()
+///     }
+/// }
+/// ```
+/// You can call this function whenever a condition is met to disable notifications for the next few days.
+///
 ///
 /// ## Topics
 ///
