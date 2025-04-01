@@ -39,5 +39,6 @@ extension Task.Context {
 }
 
 extension Task.Context {
-    @Property(coding: .json) var nonTrivialExample: NonTrivialTaskContext?
+    @Property(coding: .json)
+    var nonTrivialExample: NonTrivialTaskContext?
 }

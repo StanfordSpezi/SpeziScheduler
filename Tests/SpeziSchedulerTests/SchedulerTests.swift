@@ -218,6 +218,7 @@ final class SchedulerTests: XCTestCase {
                 with: { context in
                     context.nonTrivialExample = value
                 }
+            )
         }
         
         XCTAssertTrue(try createTask().didChange)
