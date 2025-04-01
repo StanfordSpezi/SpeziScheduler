@@ -9,7 +9,7 @@
 import SpeziScheduler
 
 
-struct NonTrivialTaskContext: Codable {
+struct NonTrivialTaskContext: Hashable, Codable {
     // give it a bunch of fields to maximise the likelihood of something being out of order
     let field0: Int
     let field1: Int
