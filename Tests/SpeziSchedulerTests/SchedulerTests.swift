@@ -189,6 +189,42 @@ final class SchedulerTests: XCTestCase {
         XCTAssertNoThrow(try module.deleteAllVersions(ofTask: "test-task"))
     }
     
+    @MainActor
+    func testNonTrivialTaskContextCoding() throws {
+        let module = Scheduler()
+        withDependencyResolution {
+            module
+        }
+        
+        let value = NonTrivialTaskContext(
+            field0: .random(in: 0..<100),
+            field1: .random(in: 0..<100),
+            field2: .random(in: 0..<100),
+            field3: .random(in: 0..<100),
+            field4: .random(in: 0..<100),
+            field5: .random(in: 0..<100),
+            field6: .random(in: 0..<100),
+            field7: .random(in: 0..<100),
+            field8: .random(in: 0..<100),
+            field9: .random(in: 0..<100)
+        )
+        
+        let createTask = {
+            try module.createOrUpdateTask(
+                id: #function,
+                title: "Title",
+                instructions: "Instructions",
+                schedule: Schedule.daily(hour: 7, minute: 41, startingAt: .now),
+                with: { context in
+                    context.nonTrivialExample = value
+                }
+            )
+        }
+        
+        XCTAssertTrue(try createTask().didChange)
+        XCTAssertFalse(try createTask().didChange)
+    }
+    
     
     @MainActor
     func testFetchingEventsAfterCompletion() async throws {
