@@ -70,6 +70,7 @@ class TestAppUITests: XCTestCase {
         checkButtonExists("Complete Measurement")
         checkButtonExists("Complete Questionnaire")
         checkButtonExists("Complete Enter Lab Results")
+        app.buttons["Complete Enter Lab Results"].tap()
         
         goToTab("Notifications")
 
