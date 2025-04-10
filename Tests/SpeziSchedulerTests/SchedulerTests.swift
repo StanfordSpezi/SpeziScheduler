@@ -15,16 +15,9 @@ import XCTSpezi
 
 final class SchedulerTests: XCTestCase {
     @MainActor
-    override func setUp() async throws {
-#if os(macOS)
-        Scheduler.isTesting = true
-#endif
-    }
-
-    @MainActor
     func testScheduler() {
         // test simple scheduler initialization test
-        let module = Scheduler()
+        let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
             module
         }
@@ -44,7 +37,7 @@ final class SchedulerTests: XCTestCase {
 
     @MainActor
     func testSimpleTaskCreation() throws {
-        let module = Scheduler()
+        let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
             module
         }
@@ -83,7 +76,7 @@ final class SchedulerTests: XCTestCase {
 
     @MainActor
     func testSimpleTaskVersioning() throws { // swiftlint:disable:this function_body_length
-        let module = Scheduler()
+        let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
             module
         }
@@ -191,7 +184,7 @@ final class SchedulerTests: XCTestCase {
     
     @MainActor
     func testNonTrivialTaskContextCoding() throws {
-        let module = Scheduler()
+        let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
             module
         }
@@ -229,7 +222,7 @@ final class SchedulerTests: XCTestCase {
     @MainActor
     func testFetchingEventsAfterCompletion() async throws {
         let todayRange = Date.today..<Date.tomorrow
-        let module = Scheduler()
+        let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
             module
         }
