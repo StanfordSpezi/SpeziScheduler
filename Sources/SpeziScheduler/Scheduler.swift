@@ -141,14 +141,14 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         case .onDisk:
             _container = Result {
                 try ModelContainer(
-                    for: Task.self, Outcome.self,
+                    for: Task.self, Outcome.self, // swiftlint:disable:this multiline_arguments
                     configurations: ModelConfiguration(url: URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite"))
                 )
             }
         case .inMemory:
             _container = Result {
                 try ModelContainer(
-                    for: Task.self, Outcome.self,
+                    for: Task.self, Outcome.self, // swiftlint:disable:this multiline_arguments
                     configurations: ModelConfiguration(isStoredInMemoryOnly: true)
                 )
             }
