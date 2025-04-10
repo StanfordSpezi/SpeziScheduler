@@ -19,7 +19,7 @@ final class SchedulerSampleDataTests: XCTestCase {
     func testSchedulerSampleData() throws {
         let container = try SchedulerSampleData.makeSharedContext()
 
-        let scheduler = Scheduler(testingContainer: container)
+        let scheduler = Scheduler(persistence: .testingContainer(container))
         withDependencyResolution {
             scheduler
         }
