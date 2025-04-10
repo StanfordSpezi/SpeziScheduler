@@ -59,7 +59,7 @@ public struct SchedulerSampleData: PreviewModifier {
         content
             .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.bullet.clipboard"))
             .previewWith {
-                Scheduler(testingContainer: context)
+                Scheduler(persistence: .testingContainer(context))
             }
     }
 }
