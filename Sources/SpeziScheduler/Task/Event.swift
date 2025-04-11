@@ -24,7 +24,7 @@ import Foundation
 ///
 /// ### Completing an Event
 /// - ``complete()``
-/// - ``complete(with:)``
+/// - ``complete(ignoreCompletionPolicy:with:)``
 @DebugDescription
 public struct Event {
     /// The outcome value.

@@ -9,8 +9,10 @@
 import Combine
 import Foundation
 import Spezi
+import SpeziFoundation
 import SwiftData
 import SwiftUI
+import XCTRuntimeAssertions
 
 
 /// Schedule and query tasks and their events.
@@ -22,7 +24,7 @@ import SwiftUI
 /// for tasks. It allows to modify the properties (e.g., schedule) of future events without affecting occurrences of the past.
 ///
 /// You create and automatically update your tasks
-/// using ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:with:)``.
+/// using ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:shadowedOutcomesHandling:with:)``.
 ///
 /// Below is a example on how to create your own [`Module`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/module)
 /// to manage your tasks and ensure they are always up to date.
@@ -53,13 +55,15 @@ import SwiftUI
 /// }
 /// ```
 ///
+/// - Note: When using the `Scheduler` in a macOS application, your app needs to be sandboxed if you want to use the ``PersistenceConfiguration/onDisk`` persistance option.
+///
 /// ## Topics
 ///
 /// ### Configuration
 /// - ``init()``
 ///
 /// ### Creating and Updating Tasks
-/// - ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:with:)``
+/// - ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:shadowedOutcomesHandling:with:)``
 ///
 /// ### Query Tasks
 /// - ``queryTasks(for:predicate:sortBy:fetchLimit:prefetchOutcomes:)-8z86i``
@@ -69,7 +73,7 @@ import SwiftUI
 /// - ``queryEvents(for:predicate:)``
 ///
 /// ### Permanently delete a Task version
-/// - ``deleteTasks(_:)-5n7iv``
+/// - ``deleteTasks(_:)-9jjbl``
 /// - ``deleteTasks(_:)-8h2bj``
 ///
 /// ### Permanently delete all Task versions
@@ -136,9 +140,20 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     }
     
     /// Creates a new Scheduler, using the specified persistence configuration.
-    public nonisolated init(persistence: PersistenceConfiguration = .onDisk) {
+    public nonisolated init(persistence: PersistenceConfiguration) {
         switch persistence {
         case .onDisk:
+            guard ProcessInfo.isRunningInSandbox else {
+                preconditionFailure(
+                    """
+                    The current application is running in a non-sandboxed environment.
+                    In this case, the `onDisk` persistence configuration is not available,
+                    since the \(Scheduler.self) module would end up placing its database directly into
+                    the current user's Documents directory (i.e., `~/Documents`).
+                    Specify another persistence option, or enable sandboxing for the application.
+                    """
+                )
+            }
             _container = Result {
                 try ModelContainer(
                     for: Task.self, Outcome.self, // swiftlint:disable:this multiline_arguments

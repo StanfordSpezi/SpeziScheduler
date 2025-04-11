@@ -22,7 +22,7 @@ import SwiftData
 ///
 /// - Tip: Refer to the ``Property(coding:)`` macro on how to create new data types that can be stored alongside an outcome.
 ///
-/// You provide the additional outcome values upon completion of an event (see ``Event/complete(with:)``.
+/// You provide the additional outcome values upon completion of an event (see ``Event/complete(ignoreCompletionPolicy:with:)``.
 /// Below is a short code example that sets a custom `measurement` property to the weight measurement that was received
 /// from a connected weight scale.
 ///
