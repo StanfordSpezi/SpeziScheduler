@@ -10,6 +10,7 @@ import Combine
 import Foundation
 import Spezi
 import SwiftData
+import SpeziFoundation
 import SwiftUI
 
 
@@ -136,9 +137,20 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     }
     
     /// Creates a new Scheduler, using the specified persistence configuration.
-    public nonisolated init(persistence: PersistenceConfiguration = .onDisk) {
+    public nonisolated init(persistence: PersistenceConfiguration) {
         switch persistence {
         case .onDisk:
+            guard ProcessInfo.isRunningInSandbox else {
+                preconditionFailure(
+                    """
+                    The current application is running in a non-sandboxed environment.
+                    In this case, the `onDisk` persistence configuration is not available,
+                    since the \(Scheduler.self) module would end up placing its database directly into
+                    the current user's Documents directory (i.e., `~/Documents`).
+                    Specify another persistence option, or enable sandboxing for the application.
+                    """
+                )
+            }
             _container = Result {
                 try ModelContainer(
                     for: Task.self, Outcome.self, // swiftlint:disable:this multiline_arguments

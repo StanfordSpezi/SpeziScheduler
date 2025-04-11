@@ -27,7 +27,8 @@ let package = Package(
         .library(name: "SpeziSchedulerUI", targets: ["SpeziSchedulerUI"])
     ],
     dependencies: [
-        .package(url: "https://github.com/StanfordSpezi/SpeziFoundation", from: "2.1.3"),
+//        .package(url: "https://github.com/StanfordSpezi/SpeziFoundation", from: "2.1.3"),
+        .package(url: "https://github.com/StanfordSpezi/SpeziFoundation", branch: "lukas/platform-env-detection"),
         .package(url: "https://github.com/StanfordSpezi/Spezi", from: "1.8.0"),
         .package(url: "https://github.com/StanfordSpezi/SpeziViews", from: "1.10.0"),
         .package(url: "https://github.com/StanfordSpezi/SpeziStorage", from: "2.1.0"),
