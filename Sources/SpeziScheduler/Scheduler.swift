@@ -12,6 +12,7 @@ import Spezi
 import SwiftData
 import SpeziFoundation
 import SwiftUI
+import XCTRuntimeAssertions
 
 
 /// Schedule and query tasks and their events.

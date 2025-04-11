@@ -35,7 +35,8 @@ let package = Package(
         .package(url: "https://github.com/StanfordSpezi/SpeziNotifications.git", from: "1.0.6"),
         .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
         .package(url: "https://github.com/swiftlang/swift-syntax", from: "601.0.0"),
-        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", from: "1.17.2")
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", from: "1.17.2"),
+        .package(url: "https://github.com/StanfordBDHG/XCTRuntimeAssertions.git", from: "1.1.3")
     ] + swiftLintPackage(),
     targets: [
         .macro(
@@ -52,12 +53,13 @@ let package = Package(
             name: "SpeziScheduler",
             dependencies: [
                 .target(name: "SpeziSchedulerMacros"),
-                .product(name: "SpeziFoundation", package: "SpeziFoundation"),
                 .product(name: "Spezi", package: "Spezi"),
+                .product(name: "SpeziFoundation", package: "SpeziFoundation"),
                 .product(name: "SpeziViews", package: "SpeziViews"),
                 .product(name: "SpeziNotifications", package: "SpeziNotifications"),
                 .product(name: "SpeziLocalStorage", package: "SpeziStorage"),
-                .product(name: "Algorithms", package: "swift-algorithms")
+                .product(name: "Algorithms", package: "swift-algorithms"),
+                .product(name: "XCTRuntimeAssertions", package: "XCTRuntimeAssertions")
             ],
             swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
             plugins: [] + swiftLintPlugin()
@@ -79,7 +81,8 @@ let package = Package(
             dependencies: [
                 .target(name: "SpeziScheduler"),
                 .product(name: "XCTSpezi", package: "Spezi"),
-                .product(name: "SpeziLocalStorage", package: "SpeziStorage")
+                .product(name: "SpeziLocalStorage", package: "SpeziStorage"),
+                .product(name: "XCTRuntimeAssertions", package: "XCTRuntimeAssertions")
             ],
             swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
             plugins: [] + swiftLintPlugin()
