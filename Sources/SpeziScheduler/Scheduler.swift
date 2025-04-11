@@ -9,8 +9,8 @@
 import Combine
 import Foundation
 import Spezi
-import SwiftData
 import SpeziFoundation
+import SwiftData
 import SwiftUI
 import XCTRuntimeAssertions
 

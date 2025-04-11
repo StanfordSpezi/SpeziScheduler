@@ -167,7 +167,7 @@ public struct EventScheduleList<Tile: View>: View {
     /// Create a new event schedule list.
     ///
     /// - parameter range: The (exclusive) range for which events should be displayed.
-    ///- Parameter makeEventTile: A closure that constructs the views for the individual `Event`s.
+    /// - parameter makeEventTile: A closure that constructs the views for the individual `Event`s.
     public init(for range: Range<Date>, @ViewBuilder content makeEventTile: @MainActor @escaping (Event) -> Tile) {
         self._events = .init(in: range)
         self.makeEventTile = makeEventTile
