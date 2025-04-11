@@ -24,7 +24,7 @@ import XCTRuntimeAssertions
 /// for tasks. It allows to modify the properties (e.g., schedule) of future events without affecting occurrences of the past.
 ///
 /// You create and automatically update your tasks
-/// using ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:with:)``.
+/// using ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:shadowedOutcomesHandling:with:)``.
 ///
 /// Below is a example on how to create your own [`Module`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/module)
 /// to manage your tasks and ensure they are always up to date.
@@ -55,13 +55,15 @@ import XCTRuntimeAssertions
 /// }
 /// ```
 ///
+/// - Note: When using the `Scheduler` in a macOS application, your app needs to be sandboxed if you want to use the ``PersistenceConfiguration/onDisk`` persistance option.
+///
 /// ## Topics
 ///
 /// ### Configuration
 /// - ``init()``
 ///
 /// ### Creating and Updating Tasks
-/// - ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:with:)``
+/// - ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:shadowedOutcomesHandling:with:)``
 ///
 /// ### Query Tasks
 /// - ``queryTasks(for:predicate:sortBy:fetchLimit:prefetchOutcomes:)-8z86i``
@@ -71,7 +73,7 @@ import XCTRuntimeAssertions
 /// - ``queryEvents(for:predicate:)``
 ///
 /// ### Permanently delete a Task version
-/// - ``deleteTasks(_:)-5n7iv``
+/// - ``deleteTasks(_:)-9jjbl``
 /// - ``deleteTasks(_:)-8h2bj``
 ///
 /// ### Permanently delete all Task versions
