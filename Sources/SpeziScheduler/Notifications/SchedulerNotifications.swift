@@ -66,17 +66,17 @@ import struct SwiftUI.AppStorage
 ///     you requested notification authorization from the user. Otherwise, SpeziScheduler won't schedule notifications properly.
 ///
 /// ### Notifications for Completed Events
-/// 
-/// When notifications are enabled in a task, the app will send alerts based on the task’s schedule. 
-/// If you want to stop notifications for a specific event, you can call ``Event/complete()`` to mark the event as complete.
-/// This will prevent notifications only for that particular occurrence, while other events will still trigger notifications as scheduled.
 ///
-/// You can schedule a ``Task`` with notifications and selectively disable notifications for certain ``Event``s.
+/// When notifications are enabled for a task, the Spezi Scheduler module sends alerts based on the task’s schedule.
+/// However, it does **not** send notifications for ``Event``s that have already been marked as complete.
+/// Other scheduled ``Event``s will continue to trigger notifications as expected.
 ///
-/// First, create a task that triggers notifications on a daily schedule:
+/// To prevent notifications for a specific event, call ``Event/complete()`` to mark that event as complete.
 ///
+/// You can schedule a ``Task`` with notifications enabled and selectively disable notifications for individual ``Event``s as needed.
+///
+/// #### 1. Create or update a recurring task with daily notifications
 /// ```swift
-/// // Schedule a recurring task with notifications
 /// try scheduler.createOrUpdateTask(
 ///     id: "task-id",
 ///     title: "Daily Task Reminder",
@@ -87,12 +87,13 @@ import struct SwiftUI.AppStorage
 /// )
 /// ```
 ///
-/// If you want to stop notifications for specific future events, you can mark those events as complete:
+/// #### 2. Disable notifications for specific upcoming events by marking them as complete
+///
+/// You can define a function to preemptively complete a set of upcoming events, preventing notifications from being triggered by the Spezi Scheduler or other application logic.
+/// The example below marks all relevant ``Event``s as complete for the specified number of days ahead:
 /// ```swift
-/// // Mark upcoming events as complete to stop notifications
-/// // Suppose you want to disable notifications for the next `daysAhead` days, you can complete those events in advance.
 /// @MainActor
-/// func disableNotificationForEvent(for taskID: String, daysAhead: Int) throws {
+/// func completeAllEvents(for taskID: String, daysAhead: Int) throws {
 ///     guard let endDate = Calendar.current.date(byAdding: .day, value: daysAhead, to: .now) else { return }
 ///
 ///     let events = try scheduler.queryEvents(for: today..<endDate, predicate: #Predicate { $0.id == taskID })
@@ -101,7 +102,6 @@ import struct SwiftUI.AppStorage
 ///     }
 /// }
 /// ```
-/// You can call this function whenever a condition is met to disable notifications for the next few days.
 ///
 ///
 /// ## Topics
