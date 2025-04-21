@@ -65,6 +65,45 @@ import struct SwiftUI.AppStorage
 /// - Important: If you disable ``automaticallyRequestProvisionalAuthorization``, make sure to call ``Scheduler/manuallyScheduleNotificationRefresh()`` once
 ///     you requested notification authorization from the user. Otherwise, SpeziScheduler won't schedule notifications properly.
 ///
+/// ### Notifications for Completed Events
+///
+/// When notifications are enabled for a task, the Spezi Scheduler module sends alerts based on the task’s schedule.
+/// However, it does **not** send notifications for ``Event``s that have already been marked as complete.
+/// Other scheduled ``Event``s will continue to trigger notifications as expected.
+///
+/// To prevent notifications for a specific event, call ``Event/complete()`` to mark that event as complete.
+///
+/// You can schedule a ``Task`` with notifications enabled and selectively disable notifications for individual ``Event``s as needed.
+///
+/// #### 1. Create or update a recurring task with daily notifications
+/// ```swift
+/// try scheduler.createOrUpdateTask(
+///     id: "task-id",
+///     title: "Daily Task Reminder",
+///     instructions: "Remember to complete your daily task!",
+///     category: .questionnaire,
+///     schedule: .daily(hour: 9, minute: 0, startingAt: .today),
+///     scheduleNotifications: true
+/// )
+/// ```
+///
+/// #### 2. Disable notifications for specific upcoming events by marking them as complete
+///
+/// You can define a function to preemptively complete a set of upcoming events, preventing notifications from being triggered by the Spezi Scheduler or other application logic.
+/// The example below marks all relevant ``Event``s as complete for the specified number of days ahead:
+/// ```swift
+/// @MainActor
+/// func completeAllEvents(for taskID: String, daysAhead: Int) throws {
+///     guard let endDate = Calendar.current.date(byAdding: .day, value: daysAhead, to: .now) else { return }
+///
+///     let events = try scheduler.queryEvents(for: today..<endDate, predicate: #Predicate { $0.id == taskID })
+///     for event in events {
+///         try event.complete()
+///     }
+/// }
+/// ```
+///
+///
 /// ## Topics
 ///
 /// ### Configuration
