@@ -10,21 +10,15 @@ import Spezi
 @_spi(TestingSupport)
 @testable import SpeziScheduler
 import XCTest
+import XCTRuntimeAssertions
 import XCTSpezi
 
 
 final class SchedulerTests: XCTestCase {
     @MainActor
-    override func setUp() async throws {
-#if os(macOS)
-        Scheduler.isTesting = true
-#endif
-    }
-
-    @MainActor
     func testScheduler() {
         // test simple scheduler initialization test
-        let module = Scheduler()
+        let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
             module
         }
@@ -44,7 +38,7 @@ final class SchedulerTests: XCTestCase {
 
     @MainActor
     func testSimpleTaskCreation() throws {
-        let module = Scheduler()
+        let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
             module
         }
@@ -83,7 +77,7 @@ final class SchedulerTests: XCTestCase {
 
     @MainActor
     func testSimpleTaskVersioning() throws { // swiftlint:disable:this function_body_length
-        let module = Scheduler()
+        let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
             module
         }
@@ -189,11 +183,47 @@ final class SchedulerTests: XCTestCase {
         XCTAssertNoThrow(try module.deleteAllVersions(ofTask: "test-task"))
     }
     
+    @MainActor
+    func testNonTrivialTaskContextCoding() throws {
+        let module = Scheduler(persistence: .inMemory)
+        withDependencyResolution {
+            module
+        }
+        
+        let value = NonTrivialTaskContext(
+            field0: .random(in: 0..<100),
+            field1: .random(in: 0..<100),
+            field2: .random(in: 0..<100),
+            field3: .random(in: 0..<100),
+            field4: .random(in: 0..<100),
+            field5: .random(in: 0..<100),
+            field6: .random(in: 0..<100),
+            field7: .random(in: 0..<100),
+            field8: .random(in: 0..<100),
+            field9: .random(in: 0..<100)
+        )
+        
+        let createTask = {
+            try module.createOrUpdateTask(
+                id: #function,
+                title: "Title",
+                instructions: "Instructions",
+                schedule: Schedule.daily(hour: 7, minute: 41, startingAt: .now),
+                with: { context in
+                    context.nonTrivialExample = value
+                }
+            )
+        }
+        
+        XCTAssertTrue(try createTask().didChange)
+        XCTAssertFalse(try createTask().didChange)
+    }
+    
     
     @MainActor
     func testFetchingEventsAfterCompletion() async throws {
         let todayRange = Date.today..<Date.tomorrow
-        let module = Scheduler()
+        let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
             module
         }
@@ -226,5 +256,29 @@ final class SchedulerTests: XCTestCase {
                 lhs.task == rhs.task && lhs.occurrence == rhs.occurrence && lhs.isCompleted == rhs.isCompleted
             })
         }
+    }
+    
+    
+    @MainActor
+    func testSandboxDetection() throws {
+        /// function that will throw an error if initializing the `Scheduler` does not result in a `preconditionFailure`
+        let assertCreateModuleFails = {
+            // we need to write it like this, since simply having a trailing closure in the `XCTRuntimePrecondition` call
+            // (which then would create the Scheduler instance) would result in the compiler inferring that closure as being MainActor-constrained,
+            // the runtime isolation check for which would then fail, since XCTRuntimePrecondition evaluates the expression on a background thread.
+            nonisolated func imp() {
+                _ = Scheduler(persistence: .onDisk)
+            }
+            try XCTRuntimePrecondition(timeout: 2, "", imp)
+        }
+        #if os(macOS) || targetEnvironment(macCatalyst)
+        // we expect this to fail, since we're on macOS and the unit tests are not sandboxed
+        // if the assertCreateModuleFails function does NOT throw an error, the module creation resulted in a preconditionFailure.
+        XCTAssertNoThrow(try assertCreateModuleFails())
+        #else
+        // we expect this not to fail, since we're in a non-macOS (ie, sandboxed) environment
+        // if the assertCreateModuleFails function does throw an error, the module creation did NOT result in a preconditionFailure.
+        XCTAssertThrowsError(try assertCreateModuleFails())
+        #endif
     }
 }

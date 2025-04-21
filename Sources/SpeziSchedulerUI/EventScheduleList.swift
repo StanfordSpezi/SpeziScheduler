@@ -158,7 +158,7 @@ public struct EventScheduleList<Tile: View>: View {
     /// Create a new event schedule list.
     /// - Parameters:
     ///   - date: The date for which events should be displayed. Defaults to today.
-    ///   - content: A closure that constructs the views for the individual ``Event``s.
+    ///   - makeEventTile: A closure that constructs the views for the individual `Event`s.
     public init(date: Date = .today, @ViewBuilder content makeEventTile: @MainActor @escaping (Event) -> Tile) {
         self.init(for: Calendar.current.rangeOfDay(for: date), content: makeEventTile)
     }
@@ -167,6 +167,7 @@ public struct EventScheduleList<Tile: View>: View {
     /// Create a new event schedule list.
     ///
     /// - parameter range: The (exclusive) range for which events should be displayed.
+    /// - parameter makeEventTile: A closure that constructs the views for the individual `Event`s.
     public init(for range: Range<Date>, @ViewBuilder content makeEventTile: @MainActor @escaping (Event) -> Tile) {
         self._events = .init(in: range)
         self.makeEventTile = makeEventTile

@@ -54,7 +54,14 @@ public struct UserStorageCoding<Encoder: TopLevelEncoder & Sendable, Decoder: To
 
 extension UserStorageCoding where Encoder == JSONEncoder, Decoder == JSONDecoder {
     /// JSON encoder and decoder.
-    public static let json = UserStorageCoding(encoder: JSONEncoder(), decoder: JSONDecoder())
+    public static let json = UserStorageCoding(
+        encoder: { () -> JSONEncoder in
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .sortedKeys
+            return encoder
+        }(),
+        decoder: JSONDecoder()
+    )
 }
 
 

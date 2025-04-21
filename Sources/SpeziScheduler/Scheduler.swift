@@ -9,8 +9,10 @@
 import Combine
 import Foundation
 import Spezi
+import SpeziFoundation
 import SwiftData
 import SwiftUI
+import XCTRuntimeAssertions
 
 
 /// Schedule and query tasks and their events.
@@ -22,7 +24,7 @@ import SwiftUI
 /// for tasks. It allows to modify the properties (e.g., schedule) of future events without affecting occurrences of the past.
 ///
 /// You create and automatically update your tasks
-/// using ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:with:)``.
+/// using ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:shadowedOutcomesHandling:with:)``.
 ///
 /// Below is a example on how to create your own [`Module`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/module)
 /// to manage your tasks and ensure they are always up to date.
@@ -53,13 +55,15 @@ import SwiftUI
 /// }
 /// ```
 ///
+/// - Note: When using the `Scheduler` in a macOS application, your app needs to be sandboxed if you want to use the ``PersistenceConfiguration/onDisk`` persistance option.
+///
 /// ## Topics
 ///
 /// ### Configuration
 /// - ``init()``
 ///
 /// ### Creating and Updating Tasks
-/// - ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:with:)``
+/// - ``createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:tags:effectiveFrom:shadowedOutcomesHandling:with:)``
 ///
 /// ### Query Tasks
 /// - ``queryTasks(for:predicate:sortBy:fetchLimit:prefetchOutcomes:)-8z86i``
@@ -69,7 +73,7 @@ import SwiftUI
 /// - ``queryEvents(for:predicate:)``
 ///
 /// ### Permanently delete a Task version
-/// - ``deleteTasks(_:)-5n7iv``
+/// - ``deleteTasks(_:)-9jjbl``
 /// - ``deleteTasks(_:)-8h2bj``
 ///
 /// ### Permanently delete all Task versions
@@ -85,9 +89,19 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         case delete
     }
     
-#if os(macOS)
-    static var isTesting = false
-#endif
+    /// How the ``Scheduler`` should persist its data.
+    public enum PersistenceConfiguration {
+        /// The ``Scheduler`` will use an on-disk database for persistence.
+        case onDisk
+        /// The ``Scheduler`` will use an in-memory database for persistence.
+        /// Intended for testing purposes.
+        case inMemory
+        /// The ``Scheduler`` will use the specified `ModelContainer` for persistence.
+        ///
+        /// - Note: This is intended for configuring the ``Scheduler`` with a pre-populated model container that is already configured for the ``Task`` and ``Outcome`` types.
+        @_spi(TestingSupport)
+        case testingContainer(ModelContainer)
+    }
     
     /// We disable that for now. We might need to restore some information to cancel notifications.
     private static let purgeLegacyStorage = false
@@ -98,14 +112,15 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     @Dependency(SchedulerNotifications.self)
     private var notifications
     
-    private var _container: Result<ModelContainer, any Error>?
+    private let _container: Result<ModelContainer, any Error>
     
     private var container: ModelContainer {
         get throws {
-            guard let container = _container else {
-                throw DataError.invalidContainer(nil)
+            do {
+                return try _container.get()
+            } catch {
+                throw DataError.invalidContainer(error)
             }
-            return try container.get()
         }
     }
     
@@ -119,49 +134,57 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     /// A task that slightly delays saving tasks.
     private var saveTask: _Concurrency.Task<Void, Never>?
     
-    /// Configure the Scheduler.
-    public nonisolated init() {}
+    /// Creates a new Scheduler, using on-disk persistence.
+    public nonisolated convenience init() {
+        self.init(persistence: .onDisk)
+    }
     
-    
-    /// Configure the Scheduler with a pre-populated model container.
-    /// - Parameter testingContainer: The model container that is preconfigured with the ``Task`` and ``Outcome`` models.
-    @_spi(TestingSupport)
-    public init(testingContainer: ModelContainer) {
-        self._container = .success(testingContainer)
+    /// Creates a new Scheduler, using the specified persistence configuration.
+    public nonisolated init(persistence: PersistenceConfiguration) {
+        switch persistence {
+        case .onDisk:
+            guard ProcessInfo.isRunningInSandbox else {
+                preconditionFailure(
+                    """
+                    The current application is running in a non-sandboxed environment.
+                    In this case, the `onDisk` persistence configuration is not available,
+                    since the \(Scheduler.self) module would end up placing its database directly into
+                    the current user's Documents directory (i.e., `~/Documents`).
+                    Specify another persistence option, or enable sandboxing for the application.
+                    """
+                )
+            }
+            _container = Result {
+                try ModelContainer(
+                    for: Task.self, Outcome.self, // swiftlint:disable:this multiline_arguments
+                    configurations: ModelConfiguration(url: URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite"))
+                )
+            }
+        case .inMemory:
+            _container = Result {
+                try ModelContainer(
+                    for: Task.self, Outcome.self, // swiftlint:disable:this multiline_arguments
+                    configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+                )
+            }
+        case .testingContainer(let modelContainer):
+            self._container = .success(modelContainer)
+        }
     }
     
     /// Configure the Scheduler module.
     @_documentation(visibility: internal)
     public func configure() {
-        guard _container == nil else {
-            return // we have a container injected for testing purposes
+        switch _container {
+        case .failure(let error):
+            logger.error("Failed to initialize ModelContainer for Scheduler module: \(error)")
+        case .success:
+            break
         }
-        
-        let configuration: ModelConfiguration
-#if targetEnvironment(simulator) || TEST
-        configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-#elseif os(macOS)
-        if Self.isTesting {
-            configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        } else {
-            configuration = ModelConfiguration(url: URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite"))
-        }
-#else
-        configuration = ModelConfiguration(url: URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite"))
-#endif
-        
-        do {
-            _container = .success(try ModelContainer(for: Task.self, Outcome.self, configurations: configuration))
-        } catch {
-            logger.error("Failed to initializer scheduler model container: \(error)")
-            _container = .failure(error)
-        }
-        
         // This is a really good article explaining some of the concurrency considerations with SwiftData
         // https://medium.com/@samhastingsis/use-swiftdata-like-a-boss-92c05cba73bf
         // It also makes it easier to understand the SwiftData-related infrastructure around Spezi Scheduler.
         // One could think that Apple could have provided a lot of this information in their documentation.
-        
         notifications.registerProcessingTask(using: self)
     }
     
@@ -781,8 +804,7 @@ extension Scheduler {
         /// No model container present.
         ///
         /// The container failed to initialize at startup. The `underlying` error is the error occurred when trying to initialize the container.
-        /// The `underlying` is `nil` if the container was accessed before ``Scheduler/configure()`` was called.
-        case invalidContainer(_ underlying: (any Error)?)
+        case invalidContainer(_ underlying: any Error)
         /// An updated Task cannot shadow the outcomes of a previous task version.
         ///
         /// Make sure the ``Task/effectiveFrom`` date is larger than the start that of the latest completed event.

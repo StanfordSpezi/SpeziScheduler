@@ -73,7 +73,7 @@ extension AllowedCompletionPolicy {
     /// Retrieve the date at which the result of `isAllowedToComplete` changes back to disallowed.
     /// - Parameters:
     ///   - event: The event.
-    ///   - date: The date that is considered as the `now` date.
+    ///   - now: The date that is considered as the "now" date.
     /// - Returns: Returns the date at which the event is no longer allowed to be completed, if it is in the future, otherwise `nil`.
     ///     For ``AllowedCompletionPolicy/anytime``, this function returns `Date.distantFuture`.
     public func dateOnceCompletionBecomesDisallowed(for event: Event, now: Date = .now) -> Date? {
