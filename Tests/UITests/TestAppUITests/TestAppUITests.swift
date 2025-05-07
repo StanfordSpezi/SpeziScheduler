@@ -32,7 +32,7 @@ class TestAppUITests: XCTestCase {
         XCTAssert(app.staticTexts["4:00 PM"].exists)
 
         XCTAssert(app.buttons["More Information"].exists)
-        app.buttons["More Information"].firstMatch.tap()
+        app.buttons.matching(identifier: "More Information").element(boundBy: 1).tap()
 
         XCTAssertTrue(app.navigationBars.staticTexts["More Information"].waitForExistence(timeout: 4.0))
         XCTAssertTrue(app.staticTexts["Instructions"].exists)
