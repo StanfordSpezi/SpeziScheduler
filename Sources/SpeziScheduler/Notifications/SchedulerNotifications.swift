@@ -444,15 +444,15 @@ extension SchedulerNotifications {
                 }
                 if upcomingEventsForCurrentTask.count > 1,
                    Set(eventsDistances).count == 1,
-                   let hint = event.task.schedule.notificationMatchingHint,
-                   event.task.schedule.canBeScheduledAsRepeatingCalendarTrigger(allDayNotificationTime: allDayNotificationTime, now: now) {
+                   case let hint = event.task.schedule.notificationMatchingHint,
+                   hint != .none,
+                   event.task.schedule.canBeScheduledAsRepeatingCalendarTrigger(allDayNotificationTime: allDayNotificationTime, now: now),
+                   let triggerDateComponents = hint.dateComponents(calendar: event.task.schedule.recurrence?.calendar ?? cal, allDayNotificationTime: allDayNotificationTime) { // swiftlint:disable:this line_length
                     // ... if they are (and we actually have multiple events), we can schedule them via a single, repeating UNCalendarNotificationTrigger ...
                     let content = event.task.notificationContent()
                     if let standard = standard as? any SchedulerNotificationsConstraint {
                         standard.notificationContent(for: event.task, content: content)
                     }
-                    let cal = event.task.schedule.recurrence?.calendar ?? cal
-                    let triggerDateComponents = hint.dateComponents(calendar: cal, allDayNotificationTime: allDayNotificationTime)
                     let trigger = UNCalendarNotificationTrigger(
                         dateMatching: triggerDateComponents,
                         repeats: true

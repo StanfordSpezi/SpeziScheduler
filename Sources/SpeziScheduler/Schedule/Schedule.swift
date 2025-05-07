@@ -61,7 +61,7 @@ public struct Schedule {
     ///
     /// This is only possible if `DateComponents` doesn't describe another occurrence between `now` and `startDate`. Therefore, we might need to schedule
     /// these occurrences manually, till we reach a date where `now` is near enough at the `startDate`.
-    private(set) var notificationMatchingHint: NotificationMatchingHint?
+    private(set) var notificationMatchingHint: NotificationMatchingHint = .none
 
     /// The duration of a single occurrence.
     ///
@@ -90,9 +90,8 @@ public struct Schedule {
         }
         set {
             recurrenceRule = newValue.map { Data(encoding: $0) }
-
             // if someone updates the recurrence rule, our notificationMatchingHint is not valid anymore
-            notificationMatchingHint = nil
+            notificationMatchingHint = .none
         }
     }
 
@@ -137,7 +136,7 @@ public struct Schedule {
         startingAt start: Date,
         duration: Duration,
         recurrence: Calendar.RecurrenceRule?,
-        notificationIntervalHint: NotificationMatchingHint?
+        notificationIntervalHint: NotificationMatchingHint
     ) {
         self.duration = duration
         self.start = start
@@ -162,7 +161,7 @@ public struct Schedule {
     ///   - duration: The duration of a single occurrence.
     ///   - recurrence: Optional recurrence rule to specify how often and in which interval the event my reoccur.
     public init(startingAt start: Date, duration: Duration = .tillEndOfDay, recurrence: Calendar.RecurrenceRule? = nil) {
-        self.init(startingAt: start, duration: duration, recurrence: recurrence, notificationIntervalHint: nil)
+        self.init(startingAt: start, duration: duration, recurrence: recurrence, notificationIntervalHint: .none)
     }
 
 
