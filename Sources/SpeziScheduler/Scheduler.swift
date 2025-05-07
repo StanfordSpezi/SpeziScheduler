@@ -666,9 +666,10 @@ extension Scheduler {
         return taskIdentifier.union(outcomeIdentifiers)
     }
 
-    func sinkDidSavePublisher(into consume: @escaping (Notification) -> Void) throws -> AnyCancellable {
+    /// Subscribes to save events on the scheduler's internal SwiftData ModelContext, using the specified closure.
+    @_spi(APISupport)
+    public func sinkDidSavePublisher(into consume: @escaping @MainActor (Notification) -> Void) throws -> AnyCancellable {
         let context = try context
-
         return NotificationCenter.default.publisher(for: ModelContext.didSave, object: context)
             .sink { notification in
                 // We use the mainContext. Therefore, the vent will always be called from the main actor
