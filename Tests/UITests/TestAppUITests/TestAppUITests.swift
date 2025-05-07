@@ -210,6 +210,28 @@ class TestAppUITests: XCTestCase {
         
         XCTAssertTrue(app.staticTexts["Passed"].waitForExistence(timeout: 2))
     }
+    
+    
+    @MainActor
+    func testObserveOutcomes() throws {
+        let app = XCUIApplication()
+        app.deleteAndLaunch(withSpringboardAppName: "TestApp")
+
+        XCTAssert(app.wait(for: .runningForeground, timeout: 2.0))
+        
+        let menuButton = app.buttons["Extra Tests"]
+        XCTAssert(menuButton.waitForExistence(timeout: 2))
+        menuButton.tryToTapReallySoftlyMaybeThisWillMakeItWork()
+        let testCaseButton = app.buttons["Observe New Outcomes"]
+        XCTAssert(testCaseButton.waitForExistence(timeout: 2))
+        testCaseButton.tap()
+        
+        XCTAssert(app.staticTexts["did trigger, false"].waitForExistence(timeout: 2))
+        app.buttons["Complete"].firstMatch.tap()
+        XCTAssert(app.staticTexts["did trigger, false"].waitForNonExistence(timeout: 2))
+        XCTAssert(app.staticTexts["did trigger, true"].waitForExistence(timeout: 2))
+        XCTAssert(app.buttons["Complete"].waitForNonExistence(timeout: 2))
+    }
 }
 
 

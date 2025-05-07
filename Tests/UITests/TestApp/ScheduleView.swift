@@ -20,13 +20,17 @@ enum DateSelection: Hashable {
 
 enum AdditionalTestsTestCase: String, CaseIterable, Hashable, Identifiable {
     case shadowedOutcomes = "Shadowed Outcomes"
+    case observeNewOutcomes = "Observe New Outcomes"
     
     var id: Self { self }
     
+    @ViewBuilder @MainActor
     var view: some View {
         switch self {
         case .shadowedOutcomes:
             ShadowedOutcomeTestingView()
+        case .observeNewOutcomes:
+            ObserveNewOutcomesTestingView()
         }
     }
 }
