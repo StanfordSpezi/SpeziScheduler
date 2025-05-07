@@ -8,12 +8,13 @@
 
 import Foundation
 import Spezi
-@_spi(APISupport) import SpeziScheduler
+@_spi(APISupport)
+import SpeziScheduler
 import SpeziSchedulerUI
 import SwiftUI
 
 
-struct ObserveNewOutcomesTestingView: View { // swiftlint:disable:this file_types_order
+struct ObserveNewOutcomesTestingView: View {
     @Environment(Scheduler.self)
     private var scheduler
     
