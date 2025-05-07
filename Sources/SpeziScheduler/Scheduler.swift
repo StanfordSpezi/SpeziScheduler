@@ -133,7 +133,9 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     
     /// A task that slightly delays saving tasks.
     private var saveTask: _Concurrency.Task<Void, Never>?
-    
+    /// Observer closures that are called in response to new ``Outcome``s being added to the Scheduler.
+    /// - Note: the `UUID` only serves as a means of identifying the individual closures, so that we can remove them upon termination
+    private var outcomeObservers: [UUID: @MainActor (Outcome) -> Void] = [:]
     /// Creates a new Scheduler, using on-disk persistence.
     public nonisolated convenience init() {
         self.init(persistence: .onDisk)
@@ -352,6 +354,9 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
             for: context,
             rescheduleNotifications: outcome.task.scheduleNotifications && outcome.occurrenceStartDate > .now
         )
+        for (_, handler) in outcomeObservers {
+            handler(outcome)
+        }
     }
 }
 
@@ -677,6 +682,21 @@ extension Scheduler {
                     consume(notification)
                 }
             }
+    }
+    
+    /// Registers an observer function that gets called when new ``Outcome``s are created within the Scheduler.
+    ///
+    /// - parameter handler: A closure which will get invoked every time a new ``Outcome`` is added to the ``Scheduler``.
+    /// - returns: An opaque handle, to which the lifetime of the observation is tied.
+    @_spi(APISupport)
+    public func observeNewOutcomes(_ handler: @MainActor @escaping (Outcome) -> Void) -> AnyObject {
+        let id = UUID()
+        outcomeObservers[id] = handler
+        return DeferHandle { [weak self] in
+            _Concurrency.Task { @MainActor [weak self] in
+                self?.outcomeObservers.removeValue(forKey: id)
+            }
+        }
     }
 }
 
