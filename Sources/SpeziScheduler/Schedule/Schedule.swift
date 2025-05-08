@@ -139,7 +139,7 @@ public struct Schedule {
         notificationIntervalHint: NotificationMatchingHint
     ) {
         self.duration = duration
-        self.start = start
+        self.start = .init(timeIntervalSince1970: floor(start.timeIntervalSince1970))
         self.recurrence = recurrence
         self.notificationMatchingHint = notificationIntervalHint
     }
