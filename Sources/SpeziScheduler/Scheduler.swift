@@ -133,7 +133,9 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     
     /// A task that slightly delays saving tasks.
     private var saveTask: _Concurrency.Task<Void, Never>?
-    
+    /// Observer closures that are called in response to new ``Outcome``s being added to the Scheduler.
+    /// - Note: the `UUID` only serves as a means of identifying the individual closures, so that we can remove them upon termination
+    private var outcomeObservers: [UUID: @MainActor (Outcome) -> Void] = [:]
     /// Creates a new Scheduler, using on-disk persistence.
     public nonisolated convenience init() {
         self.init(persistence: .onDisk)
@@ -352,6 +354,9 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
             for: context,
             rescheduleNotifications: outcome.task.scheduleNotifications && outcome.occurrenceStartDate > .now
         )
+        for (_, handler) in outcomeObservers {
+            handler(outcome)
+        }
     }
 }
 
@@ -426,9 +431,9 @@ extension Scheduler {
     /// - Parameter taskId: The task id for which you want to delete all versions. Refer to ``Task/id``.
     public func deleteAllVersions(ofTask taskId: String) throws {
         let context = try context
-        try context.delete(model: Task.self, where: #Predicate { task in
-            task.id == taskId
-        })
+        for task in try context.fetch(FetchDescriptor(predicate: #Predicate<Task> { $0.id == taskId })) {
+            context.delete(task)
+        }
         scheduleSave(for: context, rescheduleNotifications: true)
     }
 }
@@ -595,13 +600,13 @@ extension Scheduler {
     private struct OccurrenceId: Hashable {
         let taskId: Task.ID
         let startDate: Date
-
+        
         init(task: Task, startDate: Date) {
             self.taskId = task.id
             self.startDate = startDate
         }
     }
-
+    
     func assembleEvents(
         for range: Range<Date>,
         tasks: some Sequence<Task>,
@@ -648,27 +653,52 @@ extension Scheduler {
                 lhs.occurrence < rhs.occurrence
             }
     }
-
+    
     func hasEventOccurrence(in range: Range<Date>, tasks: some Sequence<Task>) -> Bool {
         tasks
             .lazy
             .compactMap { $0.schedule.nextOccurrence(in: range) }
             .contains { _ in true }
     }
-
+    
     func queryEventsAnchor(
         for range: Range<Date>,
         predicate taskPredicate: Predicate<Task> = #Predicate { _ in true }
     ) throws -> Set<PersistentIdentifier> {
         let taskIdentifier = try queryTaskIdentifiers(with: inRangePredicate(for: range), combineWith: taskPredicate)
         let outcomeIdentifiers = try queryOutcomeIdentifiers(for: range, predicate: taskPredicate)
-
+        
         return taskIdentifier.union(outcomeIdentifiers)
     }
+}
 
-    func sinkDidSavePublisher(into consume: @escaping (Notification) -> Void) throws -> AnyCancellable {
+
+extension Scheduler {
+    @MainActor
+    public final class OutcomeSubscription: Sendable {
+        private let id: UUID
+        private nonisolated(unsafe) weak var scheduler: Scheduler? // safe as reference counting is atomic and we do not mutate otherwise
+        
+        init(id: UUID, scheduler: Scheduler) {
+            self.id = id
+            self.scheduler = scheduler
+        }
+        
+        deinit {
+            guard let scheduler else {
+                return
+            }
+            let id = id
+            _Concurrency.Task { @MainActor in
+                scheduler.outcomeObservers.removeValue(forKey: id)
+            }
+        }
+    }
+    
+    /// Subscribes to save events on the scheduler's internal SwiftData ModelContext, using the specified closure.
+    @_spi(APISupport)
+    public func sinkDidSavePublisher(into consume: @escaping @MainActor (Notification) -> Void) throws -> AnyCancellable {
         let context = try context
-
         return NotificationCenter.default.publisher(for: ModelContext.didSave, object: context)
             .sink { notification in
                 // We use the mainContext. Therefore, the vent will always be called from the main actor
@@ -676,6 +706,17 @@ extension Scheduler {
                     consume(notification)
                 }
             }
+    }
+    
+    /// Registers an observer function that gets called when new ``Outcome``s are created within the Scheduler.
+    ///
+    /// - parameter handler: A closure which will get invoked every time a new ``Outcome`` is added to the ``Scheduler``.
+    /// - returns: An opaque handle, to which the lifetime of the observation is tied.
+    @_spi(APISupport)
+    public func observeNewOutcomes(_ handler: @MainActor @escaping (Outcome) -> Void) -> OutcomeSubscription {
+        let id = UUID()
+        outcomeObservers[id] = handler
+        return OutcomeSubscription(id: id, scheduler: self)
     }
 }
 
