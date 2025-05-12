@@ -204,8 +204,13 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     /// When we add a new task we want to instantly save it to disk. This helps to, e.g., make sure a `@EventQuery` receives the update by subscribing to the
     /// `didSave` notification. We delay saving the context by a bit, by queuing a task for the next possible execution. This helps to avoid that adding a new task model
     /// blocks longer than needed and makes sure that creating multiple tasks in sequence (which happens at startup) doesn't call `save()` more often than required.
-    private func scheduleSave(for context: ModelContext, rescheduleNotifications: Bool) {
-        if saveTask == nil, context.hasChanges {
+    ///
+    /// - parameter context: The `ModelContext` for which a save should be scheduled
+    /// - parameter forceSave: Flag to always schedule a save, regardless of whether `context.hasChanges` is actually true. Required to work around FB17583572.
+    /// - parameter rescheduleNotifications: whether the scheduler should reschedule notifications for all ``Task``s.
+    private func scheduleSave(for context: ModelContext, forceSave: Bool = false, rescheduleNotifications: Bool) {
+        // swiftlint:disable:previous function_default_parameter_at_end
+        if saveTask == nil, forceSave || context.hasChanges {
             // as we run on the MainActor in the task, if the saveTask is not nil,
             // we know that the Task isn't executed yet but will on the "next" tick.
             saveTask = _Concurrency.Task { @MainActor [logger] in
@@ -431,10 +436,8 @@ extension Scheduler {
     /// - Parameter taskId: The task id for which you want to delete all versions. Refer to ``Task/id``.
     public func deleteAllVersions(ofTask taskId: String) throws {
         let context = try context
-        for task in try context.fetch(FetchDescriptor(predicate: #Predicate<Task> { $0.id == taskId })) {
-            context.delete(task)
-        }
-        scheduleSave(for: context, rescheduleNotifications: true)
+        try context.delete(model: Task.self, where: #Predicate { $0.id == taskId })
+        scheduleSave(for: context, forceSave: true, rescheduleNotifications: true)
     }
 }
 
