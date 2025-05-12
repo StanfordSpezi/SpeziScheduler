@@ -260,6 +260,53 @@ final class SchedulerTests: XCTestCase {
     
     
     @MainActor
+    func testDeleteAllVersions() async throws {
+        func waitABit() async throws {
+            // to give it some time to save everything
+            try await _Concurrency.Task.sleep(for: .seconds(0.25))
+        }
+        
+        let module = Scheduler(persistence: .inMemory)
+        withDependencyResolution {
+            module
+        }
+        try module.eraseDatabase()
+        
+        func addTask(_ id: String, schedule: Schedule) throws -> Task {
+            try module.createOrUpdateTask(id: id, title: "", instructions: "", schedule: schedule, completionPolicy: .anytime).task
+        }
+        
+        let task = try addTask("task", schedule: .daily(hour: 0, minute: 0, startingAt: .now))
+        try await waitABit()
+        
+        do {
+            let events = try module.queryEvents(forTaskWithId: "task", in: Calendar.current.rangeOfDay(for: .now))
+            XCTAssertEqual(events.count, 1)
+            try XCTUnwrap(events.first).complete()
+        }
+        try await waitABit()
+        
+        // update the task (this will create a new version)
+        let task2 = try addTask("task", schedule: .daily(hour: 23, minute: 59, second: 59, startingAt: .now))
+        try await waitABit()
+        XCTAssertEqual(task2, task.nextVersion)
+        XCTAssertEqual(task2.previousVersion, task)
+        
+        do {
+            let events = try module.queryEvents(forTaskWithId: "task", in: Calendar.current.rangeOfDay(for: .now))
+            XCTAssertEqual(events.count, 1)
+            try XCTUnwrap(events.first).complete()
+        }
+        try await waitABit()
+        
+        try module.deleteAllVersions(ofTask: "task")
+        try await waitABit()
+        
+        XCTAssert(try module.queryAllTasks().isEmpty)
+    }
+    
+    
+    @MainActor
     func testSandboxDetection() throws {
         /// function that will throw an error if initializing the `Scheduler` does not result in a `preconditionFailure`
         let assertCreateModuleFails = {
