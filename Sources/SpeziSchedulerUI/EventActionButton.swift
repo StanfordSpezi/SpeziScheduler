@@ -25,22 +25,20 @@ public struct EventActionButton: View {
     @ManagedViewUpdate private var actionUpdate
 
 
-    private var actionDisabled: Bool {
+    private var isEventCompletionAllowed: Bool {
         let policy = event.task.completionPolicy
-
         let now = Date.now
-        let disabled = policy.isAllowedToComplete(event: event, now: now)
-        if disabled {
-            if let completionAllowed = policy.dateOnceCompletionIsAllowed(for: event, now: now) {
-                actionUpdate.schedule(at: completionAllowed)
+        let allowed = policy.isAllowedToComplete(event: event, now: now)
+        if allowed {
+            if let dateWhenDisallowed = policy.dateOnceCompletionBecomesDisallowed(for: event, now: now), dateWhenDisallowed != .distantFuture {
+                actionUpdate.schedule(at: dateWhenDisallowed)
             }
         } else {
-            if let completionDisallowed = policy.dateOnceCompletionBecomesDisallowed(for: event, now: now) {
-                actionUpdate.schedule(at: completionDisallowed)
+            if let dateWhenAllowed = policy.dateOnceCompletionIsAllowed(for: event, now: now), dateWhenAllowed != .distantPast {
+                actionUpdate.schedule(at: dateWhenAllowed)
             }
         }
-
-        return false
+        return allowed
     }
 
     private var actionLabel: Text {
@@ -59,8 +57,8 @@ public struct EventActionButton: View {
             actionLabel
                 .frame(maxWidth: .infinity, minHeight: 30)
         }
-            .disabled(actionDisabled)
-            .buttonStyle(.borderedProminent)
+        .buttonStyle(.borderedProminent)
+        .disabled(!isEventCompletionAllowed)
     }
 
     init(event: Event, label: Text?, action: @escaping () -> Void) {

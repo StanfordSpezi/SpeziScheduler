@@ -98,6 +98,34 @@ final class ScheduleTests: XCTestCase {
         let occurrence1 = occurrences[1]
         try XCTAssertEqual(occurrence1.start, .withTestDate(day: 25, hour: 12, minute: 35, second: 0))
     }
+    
+    func testDailyScheduleWithOneOccurrence() throws {
+        let startDate: Date = try .withTestDate(hour: 9, minute: 23, second: 25)
+        let schedule: Schedule = .daily(hour: 12, minute: 35, startingAt: startDate, end: .afterOccurrences(1), duration: .minutes(30))
+
+        let occurrences = schedule.occurrences()
+        var iterator = occurrences.makeIterator()
+
+        let occurrence1 = try XCTUnwrap(iterator.next())
+        try XCTAssertEqual(occurrence1.start, .withTestDate(hour: 12, minute: 35))
+        try XCTAssertEqual(occurrence1.end, .withTestDate(hour: 13, minute: 5))
+
+        XCTAssertNil(iterator.next())
+    }
+    
+    func testDailyScheduleWithOneOccurrenceSubSecondStartDate() throws {
+        let startDate: Date = try .withTestDate(hour: 9, minute: 23, second: 25, nanosecond: 527)
+        let schedule: Schedule = .daily(hour: 12, minute: 35, startingAt: startDate, end: .afterOccurrences(1), duration: .minutes(30))
+
+        let occurrences = schedule.occurrences()
+        var iterator = occurrences.makeIterator()
+
+        let occurrence1 = try XCTUnwrap(iterator.next())
+        try XCTAssertEqual(occurrence1.start, .withTestDate(hour: 12, minute: 35))
+        try XCTAssertEqual(occurrence1.end, .withTestDate(hour: 13, minute: 5))
+
+        XCTAssertNil(iterator.next())
+    }
 
     func testDailyScheduleWithThreeOccurrences() throws {
         let startDate: Date = try .withTestDate(hour: 9, minute: 23, second: 25)
@@ -154,9 +182,9 @@ final class ScheduleTests: XCTestCase {
 
 
 extension Date {
-    static func withTestDate(year: Int = 2024, month: Int = 8, day: Int = 24, hour: Int, minute: Int, second: Int = 0) throws -> Date {
-        // swiftlint:disable:previous function_default_parameter_at_end
-        let components = DateComponents(year: year, month: month, day: day, hour: hour, minute: minute, second: second)
+    static func withTestDate(year: Int = 2024, month: Int = 8, day: Int = 24, hour: Int, minute: Int, second: Int = 0, nanosecond: Int = 0) throws -> Date {
+        // swiftlint:disable:previous function_default_parameter_at_end line_length
+        let components = DateComponents(year: year, month: month, day: day, hour: hour, minute: minute, second: second, nanosecond: nanosecond)
         return try XCTUnwrap(Calendar.current.date(from: components), "Invalid test date")
     }
 }

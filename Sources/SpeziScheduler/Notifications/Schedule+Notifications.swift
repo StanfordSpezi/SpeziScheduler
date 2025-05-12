@@ -12,11 +12,14 @@ import UserNotifications
 
 extension Schedule {
     enum NotificationMatchingHint: Codable, Sendable, Hashable {
+        case none
         case components(hour: Int, minute: Int, second: Int, weekday: Int?)
         case allDayNotification(weekday: Int?)
         
-        func dateComponents(calendar: Calendar, allDayNotificationTime: NotificationTime) -> DateComponents {
+        func dateComponents(calendar: Calendar, allDayNotificationTime: NotificationTime) -> DateComponents? {
             switch self {
+            case .none:
+                return nil
             case let .components(hour, minute, second, weekday):
                 return DateComponents(calendar: calendar, hour: hour, minute: minute, second: second, weekday: weekday)
             case let .allDayNotification(weekday):
@@ -48,11 +51,10 @@ extension Schedule {
         second: Int,
         weekday: Int? = nil, // swiftlint:disable:this function_default_parameter_at_end
         consider duration: Duration
-    ) -> NotificationMatchingHint? {
+    ) -> NotificationMatchingHint {
         guard interval == 1 else {
-            return nil
+            return .none
         }
-
         if duration.isAllDay {
             return .allDayNotification(weekday: weekday)
         } else {
@@ -61,7 +63,7 @@ extension Schedule {
     }
 
     func canBeScheduledAsRepeatingCalendarTrigger(allDayNotificationTime: NotificationTime, now: Date = .now) -> Bool {
-        guard let notificationMatchingHint, let recurrence else {
+        guard notificationMatchingHint != .none, let recurrence else {
             return false // needs to be repetitive and have a interval hint
         }
 
@@ -70,7 +72,12 @@ extension Schedule {
         }
 
         // otherwise, check if it still works (e.g., we have Monday, start date is Wednesday and schedule reoccurs every Friday).
-        let components = notificationMatchingHint.dateComponents(calendar: recurrence.calendar, allDayNotificationTime: allDayNotificationTime)
+        guard let components = notificationMatchingHint.dateComponents(
+            calendar: recurrence.calendar,
+            allDayNotificationTime: allDayNotificationTime
+        ) else {
+            return false
+        }
         let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
         guard let nextDate = trigger.nextTriggerDate() else {
             return false

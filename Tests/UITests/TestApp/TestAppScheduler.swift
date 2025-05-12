@@ -91,6 +91,17 @@ final class TestAppScheduler: Module {
                 scheduleNotifications: true,
                 shadowedOutcomesHandling: .delete
             )
+            
+            try scheduler.createOrUpdateTask(
+                id: "TESTTESTTEST",
+                title: "TESTTESTTEST",
+                instructions: "TESTTESTTEST",
+                category: .none,
+                schedule: .once(at: .today, duration: .tillEndOfDay),
+                completionPolicy: .sameDay,
+                scheduleNotifications: false,
+                shadowedOutcomesHandling: .delete
+            )
         } catch {
             logger.error("Failed to scheduled TestApp tasks: \(error)")
             model.viewState = .error(AnyLocalizedError(
