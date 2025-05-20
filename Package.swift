@@ -58,7 +58,7 @@ let package = Package(
                 .product(name: "SpeziNotifications", package: "SpeziNotifications"),
                 .product(name: "SpeziLocalStorage", package: "SpeziStorage"),
                 .product(name: "Algorithms", package: "swift-algorithms"),
-                .product(name: "XCTRuntimeAssertions", package: "XCTRuntimeAssertions")
+                .product(name: "RuntimeAssertions", package: "XCTRuntimeAssertions")
             ],
             swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
             plugins: [] + swiftLintPlugin()
