@@ -308,24 +308,16 @@ final class SchedulerTests: XCTestCase {
     
     @MainActor
     func testSandboxDetection() throws {
-        /// function that will throw an error if initializing the `Scheduler` does not result in a `preconditionFailure`
-        let assertCreateModuleFails = {
-            // we need to write it like this, since simply having a trailing closure in the `XCTRuntimePrecondition` call
-            // (which then would create the Scheduler instance) would result in the compiler inferring that closure as being MainActor-constrained,
-            // the runtime isolation check for which would then fail, since XCTRuntimePrecondition evaluates the expression on a background thread.
-            nonisolated func imp() {
-                _ = Scheduler(persistence: .onDisk)
-            }
-            try XCTRuntimePrecondition(timeout: 2, "", imp)
-        }
         #if os(macOS) || targetEnvironment(macCatalyst)
         // we expect this to fail, since we're on macOS and the unit tests are not sandboxed
-        // if the assertCreateModuleFails function does NOT throw an error, the module creation resulted in a preconditionFailure.
-        XCTAssertNoThrow(try assertCreateModuleFails())
+        XCTAssertRuntimePrecondition { @Sendable in
+            _ = Scheduler(persistence: .onDisk)
+        }
         #else
         // we expect this not to fail, since we're in a non-macOS (ie, sandboxed) environment
-        // if the assertCreateModuleFails function does throw an error, the module creation did NOT result in a preconditionFailure.
-        XCTAssertThrowsError(try assertCreateModuleFails())
+        XCTAssertNoRuntimePrecondition { @Sendable in
+            _ = Scheduler(persistence: .onDisk)
+        }
         #endif
     }
 }

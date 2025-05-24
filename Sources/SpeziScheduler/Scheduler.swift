@@ -8,11 +8,11 @@
 
 import Combine
 import Foundation
+import RuntimeAssertions
 import Spezi
 import SpeziFoundation
 import SwiftData
 import SwiftUI
-import XCTRuntimeAssertions
 
 
 /// Schedule and query tasks and their events.
