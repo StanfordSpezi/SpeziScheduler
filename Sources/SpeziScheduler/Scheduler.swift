@@ -446,7 +446,7 @@ extension Scheduler {
         } else {
             try context.delete(model: Task.self, where: #Predicate { $0.id == taskId })
         }
-        scheduleSave(for: context, forceSave: true, rescheduleNotifications: true)
+        scheduleSave(for: context, rescheduleNotifications: true)
     }
 }
 
