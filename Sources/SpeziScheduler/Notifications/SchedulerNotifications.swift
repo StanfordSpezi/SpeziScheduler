@@ -230,6 +230,7 @@ public final class SchedulerNotifications: Module, DefaultInitializable, Environ
         }
         queuedForNextTick = true
         _Concurrency.Task { @MainActor in
+            await _Concurrency.Task.yield()
             queuedForNextTick = false
             await _scheduleNotificationsUpdate(using: scheduler)
         }
@@ -309,6 +310,7 @@ public final class SchedulerNotifications: Module, DefaultInitializable, Environ
             scheduleNotificationAccess.signal()
         }
         let task = _Concurrency.Task { @MainActor in
+            await _Concurrency.Task.yield()
             try await scheduleNotifications(for: scheduler)
         }
         #if !(os(macOS) || os(watchOS))

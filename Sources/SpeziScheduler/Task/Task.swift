@@ -160,6 +160,11 @@ public final class Task {
     public var latestVersion: Task {
         nextVersion?.latestVersion ?? self
     }
+    
+    /// The first version of this task.
+    var firstVersion: Task {
+        previousVersion?.firstVersion ?? self
+    }
 
     /// A reference to a previous version of this task.
     ///

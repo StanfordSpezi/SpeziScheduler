@@ -14,7 +14,7 @@ import XCTRuntimeAssertions
 import XCTSpezi
 
 
-final class SchedulerTests: XCTestCase {
+final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_length
     @MainActor
     func testScheduler() {
         // test simple scheduler initialization test
@@ -319,5 +319,28 @@ final class SchedulerTests: XCTestCase {
             _ = Scheduler(persistence: .onDisk)
         }
         #endif
+    }
+    
+    // regression test around a bug where the context save would take place too late
+    // and the notification scheduling would end up accessing an old state of the context, and crash.
+    // was likely in part caused by using `ModelContext.delete(model:where:)` instead of `ModelContext.delete(_:)`.
+    @MainActor
+    func testDeleteTaskWithNotifications() async throws {
+        let allTime = Date.distantPast...Date.distantFuture
+        let scheduler = Scheduler(persistence: .inMemory)
+        withDependencyResolution {
+            scheduler
+        }
+        let task = try scheduler.createOrUpdateTask(
+            id: "task-1",
+            title: "",
+            instructions: "",
+            schedule: .daily(hour: 23, minute: 59, startingAt: .now),
+            scheduleNotifications: true,
+            notificationThread: .global
+        ).task
+        try scheduler.deleteAllVersions(of: task)
+        try await _Concurrency.Task.sleep(for: .seconds(0.2))
+        try #expect(scheduler.queryTasks(for: allTime).isEmpty)
     }
 }

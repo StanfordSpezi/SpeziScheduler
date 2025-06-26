@@ -103,6 +103,39 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         case testingContainer(ModelContainer)
     }
     
+    @MainActor
+    private final class SaveTask {
+        private typealias Task = _Concurrency.Task
+        
+        private unowned let scheduler: Scheduler
+        private var saveTask: Task<Void, Never>?
+        private var scheduleNotifications = false
+        
+        init(scheduler: Scheduler, context: ModelContext) {
+            self.scheduler = scheduler
+            saveTask = Task { @MainActor in
+                // make sure that we don't get inlined into the current run loop iteration
+                await Task.yield()
+                defer {
+                    self.saveTask = nil
+                    scheduler.saveTask = nil
+                }
+                do {
+                    try context.save()
+                } catch {
+                    scheduler.logger.error("Failed to save the scheduler model context: \(error)")
+                }
+                if scheduleNotifications {
+                    scheduler.notifications.scheduleNotificationsUpdate(using: scheduler)
+                }
+            }
+        }
+        
+        func rescheduleNotifications() {
+            scheduleNotifications = true
+        }
+    }
+    
     /// We disable that for now. We might need to restore some information to cancel notifications.
     private static let purgeLegacyStorage = false
     
@@ -132,7 +165,7 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     
     
     /// A task that slightly delays saving tasks.
-    private var saveTask: _Concurrency.Task<Void, Never>?
+    private var saveTask: SaveTask?
     /// Observer closures that are called in response to new ``Outcome``s being added to the Scheduler.
     /// - Note: the `UUID` only serves as a means of identifying the individual closures, so that we can remove them upon termination
     private var outcomeObservers: [UUID: @MainActor (Outcome) -> Void] = [:]
@@ -174,6 +207,7 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         }
     }
     
+    
     /// Configure the Scheduler module.
     @_documentation(visibility: internal)
     public func configure() {
@@ -206,26 +240,19 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     /// blocks longer than needed and makes sure that creating multiple tasks in sequence (which happens at startup) doesn't call `save()` more often than required.
     ///
     /// - parameter context: The `ModelContext` for which a save should be scheduled
-    /// - parameter forceSave: Flag to always schedule a save, regardless of whether `context.hasChanges` is actually true. Required to work around FB17583572.
+    /// - parameter forceSave: Flag to always schedule an immediate save, regardless of whether `context.hasChanges` is actually true. Required to work around FB17583572.
     /// - parameter rescheduleNotifications: whether the scheduler should reschedule notifications for all ``Task``s.
     private func scheduleSave(for context: ModelContext, forceSave: Bool = false, rescheduleNotifications: Bool) {
         // swiftlint:disable:previous function_default_parameter_at_end
-        if saveTask == nil, forceSave || context.hasChanges {
+        if saveTask != nil {
             // as we run on the MainActor in the task, if the saveTask is not nil,
             // we know that the Task isn't executed yet but will on the "next" tick.
-            saveTask = _Concurrency.Task { @MainActor [logger] in
-                defer {
-                    saveTask = nil
-                }
-                do {
-                    try context.save()
-                } catch {
-                    logger.error("Failed to save the scheduler model context: \(error)")
-                }
-            }
+        } else if forceSave || context.hasChanges {
+            saveTask = SaveTask(scheduler: self, context: context)
         }
+        // we now have a SaveTask scheduled, so all we need to do is to update the notification scheduling if necessary
         if rescheduleNotifications {
-            notifications.scheduleNotificationsUpdate(using: self)
+            saveTask?.rescheduleNotifications() // will never be nil
         }
     }
     
@@ -421,7 +448,7 @@ extension Scheduler {
     ///
     /// - Parameter task: The task and all versions of it to delete.
     public func deleteAllVersions(of task: Task) throws {
-        try deleteAllVersions(ofTask: task.id)
+        try deleteTasks(CollectionOfOne(task))
     }
     
     /// Delete all versions of the supplied task from the store.
@@ -436,17 +463,12 @@ extension Scheduler {
     /// - Parameter taskId: The task id for which you want to delete all versions. Refer to ``Task/id``.
     public func deleteAllVersions(ofTask taskId: String) throws {
         let context = try context
-        if true {
-            let descriptor = FetchDescriptor(predicate: #Predicate<Task> {
-                $0.id == taskId
-            })
-            for task in try context.fetch(descriptor) {
-                context.delete(task)
-            }
-        } else {
-            try context.delete(model: Task.self, where: #Predicate { $0.id == taskId })
+        var descriptor = FetchDescriptor(predicate: #Predicate<Task> { $0.id == taskId })
+        descriptor.relationshipKeyPathsForPrefetching = [\.previousVersion]
+        descriptor.fetchLimit = 1 // we don't care which version we get.
+        if let task = try context.fetch(descriptor).first {
+            try deleteAllVersions(of: task)
         }
-        scheduleSave(for: context, rescheduleNotifications: true)
     }
 }
 
