@@ -103,6 +103,8 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         case testingContainer(ModelContainer)
     }
     
+    /// Utility type that allows us to easily defer a `context.save()` operation until the next run loop operation.
+    /// This is benefitial since it means that we'll be able to skip unnecessary `save()`s if multiple changes are made to the context directly after each other.
     @MainActor
     private final class SaveTask {
         private typealias Task = _Concurrency.Task

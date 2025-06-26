@@ -341,6 +341,6 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
         ).task
         try scheduler.deleteAllVersions(of: task)
         try await _Concurrency.Task.sleep(for: .seconds(0.2))
-        try #expect(scheduler.queryTasks(for: allTime).isEmpty)
+        try XCTAssert(scheduler.queryTasks(for: allTime).isEmpty)
     }
 }
