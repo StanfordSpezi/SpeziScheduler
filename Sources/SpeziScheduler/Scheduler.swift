@@ -436,11 +436,15 @@ extension Scheduler {
     /// - Parameter taskId: The task id for which you want to delete all versions. Refer to ``Task/id``.
     public func deleteAllVersions(ofTask taskId: String) throws {
         let context = try context
-        let descriptor = FetchDescriptor(predicate: #Predicate<Task> {
-            $0.id == taskId
-        })
-        for task in try context.fetch(descriptor) {
-            context.delete(task)
+        if false {
+            let descriptor = FetchDescriptor(predicate: #Predicate<Task> {
+                $0.id == taskId
+            })
+            for task in try context.fetch(descriptor) {
+                context.delete(task)
+            }
+        } else {
+            try context.delete(model: Task.self, where: #Predicate { $0.id == taskId })
         }
         scheduleSave(for: context, forceSave: true, rescheduleNotifications: true)
     }
