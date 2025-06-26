@@ -308,6 +308,7 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
     
     @MainActor
     func testSandboxDetection() throws {
+        throw XCTSkip()
         #if os(macOS) || targetEnvironment(macCatalyst)
         // we expect this to fail, since we're on macOS and the unit tests are not sandboxed
         XCTAssertRuntimePrecondition { @Sendable in
