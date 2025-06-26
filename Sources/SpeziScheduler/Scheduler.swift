@@ -436,7 +436,9 @@ extension Scheduler {
         for task in tasks {
             context.delete(task)
         }
-        scheduleSave(for: context, rescheduleNotifications: needsNotificationsUpdate)
+        try context.save()
+        notifications.scheduleNotificationsUpdate(using: self)
+//        scheduleSave(for: context, rescheduleNotifications: needsNotificationsUpdate)
     }
     
     /// Delete all versions of the supplied task from the store.
