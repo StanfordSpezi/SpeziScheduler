@@ -9,6 +9,7 @@
 import Spezi
 @_spi(TestingSupport)
 @testable import SpeziScheduler
+import SwiftData
 import XCTest
 import XCTRuntimeAssertions
 import XCTSpezi
@@ -306,9 +307,62 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
     }
     
     
+    // Ensures that the state of the Scheduler's underlying ModelContext is correct when performing multiple operations within a single
+    // run loop iteration, i.e. before the context is saved.
+    // See also: FB17583572 and FB18429335.
+    @MainActor
+    func testSchedulerFastModelContextOperations() throws {
+        let module = Scheduler(persistence: .inMemory)
+        withDependencyResolution {
+            module
+        }
+        try module.eraseDatabase()
+        
+        let (task1A, didCreateTask1A) = try module.createOrUpdateTask(
+            id: "task1",
+            title: "",
+            instructions: "",
+            schedule: .daily(hour: 0, minute: 0, startingAt: .now.addingTimeInterval(-1000)),
+            effectiveFrom: .now.addingTimeInterval(-1000)
+        )
+        XCTAssert(didCreateTask1A)
+        XCTAssertEqual(try module.queryTasks(for: Calendar.current.rangeOfDay(for: .today)), [task1A])
+        
+        let (task1B, didCreateTask1B) = try module.createOrUpdateTask(
+            id: "task1",
+            title: "",
+            instructions: "",
+            schedule: .daily(hour: 1, minute: 0, startingAt: .now)
+        )
+        XCTAssert(didCreateTask1B)
+        XCTAssertEqual(try module.queryTasks(for: Calendar.current.rangeOfDay(for: .today)).count, 2)
+        XCTAssertEqual(try module.queryTasks(for: Calendar.current.rangeOfDay(for: .today)), [task1A, task1B])
+        
+        let context = try module.context
+        XCTAssert(context.hasChanges)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Task>()), 2)
+        
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Task>()), 2)
+        XCTAssert(context.hasChanges)
+        try context.save()
+        XCTAssertFalse(context.hasChanges)
+        if false {
+            try context.delete(model: Task.self)
+        } else {
+            for model in try context.fetch(FetchDescriptor<Task>()) {
+                context.delete(model)
+            }
+        }
+        XCTAssert(context.hasChanges)
+        try context.save()
+        XCTAssertFalse(context.hasChanges)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Task>()), 0)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Task>()), 0)
+    }
+    
+    
     @MainActor
     func testSandboxDetection() throws {
-        throw XCTSkip()
         #if os(macOS) || targetEnvironment(macCatalyst)
         // we expect this to fail, since we're on macOS and the unit tests are not sandboxed
         XCTAssertRuntimePrecondition { @Sendable in
@@ -327,7 +381,6 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
     // was likely in part caused by using `ModelContext.delete(model:where:)` instead of `ModelContext.delete(_:)`.
     @MainActor
     func testDeleteTaskWithNotifications() async throws {
-        throw XCTSkip()
         let allTime = Date.distantPast...Date.distantFuture
         let scheduler = Scheduler(persistence: .inMemory)
         withDependencyResolution {
@@ -342,7 +395,6 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
             notificationThread: .global
         ).task
         try scheduler.deleteAllVersions(of: task)
-        try await _Concurrency.Task.sleep(for: .seconds(0.2))
         try XCTAssert(scheduler.queryTasks(for: allTime).isEmpty)
     }
 }

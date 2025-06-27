@@ -465,12 +465,11 @@ extension Scheduler {
     /// - Parameter taskId: The task id for which you want to delete all versions. Refer to ``Task/id``.
     public func deleteAllVersions(ofTask taskId: String) throws {
         let context = try context
-        var descriptor = FetchDescriptor(predicate: #Predicate<Task> { $0.id == taskId })
-        descriptor.relationshipKeyPathsForPrefetching = [\.previousVersion]
-        descriptor.fetchLimit = 1 // we don't care which version we get.
-        if let task = try context.fetch(descriptor).first {
-            try deleteAllVersions(of: task)
-        }
+        // we need to perform a save operation beforehand, to make sure that the `ModelContext.delete(model:where:)` call below works properly.
+        // (see also FB18429335 and FB17583572)
+        try context.save()
+        try context.delete(model: Task.self, where: #Predicate { $0.id == taskId })
+        scheduleSave(for: context, forceSave: true, rescheduleNotifications: true)
     }
 }
 
