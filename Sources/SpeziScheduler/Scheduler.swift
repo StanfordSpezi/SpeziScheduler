@@ -436,9 +436,7 @@ extension Scheduler {
         for task in tasks {
             context.delete(task)
         }
-        try context.save()
-        notifications.scheduleNotificationsUpdate(using: self)
-//        scheduleSave(for: context, rescheduleNotifications: needsNotificationsUpdate)
+        scheduleSave(for: context, rescheduleNotifications: needsNotificationsUpdate)
     }
     
     /// Delete all versions of the supplied task from the store.
@@ -452,7 +450,7 @@ extension Scheduler {
     ///
     /// - Parameter task: The task and all versions of it to delete.
     public func deleteAllVersions(of task: Task) throws {
-        try deleteTasks(CollectionOfOne(task))
+        try deleteTasks(CollectionOfOne(task.firstVersion))
     }
     
     /// Delete all versions of the supplied task from the store.

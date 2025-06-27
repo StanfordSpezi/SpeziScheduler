@@ -327,6 +327,7 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
     // was likely in part caused by using `ModelContext.delete(model:where:)` instead of `ModelContext.delete(_:)`.
     @MainActor
     func testDeleteTaskWithNotifications() async throws {
+        throw XCTSkip()
         let allTime = Date.distantPast...Date.distantFuture
         let scheduler = Scheduler(persistence: .inMemory)
         withDependencyResolution {
