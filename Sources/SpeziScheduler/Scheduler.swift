@@ -420,20 +420,65 @@ extension Scheduler {
     ///     that the ``Task/schedule`` doesn't produce any more occurrences.
     ///
     /// - Parameter tasks: The list of task to delete.
-    public func deleteTasks(_ tasks: some Collection<Task>) throws {
+    public func deleteTasks(_ tasks: consuming some Collection<Task>) throws {
         guard !tasks.isEmpty else {
             return
         }
-        let needsNotificationsUpdate = tasks.contains {
-            // If any of the tasks we're about to delete had notification scheduling, or if any of the tasks'
-            // previous versions (which, after the delete, will become the new current versions) had notification
-            // scheduling enabled, we need to perform an overall notification reschedule operation.
-            // All of this should only happen if the task is actually the latest version. If we're deleting
-            // an old version of a task, we don't really need to worry about the notification scheduling.
-            $0.isLatestVersion && ($0.scheduleNotifications || $0.previousVersion?.scheduleNotifications == true)
+        let tasksToDelete: [Task]
+        let needsNotificationsUpdate: Bool
+        do {
+            /// Determines if a ``Task`` is subsumed by another ``Task``,
+            /// i.e. whether, for the purposes of task deletion, we should ignore the first task because we know that deleting the second one will also implicitly delete the first.
+            func isTask(_ potentialNewerVersion: Task, subsumedBy potentialOlderVersion: Task) -> Bool {
+                guard potentialNewerVersion.id == potentialOlderVersion.id else {
+                    return false
+                }
+                let allVersions = potentialNewerVersion.allVersions
+                guard let lhsIdx = allVersions.firstOffset(of: potentialNewerVersion),
+                      let rhsIdx = allVersions.firstOffset(of: potentialOlderVersion) else {
+                    return false
+                }
+                return rhsIdx < lhsIdx
+            }
+            /// The oldest version of every ``Task`` that should be deleted.
+            let oldestTaskVersionsToDelete = (consume tasks).reduce(into: Set<Task>()) { tasks, task in
+                guard !tasks.contains(task) else {
+                    return
+                }
+                if let otherIdx = tasks.firstIndex(where: { $0.id == task.id }) {
+                    let other = tasks[otherIdx]
+                    if isTask(task, subsumedBy: other) {
+                        // nothing to do. `other` subsumes `task
+                    } else if isTask(other, subsumedBy: task) {
+                        // `task` subsumes `other`.
+                        // -> swap them out
+                        tasks.remove(other)
+                        tasks.insert(task)
+                    }
+                } else {
+                    tasks.insert(task)
+                }
+            }
+            needsNotificationsUpdate = oldestTaskVersionsToDelete.contains { task in
+                // If any of the tasks we're about to delete had notification scheduling, or if any of the tasks'
+                // previous versions (which, after the delete, will become the new current versions) had notification
+                // scheduling enabled, we need to perform an overall notification reschedule operation.
+                task.scheduleNotifications || task.previousVersion?.scheduleNotifications == true
+            }
+            tasksToDelete = oldestTaskVersionsToDelete
+                .flatMap { sequence(first: $0, next: \.nextVersion).reversed() }
         }
         let context = try context
-        for task in tasks {
+        // We first need to manually delete all Outcomes belonging to the tasks we're about to delete.
+        // FB18455306 ([SwiftData] deleting model crashes bc of missing default value, despite cascading delete rule.)
+        for outcome in tasksToDelete.flatMap(\.outcomes) {
+            context.delete(outcome)
+        }
+        try context.save()
+        // Having deleted all referenced outcomes, and having saved the context, we can now delete the tasks.
+        // Note that the order in which we delete them matters (we need to delete newer versions of a task before older ones),
+        // but the code above has already taken care of this for us.
+        for task in tasksToDelete {
             context.delete(task)
         }
         scheduleSave(for: context, rescheduleNotifications: needsNotificationsUpdate)
@@ -599,6 +644,8 @@ extension Scheduler {
     // MARK: TestingSupport functions
     
     /// Fetches all ``Task``s stored in the module.
+    ///
+    /// - Note: This will return all versions of each ``Task`` known to the Scheduler, not just the latest one!
     @_spi(TestingSupport)
     public func queryAllTasks() throws -> [Task] {
         try self.context.fetch(FetchDescriptor<Task>())
@@ -914,6 +961,24 @@ extension Scheduler.DataError: LocalizedError {
         case .nextVersionAlreadyPresent:
             String(localized: "Only the latest version of a task can be changed.")
         }
+    }
+}
+
+
+extension Sequence {
+    /// Returns the offset of the position of `element`'s first occurrence within the sequence.
+    ///
+    /// - Precondition: It must either be guaranteed that the sequence contains the element at some position, or that the sequence is finite.
+    fileprivate func firstOffset(of element: Element) -> Int? where Element: Equatable {
+        var offset = 0
+        for elem in self {
+            if elem == element {
+                return offset
+            } else {
+                offset += 1
+            }
+        }
+        return nil
     }
 }
 

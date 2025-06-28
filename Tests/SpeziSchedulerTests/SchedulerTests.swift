@@ -6,6 +6,8 @@
 // SPDX-License-Identifier: MIT
 //
 
+// swiftlint:disable file_length function_body_length
+
 import Spezi
 @_spi(TestingSupport)
 @testable import SpeziScheduler
@@ -77,7 +79,7 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
     }
 
     @MainActor
-    func testSimpleTaskVersioning() throws { // swiftlint:disable:this function_body_length
+    func testSimpleTaskVersioning() throws {
         let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
             module
@@ -302,6 +304,258 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
         
         try module.deleteAllVersions(of: task2)
         try await waitABit()
+        
+        XCTAssert(try module.queryAllTasks().isEmpty)
+    }
+    
+    
+    @MainActor
+    func testDeleteTaskSingleVersionNoOutcomes() async throws {
+        func waitABit() async throws {
+            // to give it some time to save everything
+            try await _Concurrency.Task.sleep(for: .seconds(0.25))
+        }
+        
+        let cal = Calendar.current
+        let module = Scheduler(persistence: .inMemory)
+        withDependencyResolution {
+            module
+        }
+        try module.eraseDatabase()
+        
+        @discardableResult
+        func addTask(_ id: String, startingAt startDate: Date) throws -> Task {
+            let (task, didChange) = try module.createOrUpdateTask(
+                id: id,
+                title: "",
+                instructions: "",
+                schedule: .daily(hour: 0, minute: 0, startingAt: startDate),
+                completionPolicy: .anytime,
+                effectiveFrom: startDate
+            )
+            XCTAssert(didChange)
+            return task
+        }
+        
+        let task = try addTask("task", startingAt: cal.startOfMonth(for: .now))
+        try await waitABit()
+        
+        try module.deleteTasks(task)
+        
+        XCTAssert(try module.queryAllTasks().isEmpty)
+        XCTAssert(try module.queryAllOutcomes().isEmpty)
+    }
+    
+    
+    @MainActor
+    func testDeleteTaskSingleVersionSomeOutcomes() async throws {
+        func waitABit() async throws {
+            // to give it some time to save everything
+            try await _Concurrency.Task.sleep(for: .seconds(0.25))
+        }
+        
+        let cal = Calendar.current
+        let module = Scheduler(persistence: .inMemory)
+        withDependencyResolution {
+            module
+        }
+        try module.eraseDatabase()
+        
+        @discardableResult
+        func addTask(_ id: String, startingAt startDate: Date) throws -> Task {
+            let (task, didChange) = try module.createOrUpdateTask(
+                id: id,
+                title: "",
+                instructions: "",
+                schedule: .daily(hour: 0, minute: 0, startingAt: startDate),
+                completionPolicy: .anytime,
+                effectiveFrom: startDate
+            )
+            XCTAssert(didChange)
+            return task
+        }
+        
+        let task = try addTask("task", startingAt: cal.startOfMonth(for: .now))
+        try await waitABit()
+        
+        for event in try module.queryEvents(for: cal.rangeOfMonth(for: .now)) {
+            try event.complete()
+        }
+        
+        XCTAssertEqual(try module.queryAllTasks(), [task])
+        XCTAssertEqual(try module.queryAllOutcomes().count, cal.numberOfDaysInMonth(for: .now))
+        
+        try module.deleteTasks(task)
+        
+        XCTAssert(try module.queryAllTasks().isEmpty)
+        XCTAssert(try module.queryAllOutcomes().isEmpty)
+    }
+    
+    
+    @MainActor
+    func testDeleteTaskMultipleVersionsNoOutcomes() async throws {
+        func waitABit() async throws {
+            // to give it some time to save everything
+            try await _Concurrency.Task.sleep(for: .seconds(0.25))
+        }
+        
+        let cal = Calendar.current
+        let module = Scheduler(persistence: .inMemory)
+        withDependencyResolution {
+            module
+        }
+        try module.eraseDatabase()
+        
+        @discardableResult
+        func addTask(_ id: String, startingAt startDate: Date) throws -> Task {
+            let (task, didChange) = try module.createOrUpdateTask(
+                id: id,
+                title: "",
+                instructions: "",
+                schedule: .daily(hour: 0, minute: 0, startingAt: startDate),
+                completionPolicy: .anytime,
+                effectiveFrom: startDate
+            )
+            XCTAssert(didChange)
+            return task
+        }
+        
+        let taskV1 = try addTask("task", startingAt: cal.startOfMonth(for: .now))
+        try await waitABit()
+        
+        let taskV2 = try addTask("task", startingAt: cal.startOfNextMonth(for: .now))
+        try await waitABit()
+        
+        XCTAssertEqual(try Set(module.queryAllTasks()), [taskV1, taskV2])
+        XCTAssertEqual(try module.queryAllOutcomes().count, 0)
+        
+        try module.deleteTasks(taskV1)
+        
+        XCTAssert(try module.queryAllTasks().isEmpty)
+        XCTAssert(try module.queryAllOutcomes().isEmpty)
+    }
+    
+    
+    @MainActor
+    func testDeleteTaskMultipleVersionsSomeOutcomes() async throws {
+        func waitABit() async throws {
+            // to give it some time to save everything
+            try await _Concurrency.Task.sleep(for: .seconds(0.25))
+        }
+        
+        let cal = Calendar.current
+        let module = Scheduler(persistence: .inMemory)
+        withDependencyResolution {
+            module
+        }
+        try module.eraseDatabase()
+        
+        @discardableResult
+        func addTask(_ id: String, title: String, startingAt startDate: Date) throws -> Task {
+            let (task, didChange) = try module.createOrUpdateTask(
+                id: id,
+                title: "\(title)",
+                instructions: "",
+                schedule: .daily(hour: 0, minute: 0, startingAt: startDate),
+                completionPolicy: .anytime,
+                effectiveFrom: startDate
+            )
+            XCTAssert(didChange)
+            return task
+        }
+        
+        let taskV1 = try addTask("task", title: "V1", startingAt: cal.startOfMonth(for: .now))
+        try await waitABit()
+        for event in try module.queryEvents(for: cal.rangeOfMonth(for: .now)) {
+            try event.complete()
+        }
+        try await waitABit()
+        
+        let taskV2 = try addTask("task", title: "V2", startingAt: cal.startOfNextMonth(for: .now))
+        try await waitABit()
+        for event in try module.queryEvents(for: cal.rangeOfMonth(for: cal.startOfNextMonth(for: .now))) {
+            try event.complete()
+        }
+        try await waitABit()
+        
+        XCTAssertEqual(try Set(module.queryAllTasks()), [taskV1, taskV2])
+        XCTAssertEqual(
+            try module.queryAllOutcomes().count,
+            cal.numberOfDaysInMonth(for: .now) + cal.numberOfDaysInMonth(for: cal.startOfNextMonth(for: .now))
+        )
+        
+        try module.deleteTasks(taskV1)
+        
+        XCTAssert(try module.queryAllTasks().isEmpty)
+        XCTAssert(try module.queryAllOutcomes().isEmpty)
+    }
+    
+    
+    @MainActor
+    func testDeleteTask() async throws {
+        func waitABit() async throws {
+            // to give it some time to save everything
+            try await _Concurrency.Task.sleep(for: .seconds(0.25))
+        }
+        
+        let cal = Calendar.current
+        let module = Scheduler(persistence: .inMemory)
+        withDependencyResolution {
+            module
+        }
+        try module.eraseDatabase()
+        
+        @discardableResult
+        func addTask(_ id: String, startingAt startDate: Date) throws -> Task {
+            let (task, didChange) = try module.createOrUpdateTask(
+                id: id,
+                title: "",
+                instructions: "",
+                schedule: .daily(hour: 0, minute: 0, startingAt: startDate),
+                completionPolicy: .anytime,
+                effectiveFrom: startDate
+            )
+            XCTAssert(didChange)
+            return task
+        }
+        
+        try addTask("task", startingAt: cal.startOfMonth(for: .now))
+        try await waitABit()
+        
+        for idx in 0..<12 {
+            let task = try XCTUnwrap(module.queryAllTasks().max { $1.effectiveFrom > $0.effectiveFrom })
+            let timeRange = cal.rangeOfMonth(for: task.schedule.start)
+            for event in try module.queryEvents(for: task, in: timeRange) {
+                try event.complete()
+            }
+            for event in try module.queryEvents(for: task, in: timeRange) {
+                XCTAssert(event.isCompleted)
+            }
+            // we expect one outcome per day.
+            XCTAssertEqual(
+                try module.queryAllOutcomes().count,
+                try (0...idx)
+                    .map { try XCTUnwrap(cal.date(byAdding: .month, value: $0, to: cal.startOfMonth(for: .now))) }
+                    .map { cal.numberOfDaysInMonth(for: $0) }
+                    .reduce(0, +)
+            )
+            try addTask("task", startingAt: cal.startOfNextMonth(for: task.schedule.start))
+        }
+        
+        let allTasks = try module.queryAllTasks().sorted(using: KeyPathComparator(\.effectiveFrom))
+        
+        for task in allTasks {
+            print("Task hasPrev: \(task.previousVersion != nil); hasNext: \(task.nextVersion != nil); effectiveFrom: \(task.effectiveFrom); effectiveTo: \(task.nextVersion?.effectiveFrom); #outcomes: \(task.outcomes.count)")
+        }
+        
+        // TODO add an arg: thing to try both deletion strats!
+        if false {
+            try module.deleteTasks(try XCTUnwrap(allTasks.first))
+        } else {
+            try module.deleteTasks(allTasks.shuffled())
+        }
+        XCTAssert(try module.queryAllTasks().isEmpty)
+        XCTAssert(try module.queryAllOutcomes().isEmpty)
         
         XCTAssert(try module.queryAllTasks().isEmpty)
     }
