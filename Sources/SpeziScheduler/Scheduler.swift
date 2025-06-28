@@ -460,7 +460,10 @@ extension Scheduler {
         // 3. We then can delete the actual Tasks we're asked to delete. In this step, we can simply delete the oldest to-be-deleted
         //     version of each task, without having to take care of the cascading delete ourselves.
         //     (The reason probably being that `Task.previousVersion` and `Task.nextVersion` are both optional?)
-        let oldestTaskVersionsToDelete: [Task]
+        
+        /// The oldest version of every ``Task`` that should be deleted.
+        let oldestTaskVersionsToDelete: Set<Task>
+        /// Whether we need to update the scheduled notifications as part of this delete operation.
         let needsNotificationsUpdate: Bool
         do {
             /// Determines if a ``Task`` is subsumed by another ``Task``,
@@ -477,7 +480,7 @@ extension Scheduler {
                 return rhsIdx < lhsIdx
             }
             /// The oldest version of every ``Task`` that should be deleted.
-            oldestTaskVersionsToDelete = Array(tasks.reduce(into: Set<Task>()) { tasks, task in
+            oldestTaskVersionsToDelete = tasks.reduce(into: Set<Task>()) { tasks, task in
                 guard !tasks.contains(task) else {
                     return
                 }
@@ -494,12 +497,12 @@ extension Scheduler {
                 } else {
                     tasks.insert(task)
                 }
-            })
+            }
             needsNotificationsUpdate = oldestTaskVersionsToDelete.contains { task in
                 // If any of the tasks we're about to delete had notification scheduling, or if any of the tasks'
                 // previous versions (which, after the delete, will become the new current versions) had notification
                 // scheduling enabled, we need to perform an overall notification reschedule operation.
-                task.scheduleNotifications || task.previousVersion?.scheduleNotifications == true
+                task.latestVersion.scheduleNotifications || task.previousVersion?.scheduleNotifications == true
             }
         }
         let context = try context
