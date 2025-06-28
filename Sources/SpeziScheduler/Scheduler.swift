@@ -450,7 +450,7 @@ extension Scheduler {
     ///
     /// - Parameter task: The task and all versions of it to delete.
     public func deleteAllVersions(of task: Task) throws {
-        try deleteTasks(CollectionOfOne(task.firstVersion))
+        try deleteAllVersions(ofTask: task.id)
     }
     
     /// Delete all versions of the supplied task from the store.
