@@ -300,7 +300,7 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
         }
         try await waitABit()
         
-        try module.deleteAllVersions(ofTask: "task")
+        try module.deleteAllVersions(of: task2)
         try await waitABit()
         
         XCTAssert(try module.queryAllTasks().isEmpty)
