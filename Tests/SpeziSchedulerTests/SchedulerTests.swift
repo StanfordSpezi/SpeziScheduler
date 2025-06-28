@@ -6,41 +6,46 @@
 // SPDX-License-Identifier: MIT
 //
 
-// swiftlint:disable file_length function_body_length
+// swiftlint:disable file_length function_body_length file_types_order
 
 import Spezi
 @_spi(TestingSupport)
 @testable import SpeziScheduler
+import SpeziTesting
 import SwiftData
+import Testing
 import XCTest
 import XCTRuntimeAssertions
-import XCTSpezi
 
 
-final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_length
-    @MainActor
-    func testScheduler() {
+@Suite
+@MainActor
+struct SchedulerTests { // swiftlint:disable:this type_body_length
+    /// What a test should do when it wants to delete all versions of a ``Task``.
+    enum DeleteAllTaskVersionsApproach: CaseIterable {
+        /// The test should delete the first (ie, oldest) version of the task, which then implicitly also ends up deleting the newer versions (ie, all other versions)
+        case viaFirst
+        /// The test should explicitly pass all task versions to the scheduler's deletion API.
+        case allExplicitly
+        /// The test should use ``Scheduler/deleteAllVersions(ofTask:)`` API.
+        case viaId
+    }
+    
+    
+    @Test
+    func scheduler() throws {
         // test simple scheduler initialization test
         let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
             module
         }
-
         let range = Date.today..<Date.now
-
-        XCTAssertNoThrow(
-            XCTAssert(try module.queryTasks(for: range).isEmpty),
-            "Failed to perform task query on empty scheduler. Did configure fail?"
-        )
-
-        XCTAssertNoThrow(
-            XCTAssert(try module.queryEvents(for: range).isEmpty),
-            "Failed to perform task query on empty scheduler. Did configure fail?"
-        )
+        #expect(try module.queryTasks(for: range).isEmpty, "Failed to perform task query on empty scheduler. Did configure fail?")
+        #expect(try module.queryEvents(for: range).isEmpty, "Failed to perform task query on empty scheduler. Did configure fail?")
     }
 
-    @MainActor
-    func testSimpleTaskCreation() throws {
+    @Test
+    func simpleTaskCreation() throws {
         let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
             module
@@ -57,13 +62,13 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
             context.example = "Additional Storage Stuff"
         }
 
-        XCTAssertTrue(result.didChange)
+        #expect(result.didChange)
 
         let results = try module.queryTasks(for: Date.yesterday..<Date.tomorrow)
-        XCTAssertEqual(results.count, 1, "Received unexpected amount of tasks in query.")
-        let task0 = try XCTUnwrap(results.first)
+        #expect(results.count == 1, "Received unexpected amount of tasks in query.")
+        let task0 = try #require(results.first)
 
-        XCTAssertIdentical(result.task, task0)
+        #expect(result.task === task0)
 
         // test that both overloads work as expected
         _ = task0.title as LocalizedStringResource
@@ -71,24 +76,24 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
         _ = task0.instructions as LocalizedStringResource
         _ = task0.instructions as String.LocalizationValue
 
-        XCTAssertEqual(task0.id, "test-task")
-        XCTAssertEqual(task0.example, "Additional Storage Stuff")
-        XCTAssertEqual(task0.title, "Hello World")
+        #expect(task0.id == "test-task")
+        #expect(task0.example == "Additional Storage Stuff")
+        #expect(task0.title == "Hello World")
 
-        XCTAssertNoThrow(try module.deleteTasks(result.task))
+        try module.deleteTasks(result.task)
     }
 
-    @MainActor
-    func testSimpleTaskVersioning() throws {
+    @Test
+    func simpleTaskVersioning() throws {
         let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
             module
         }
 
-        let start = try XCTUnwrap(Calendar.current.date(from: DateComponents(year: 2024, month: 9, day: 6, hour: 14, minute: 0, second: 0)))
-        let date0 = try XCTUnwrap(Calendar.current.date(from: DateComponents(year: 2024, month: 9, day: 6, hour: 14, minute: 59, second: 49)))
-        let date1 = try XCTUnwrap(Calendar.current.date(from: DateComponents(year: 2024, month: 9, day: 6, hour: 15, minute: 59, second: 49)))
-        let end = try XCTUnwrap(Calendar.current.date(from: DateComponents(year: 2024, month: 9, day: 6, hour: 17, minute: 0, second: 0)))
+        let start = try #require(Calendar.current.date(from: DateComponents(year: 2024, month: 9, day: 6, hour: 14, minute: 0, second: 0)))
+        let date0 = try #require(Calendar.current.date(from: DateComponents(year: 2024, month: 9, day: 6, hour: 14, minute: 59, second: 49)))
+        let date1 = try #require(Calendar.current.date(from: DateComponents(year: 2024, month: 9, day: 6, hour: 15, minute: 59, second: 49)))
+        let end = try #require(Calendar.current.date(from: DateComponents(year: 2024, month: 9, day: 6, hour: 17, minute: 0, second: 0)))
 
         // a schedule that happens every hour at half past, starting from `date0`
         let schedule = Schedule(startingAt: date0, recurrence: .hourly(calendar: .current, minutes: [30]))
@@ -103,9 +108,9 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
             context.example = "Additional Storage Stuff"
         }
 
-        XCTAssertTrue(firstVersion.didChange)
-        XCTAssertNil(firstVersion.task.previousVersion)
-        XCTAssertNil(firstVersion.task.nextVersion)
+        #expect(firstVersion.didChange)
+        #expect(firstVersion.task.previousVersion == nil)
+        #expect(firstVersion.task.nextVersion == nil)
 
         let noChanges = try module.createOrUpdateTask(
             id: "test-task",
@@ -117,7 +122,7 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
             context.example = "Additional Storage Stuff"
         }
 
-        XCTAssertFalse(noChanges.didChange)
+        #expect(!noChanges.didChange)
 
         let secondVersion = try module.createOrUpdateTask(
             id: "test-task",
@@ -129,35 +134,31 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
             context.example = "Additional Storage Stuff"
         }
 
-        XCTAssertTrue(secondVersion.didChange)
-        XCTAssertNil(secondVersion.task.nextVersion)
-        XCTAssertIdentical(secondVersion.task.previousVersion, firstVersion.task)
-        XCTAssertNil(firstVersion.task.previousVersion)
-        XCTAssertIdentical(firstVersion.task.nextVersion, secondVersion.task)
+        #expect(secondVersion.didChange)
+        #expect(secondVersion.task.nextVersion == nil)
+        #expect(secondVersion.task.previousVersion === firstVersion.task)
+        #expect(firstVersion.task.previousVersion == nil)
+        #expect(firstVersion.task.nextVersion === secondVersion.task)
 
         let results = try module.queryTasks(for: start...date1)
-        continueAfterFailure = false
-        XCTAssertEqual(results.count, 2, "Received unexpected amount of tasks in query.")
-        continueAfterFailure = true
+        try #require(results.count == 2, "Received unexpected amount of tasks in query.")
         let task0 = results[0]
         let task1 = results[1]
 
-        XCTAssertEqual(try module.queryTasks(for: start..<date1).count, 1)
+        #expect(try module.queryTasks(for: start..<date1).count == 1)
 
         // test implicit sort descriptor
-        XCTAssertIdentical(task0, firstVersion.task)
-        XCTAssertIdentical(task1, secondVersion.task)
+        #expect(task0 === firstVersion.task)
+        #expect(task1 === secondVersion.task)
 
         // test equality of fields
-        XCTAssertEqual(task0, firstVersion.task)
-        XCTAssertEqual(task1, secondVersion.task)
+        #expect(task0 == firstVersion.task)
+        #expect(task1 == secondVersion.task)
 
 
         let events = try module.queryEvents(for: start..<end)
 
-        continueAfterFailure = false
-        XCTAssertEqual(events.count, 2)
-        continueAfterFailure = true
+        try #require(events.count == 2)
 
         // there should be two events.
         // The first one is still provided by the first version, as the second task version only become effective after `date1`
@@ -166,28 +167,28 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
         let event0 = events[0]
         let event1 = events[1]
 
-        XCTAssertIdentical(event0.task, firstVersion.task)
-        XCTAssertIdentical(event1.task, secondVersion.task)
+        #expect(event0.task === firstVersion.task)
+        #expect(event1.task === secondVersion.task)
 
-        XCTAssertNil(event0.outcome)
-        XCTAssertNil(event1.outcome)
+        #expect(event0.outcome == nil)
+        #expect(event1.outcome == nil)
 
         let components0 = Calendar.current.dateComponents([.hour, .minute, .second], from: event0.occurrence.start)
         let components1 = Calendar.current.dateComponents([.hour, .minute, .second], from: event1.occurrence.start)
 
-        XCTAssertEqual(components0.hour, 15)
-        XCTAssertEqual(components0.minute, 30)
-        XCTAssertEqual(components0.second, 49)
+        #expect(components0.hour == 15)
+        #expect(components0.minute == 30)
+        #expect(components0.second == 49)
 
-        XCTAssertEqual(components1.hour, 16)
-        XCTAssertEqual(components1.minute, 30)
-        XCTAssertEqual(components1.second, 49)
+        #expect(components1.hour == 16)
+        #expect(components1.minute == 30)
+        #expect(components1.second == 49)
 
-        XCTAssertNoThrow(try module.deleteAllVersions(ofTask: "test-task"))
+        try module.deleteAllVersions(ofTask: "test-task")
     }
     
-    @MainActor
-    func testNonTrivialTaskContextCoding() throws {
+    @Test
+    func nonTrivialTaskContextCoding() throws {
         let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
             module
@@ -218,13 +219,13 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
             )
         }
         
-        XCTAssertTrue(try createTask().didChange)
-        XCTAssertFalse(try createTask().didChange)
+        #expect(try createTask().didChange)
+        #expect(try !createTask().didChange)
     }
     
     
-    @MainActor
-    func testFetchingEventsAfterCompletion() async throws {
+    @Test
+    func fetchingEventsAfterCompletion() async throws {
         let todayRange = Date.today..<Date.tomorrow
         let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
@@ -232,9 +233,9 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
         }
         
         try module.eraseDatabase()
-        XCTAssertTrue(try module.queryAllTasks().isEmpty)
-        XCTAssertTrue(try module.queryAllOutcomes().isEmpty)
-        XCTAssertTrue(try module.queryEvents(for: todayRange).isEmpty)
+        #expect(try module.queryAllTasks().isEmpty)
+        #expect(try module.queryAllOutcomes().isEmpty)
+        #expect(try module.queryEvents(for: todayRange).isEmpty)
         
         let task = try module.createOrUpdateTask(
             id: "test-task",
@@ -244,26 +245,26 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
         ).task
         
         let events = try module.queryEvents(for: todayRange)
-        XCTAssertTrue(events.allSatisfy { todayRange.contains($0.occurrence.start) })
-        XCTAssertEqual(events.count, 1)
-        XCTAssertFalse(try XCTUnwrap(events.first).isCompleted)
-        try XCTUnwrap(events.first).complete()
-        XCTAssertTrue(try XCTUnwrap(events.first).isCompleted)
-        XCTAssertTrue(try XCTUnwrap(try module.queryEvents(for: todayRange).first).isCompleted)
+        #expect(events.allSatisfy { todayRange.contains($0.occurrence.start) })
+        #expect(events.count == 1)
+        #expect(try !#require(events.first).isCompleted)
+        try #require(events.first).complete()
+        #expect(try #require(events.first).isCompleted)
+        #expect(try #require(try module.queryEvents(for: todayRange).first).isCompleted)
         try await _Concurrency.Task.sleep(for: .seconds(0.5))
-        XCTAssertTrue(try XCTUnwrap(try module.queryEvents(for: todayRange).first).isCompleted)
+        #expect(try #require(try module.queryEvents(for: todayRange).first).isCompleted)
         do {
             let events1 = try module.queryEvents(for: task, in: todayRange)
             let events2 = try module.queryEvents(forTaskWithId: task.id, in: todayRange)
-            XCTAssertTrue(events1.elementsEqual(events2) { lhs, rhs in
+            #expect(events1.elementsEqual(events2) { lhs, rhs in
                 lhs.task == rhs.task && lhs.occurrence == rhs.occurrence && lhs.isCompleted == rhs.isCompleted
             })
         }
     }
     
     
-    @MainActor
-    func testDeleteAllVersions() async throws {
+    @Test
+    func deleteAllVersions() async throws {
         func waitABit() async throws {
             // to give it some time to save everything
             try await _Concurrency.Task.sleep(for: .seconds(0.25))
@@ -284,33 +285,33 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
         
         do {
             let events = try module.queryEvents(forTaskWithId: "task", in: Calendar.current.rangeOfDay(for: .now))
-            XCTAssertEqual(events.count, 1)
-            try XCTUnwrap(events.first).complete()
+            #expect(events.count == 1)
+            try #require(events.first).complete()
         }
         try await waitABit()
         
         // update the task (this will create a new version)
         let task2 = try addTask("task", schedule: .daily(hour: 23, minute: 59, second: 59, startingAt: .now))
         try await waitABit()
-        XCTAssertEqual(task2, task.nextVersion)
-        XCTAssertEqual(task2.previousVersion, task)
+        #expect(task2 == task.nextVersion)
+        #expect(task2.previousVersion == task)
         
         do {
             let events = try module.queryEvents(forTaskWithId: "task", in: Calendar.current.rangeOfDay(for: .now))
-            XCTAssertEqual(events.count, 1)
-            try XCTUnwrap(events.first).complete()
+            #expect(events.count == 1)
+            try #require(events.first).complete()
         }
         try await waitABit()
         
         try module.deleteAllVersions(of: task2)
         try await waitABit()
         
-        XCTAssert(try module.queryAllTasks().isEmpty)
+        #expect(try module.queryAllTasks().isEmpty)
     }
     
     
-    @MainActor
-    func testDeleteTaskSingleVersionNoOutcomes() async throws {
+    @Test
+    func deleteTaskSingleVersionNoOutcomes() async throws {
         func waitABit() async throws {
             // to give it some time to save everything
             try await _Concurrency.Task.sleep(for: .seconds(0.25))
@@ -333,7 +334,7 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
                 completionPolicy: .anytime,
                 effectiveFrom: startDate
             )
-            XCTAssert(didChange)
+            #expect(didChange)
             return task
         }
         
@@ -342,13 +343,13 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
         
         try module.deleteTasks(task)
         
-        XCTAssert(try module.queryAllTasks().isEmpty)
-        XCTAssert(try module.queryAllOutcomes().isEmpty)
+        #expect(try module.queryAllTasks().isEmpty)
+        #expect(try module.queryAllOutcomes().isEmpty)
     }
     
     
-    @MainActor
-    func testDeleteTaskSingleVersionSomeOutcomes() async throws {
+    @Test
+    func deleteTaskSingleVersionSomeOutcomes() async throws {
         func waitABit() async throws {
             // to give it some time to save everything
             try await _Concurrency.Task.sleep(for: .seconds(0.25))
@@ -371,7 +372,7 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
                 completionPolicy: .anytime,
                 effectiveFrom: startDate
             )
-            XCTAssert(didChange)
+            #expect(didChange)
             return task
         }
         
@@ -382,18 +383,18 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
             try event.complete()
         }
         
-        XCTAssertEqual(try module.queryAllTasks(), [task])
-        XCTAssertEqual(try module.queryAllOutcomes().count, cal.numberOfDaysInMonth(for: .now))
+        #expect(try module.queryAllTasks() == [task])
+        #expect(try module.queryAllOutcomes().count == cal.numberOfDaysInMonth(for: .now))
         
         try module.deleteTasks(task)
         
-        XCTAssert(try module.queryAllTasks().isEmpty)
-        XCTAssert(try module.queryAllOutcomes().isEmpty)
+        #expect(try module.queryAllTasks().isEmpty)
+        #expect(try module.queryAllOutcomes().isEmpty)
     }
     
     
-    @MainActor
-    func testDeleteTaskMultipleVersionsNoOutcomes() async throws {
+    @Test(arguments: DeleteAllTaskVersionsApproach.allCases)
+    func deleteTaskMultipleVersionsNoOutcomes(deleteAllVersionsApproach: DeleteAllTaskVersionsApproach) async throws {
         func waitABit() async throws {
             // to give it some time to save everything
             try await _Concurrency.Task.sleep(for: .seconds(0.25))
@@ -416,7 +417,7 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
                 completionPolicy: .anytime,
                 effectiveFrom: startDate
             )
-            XCTAssert(didChange)
+            #expect(didChange)
             return task
         }
         
@@ -426,18 +427,24 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
         let taskV2 = try addTask("task", startingAt: cal.startOfNextMonth(for: .now))
         try await waitABit()
         
-        XCTAssertEqual(try Set(module.queryAllTasks()), [taskV1, taskV2])
-        XCTAssertEqual(try module.queryAllOutcomes().count, 0)
+        #expect(try Set(module.queryAllTasks()) == [taskV1, taskV2])
+        #expect(try module.queryAllOutcomes().isEmpty)
         
-        try module.deleteTasks(taskV1)
-        
-        XCTAssert(try module.queryAllTasks().isEmpty)
-        XCTAssert(try module.queryAllOutcomes().isEmpty)
+        switch deleteAllVersionsApproach {
+        case .viaFirst:
+            try module.deleteTasks(taskV1)
+        case .allExplicitly:
+            try module.deleteTasks([taskV1, taskV2])
+        case .viaId:
+            try module.deleteAllVersions(ofTask: "task")
+        }
+        #expect(try module.queryAllTasks().isEmpty)
+        #expect(try module.queryAllOutcomes().isEmpty)
     }
     
     
-    @MainActor
-    func testDeleteTaskMultipleVersionsSomeOutcomes() async throws {
+    @Test(arguments: DeleteAllTaskVersionsApproach.allCases)
+    func deleteTaskMultipleVersionsSomeOutcomes(deleteAllVersionsApproach: DeleteAllTaskVersionsApproach) async throws {
         func waitABit() async throws {
             // to give it some time to save everything
             try await _Concurrency.Task.sleep(for: .seconds(0.25))
@@ -460,7 +467,7 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
                 completionPolicy: .anytime,
                 effectiveFrom: startDate
             )
-            XCTAssert(didChange)
+            #expect(didChange)
             return task
         }
         
@@ -478,21 +485,25 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
         }
         try await waitABit()
         
-        XCTAssertEqual(try Set(module.queryAllTasks()), [taskV1, taskV2])
-        XCTAssertEqual(
-            try module.queryAllOutcomes().count,
-            cal.numberOfDaysInMonth(for: .now) + cal.numberOfDaysInMonth(for: cal.startOfNextMonth(for: .now))
-        )
+        #expect(try Set(module.queryAllTasks()) == [taskV1, taskV2])
+        #expect(try module.queryAllOutcomes().count == cal.numberOfDaysInMonth(for: .now) + cal.numberOfDaysInMonth(for: cal.startOfNextMonth(for: .now))) // swiftlint:disable:this line_length
         
         try module.deleteTasks(taskV1)
-        
-        XCTAssert(try module.queryAllTasks().isEmpty)
-        XCTAssert(try module.queryAllOutcomes().isEmpty)
+        switch deleteAllVersionsApproach {
+        case .viaFirst:
+            try module.deleteTasks(taskV1)
+        case .allExplicitly:
+            try module.deleteTasks([taskV1, taskV2])
+        case .viaId:
+            try module.deleteAllVersions(ofTask: "task")
+        }
+        #expect(try module.queryAllTasks().isEmpty)
+        #expect(try module.queryAllOutcomes().isEmpty)
     }
     
     
-    @MainActor
-    func testDeleteTask() async throws {
+    @Test(arguments: DeleteAllTaskVersionsApproach.allCases)
+    func deleteTask(deleteAllVersionsApproach: DeleteAllTaskVersionsApproach) async throws {
         func waitABit() async throws {
             // to give it some time to save everything
             try await _Concurrency.Task.sleep(for: .seconds(0.25))
@@ -515,7 +526,7 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
                 completionPolicy: .anytime,
                 effectiveFrom: startDate
             )
-            XCTAssert(didChange)
+            #expect(didChange)
             return task
         }
         
@@ -523,19 +534,17 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
         try await waitABit()
         
         for idx in 0..<12 {
-            let task = try XCTUnwrap(module.queryAllTasks().max { $1.effectiveFrom > $0.effectiveFrom })
+            let task = try #require(module.queryAllTasks().max { $1.effectiveFrom > $0.effectiveFrom })
             let timeRange = cal.rangeOfMonth(for: task.schedule.start)
             for event in try module.queryEvents(for: task, in: timeRange) {
                 try event.complete()
             }
             for event in try module.queryEvents(for: task, in: timeRange) {
-                XCTAssert(event.isCompleted)
+                #expect(event.isCompleted)
             }
             // we expect one outcome per day.
-            XCTAssertEqual(
-                try module.queryAllOutcomes().count,
-                try (0...idx)
-                    .map { try XCTUnwrap(cal.date(byAdding: .month, value: $0, to: cal.startOfMonth(for: .now))) }
+            #expect(try module.queryAllOutcomes().count == (0...idx)
+                    .map { try #require(cal.date(byAdding: .month, value: $0, to: cal.startOfMonth(for: .now))) }
                     .map { cal.numberOfDaysInMonth(for: $0) }
                     .reduce(0, +)
             )
@@ -544,28 +553,24 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
         
         let allTasks = try module.queryAllTasks().sorted(using: KeyPathComparator(\.effectiveFrom))
         
-        for task in allTasks {
-            print("Task hasPrev: \(task.previousVersion != nil); hasNext: \(task.nextVersion != nil); effectiveFrom: \(task.effectiveFrom); effectiveTo: \(task.nextVersion?.effectiveFrom); #outcomes: \(task.outcomes.count)")
-        }
-        
-        // TODO add an arg: thing to try both deletion strats!
-        if false {
-            try module.deleteTasks(try XCTUnwrap(allTasks.first))
-        } else {
+        switch deleteAllVersionsApproach {
+        case .viaFirst:
+            try module.deleteTasks(try #require(allTasks.first))
+        case .allExplicitly:
             try module.deleteTasks(allTasks.shuffled())
+        case .viaId:
+            try module.deleteAllVersions(ofTask: "task")
         }
-        XCTAssert(try module.queryAllTasks().isEmpty)
-        XCTAssert(try module.queryAllOutcomes().isEmpty)
-        
-        XCTAssert(try module.queryAllTasks().isEmpty)
+        #expect(try module.queryAllTasks().isEmpty)
+        #expect(try module.queryAllOutcomes().isEmpty)
     }
     
     
     // Ensures that the state of the Scheduler's underlying ModelContext is correct when performing multiple operations within a single
     // run loop iteration, i.e. before the context is saved.
     // See also: FB17583572 and FB18429335.
-    @MainActor
-    func testSchedulerFastModelContextOperations() throws {
+    @Test(arguments: [false, true])
+    func schedulerFastModelContextOperations(useAlternativeDelete: Bool) throws {
         let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
             module
@@ -579,8 +584,8 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
             schedule: .daily(hour: 0, minute: 0, startingAt: .now.addingTimeInterval(-1000)),
             effectiveFrom: .now.addingTimeInterval(-1000)
         )
-        XCTAssert(didCreateTask1A)
-        XCTAssertEqual(try module.queryTasks(for: Calendar.current.rangeOfDay(for: .today)), [task1A])
+        #expect(didCreateTask1A)
+        #expect(try module.queryTasks(for: Calendar.current.rangeOfDay(for: .today)) == [task1A])
         
         let (task1B, didCreateTask1B) = try module.createOrUpdateTask(
             id: "task1",
@@ -588,53 +593,40 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
             instructions: "",
             schedule: .daily(hour: 1, minute: 0, startingAt: .now)
         )
-        XCTAssert(didCreateTask1B)
-        XCTAssertEqual(try module.queryTasks(for: Calendar.current.rangeOfDay(for: .today)).count, 2)
-        XCTAssertEqual(try module.queryTasks(for: Calendar.current.rangeOfDay(for: .today)), [task1A, task1B])
+        #expect(didCreateTask1B)
+        #expect(try module.queryTasks(for: Calendar.current.rangeOfDay(for: .today)).count == 2)
+        #expect(try module.queryTasks(for: Calendar.current.rangeOfDay(for: .today)) == [task1A, task1B])
         
         let context = try module.context
-        XCTAssert(context.hasChanges)
-        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Task>()), 2)
+        #expect(context.hasChanges)
+        #expect(try context.fetchCount(FetchDescriptor<Task>()) == 2)
         
-        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Task>()), 2)
-        XCTAssert(context.hasChanges)
+        #expect(try context.fetchCount(FetchDescriptor<Task>()) == 2)
+        #expect(context.hasChanges)
         try context.save()
-        XCTAssertFalse(context.hasChanges)
-        if false {
+        #expect(!context.hasChanges)
+        if useAlternativeDelete {
             try context.delete(model: Task.self)
+            // testing for this behaviour, bc some of our code was changed to work around it
+            // (eg the forceSave flag in the Scheduler's deferred-save API), and we might be able to
+            // somplify some things once apple fixed this (and it's fixed on all platforms&versions we support!)
+            #expect(!context.hasChanges) // should probably be true, but isn't (FB17583572)
         } else {
             for model in try context.fetch(FetchDescriptor<Task>()) {
                 context.delete(model)
             }
+            #expect(context.hasChanges)
         }
-        XCTAssert(context.hasChanges)
         try context.save()
-        XCTAssertFalse(context.hasChanges)
-        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Task>()), 0)
-        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Task>()), 0)
-    }
-    
-    
-    @MainActor
-    func testSandboxDetection() throws {
-        #if os(macOS) || targetEnvironment(macCatalyst)
-        // we expect this to fail, since we're on macOS and the unit tests are not sandboxed
-        XCTAssertRuntimePrecondition { @Sendable in
-            _ = Scheduler(persistence: .onDisk)
-        }
-        #else
-        // we expect this not to fail, since we're in a non-macOS (ie, sandboxed) environment
-        XCTAssertNoRuntimePrecondition { @Sendable in
-            _ = Scheduler(persistence: .onDisk)
-        }
-        #endif
+        #expect(try context.fetchCount(FetchDescriptor<Task>()) == 0)
+        #expect(try context.fetchCount(FetchDescriptor<Task>()) == 0)
     }
     
     // regression test around a bug where the context save would take place too late
     // and the notification scheduling would end up accessing an old state of the context, and crash.
     // was likely in part caused by using `ModelContext.delete(model:where:)` instead of `ModelContext.delete(_:)`.
-    @MainActor
-    func testDeleteTaskWithNotifications() async throws {
+    @Test
+    func deleteTaskWithNotifications() async throws {
         let allTime = Date.distantPast...Date.distantFuture
         let scheduler = Scheduler(persistence: .inMemory)
         withDependencyResolution {
@@ -649,6 +641,24 @@ final class SchedulerTests: XCTestCase { // swiftlint:disable:this type_body_len
             notificationThread: .global
         ).task
         try scheduler.deleteAllVersions(of: task)
-        try XCTAssert(scheduler.queryTasks(for: allTime).isEmpty)
+        try #expect(scheduler.queryTasks(for: allTime).isEmpty)
+    }
+}
+
+
+final class OtherSchedulerTests: XCTestCase {
+    @MainActor
+    func testSandboxDetection() throws {
+        #if os(macOS) || targetEnvironment(macCatalyst)
+        // we expect this to fail, since we're on macOS and the unit tests are not sandboxed
+        XCTAssertRuntimePrecondition { @Sendable in
+            _ = Scheduler(persistence: .onDisk)
+        }
+        #else
+        // we expect this not to fail, since we're in a non-macOS (ie, sandboxed) environment
+        XCTAssertNoRuntimePrecondition { @Sendable in
+            _ = Scheduler(persistence: .onDisk)
+        }
+        #endif
     }
 }

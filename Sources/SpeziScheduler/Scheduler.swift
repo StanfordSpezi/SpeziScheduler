@@ -424,7 +424,43 @@ extension Scheduler {
         guard !tasks.isEmpty else {
             return
         }
-        let tasksToDelete: [Task]
+        // What's going on here?
+        //
+        // It seems to be the case that SwiftData's "cascading delete" doesn't work as advertised, in that attempting to delete a Task
+        // will fail (via a fatalError somewhere in SwiftData), if at least one Outcome exists for the Task.
+        // (See also FB18455306.)
+        // The specific issue is the fact that our `Outcome.task` backlink is a non-optional `var task: Task`, which seems to trip SwiftData up.
+        // One would think that this should be fine: every Outcome is associated with exactly one Task, and the `Task.outcomes` property defines
+        // a cascading-delete rule, meaning that deleting a Task should also cause the deletion of all Outcomes associated with it.
+        // However, this does is not what actually happens, and instead SwiftData will crash when attempting to delete a Task for which at least
+        // one Outcome exists, complaining that "Cannot remove Task from relationship task on Outcome because an appropriate default value is not configured".
+        // Which, needless to say, should not constitute a fatal error, since the cascading-delete relationship between a Task and its Outcomes
+        // stipulates that deleting the Task should also delete the Outcomes.
+        //
+        // In order to work around all of this, this function essentially re-implementes the cascading delete logic for deleting Tasks,
+        // ensuring that when deleting one or more Tasks, we delete the Tasks and their Outcomes in the correct order.
+        //
+        // The way we do this is that we have a preprocessing step transforming the `tasks` collection passed to the function:
+        // We determine, the effective "oldest" version of every Task we're asked to delete. I.e., if `tasks` contains
+        // multiple versions of the same logical task, we run a small subsumption check to determine which version would end up
+        // also deleting which other version (as part of the cascading delete that exists between a `Task` and its `nextVersion`).
+        //
+        // When performing the actual deletion, we proceed as follows:
+        // 1. We delete all Outcomes associated with each to-be-deleted Task version.
+        //     This needs to happen first, before we delete any Tasks, in order to ensure that there are no Outcomes for which
+        //     SwiftData might run into the missing appropriate default value issue.
+        //     When deleting the Outcomes, we iterate over each Task's version history, starting at the oldest version we're asked to delete
+        //     (the result of the subsumption test) and going forward all the way to the newest version.
+        // 2. We then (after deleting all Outcomes associated with Task versions we're asked to delete) need to perform
+        //     a save operation on the context. I'm not entirely sure why this is the case, but presumably in order for the cascading
+        //     delete logic in SwiftData not to see the Outcomes still existing in the storage.
+        //     (The bug there, i'd assume, being that SwiftData's cascading delete operation, when deleting a model referenced via an
+        //     inverse relationship, doesn't skip the deletion of that model if it's already been deleted as part of the current transaction.)
+        //     Needing the explicit `save()` here is unfortunate since it might have performance implications, but it's sadly unavoidable for now.
+        // 3. We then can delete the actual Tasks we're asked to delete. In this step, we can simply delete the oldest to-be-deleted
+        //     version of each task, without having to take care of the cascading delete ourselves.
+        //     (The reason probably being that `Task.previousVersion` and `Task.nextVersion` are both optional?)
+        let oldestTaskVersionsToDelete: [Task]
         let needsNotificationsUpdate: Bool
         do {
             /// Determines if a ``Task`` is subsumed by another ``Task``,
@@ -441,7 +477,7 @@ extension Scheduler {
                 return rhsIdx < lhsIdx
             }
             /// The oldest version of every ``Task`` that should be deleted.
-            let oldestTaskVersionsToDelete = (consume tasks).reduce(into: Set<Task>()) { tasks, task in
+            oldestTaskVersionsToDelete = Array((consume tasks).reduce(into: Set<Task>()) { tasks, task in
                 guard !tasks.contains(task) else {
                     return
                 }
@@ -458,27 +494,25 @@ extension Scheduler {
                 } else {
                     tasks.insert(task)
                 }
-            }
+            })
             needsNotificationsUpdate = oldestTaskVersionsToDelete.contains { task in
                 // If any of the tasks we're about to delete had notification scheduling, or if any of the tasks'
                 // previous versions (which, after the delete, will become the new current versions) had notification
                 // scheduling enabled, we need to perform an overall notification reschedule operation.
                 task.scheduleNotifications || task.previousVersion?.scheduleNotifications == true
             }
-            tasksToDelete = oldestTaskVersionsToDelete
-                .flatMap { sequence(first: $0, next: \.nextVersion).reversed() }
         }
         let context = try context
         // We first need to manually delete all Outcomes belonging to the tasks we're about to delete.
         // FB18455306 ([SwiftData] deleting model crashes bc of missing default value, despite cascading delete rule.)
-        for outcome in tasksToDelete.flatMap(\.outcomes) {
+        for outcome in oldestTaskVersionsToDelete.flatMap({ sequence(first: $0, next: \.nextVersion).flatMap(\.outcomes) }) {
             context.delete(outcome)
         }
         try context.save()
-        // Having deleted all referenced outcomes, and having saved the context, we can now delete the tasks.
-        // Note that the order in which we delete them matters (we need to delete newer versions of a task before older ones),
-        // but the code above has already taken care of this for us.
-        for task in tasksToDelete {
+        // Having deleted all referenced outcomes, and having saved the context, we can now delete the Tasks.
+        // Note that the cascading delete here works fine (presumably because the `Task.previousVersion` and `Task.nextVersion` properties are optional?),
+        // and we simply can delete the oldest version of each to-be-deleted Task.
+        for task in oldestTaskVersionsToDelete {
             context.delete(task)
         }
         scheduleSave(for: context, rescheduleNotifications: needsNotificationsUpdate)
