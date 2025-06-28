@@ -420,7 +420,7 @@ extension Scheduler {
     ///     that the ``Task/schedule`` doesn't produce any more occurrences.
     ///
     /// - Parameter tasks: The list of task to delete.
-    public func deleteTasks(_ tasks: consuming some Collection<Task>) throws {
+    public func deleteTasks(_ tasks: some Collection<Task>) throws {
         guard !tasks.isEmpty else {
             return
         }
@@ -477,7 +477,7 @@ extension Scheduler {
                 return rhsIdx < lhsIdx
             }
             /// The oldest version of every ``Task`` that should be deleted.
-            oldestTaskVersionsToDelete = Array((consume tasks).reduce(into: Set<Task>()) { tasks, task in
+            oldestTaskVersionsToDelete = Array(tasks.reduce(into: Set<Task>()) { tasks, task in
                 guard !tasks.contains(task) else {
                     return
                 }

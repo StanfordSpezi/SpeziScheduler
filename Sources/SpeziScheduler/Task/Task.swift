@@ -167,12 +167,9 @@ public final class Task {
         previousVersion?.firstVersion ?? self
     }
     
+    /// A sequence containing, in order, all versions of this ``Task``.
     var allVersions: UnfoldFirstSequence<Task> {
-        if let previousVersion {
-            return previousVersion.allVersions
-        } else {
-            return sequence(first: self, next: \.nextVersion)
-        }
+        previousVersion?.allVersions ?? sequence(first: self, next: \.nextVersion)
     }
 
     /// A reference to a previous version of this task.
