@@ -432,7 +432,7 @@ extension Scheduler {
         // The specific issue is the fact that our `Outcome.task` backlink is a non-optional `var task: Task`, which seems to trip SwiftData up.
         // One would think that this should be fine: every Outcome is associated with exactly one Task, and the `Task.outcomes` property defines
         // a cascading-delete rule, meaning that deleting a Task should also cause the deletion of all Outcomes associated with it.
-        // However, this does is not what actually happens, and instead SwiftData will crash when attempting to delete a Task for which at least
+        // However, this is not what actually happens, and instead SwiftData will crash when attempting to delete a Task for which at least
         // one Outcome exists, complaining that "Cannot remove Task from relationship task on Outcome because an appropriate default value is not configured".
         // Which, needless to say, should not constitute a fatal error, since the cascading-delete relationship between a Task and its Outcomes
         // stipulates that deleting the Task should also delete the Outcomes.

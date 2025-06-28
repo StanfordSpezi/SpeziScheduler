@@ -265,11 +265,6 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
     
     @Test
     func deleteAllVersions() async throws {
-        func waitABit() async throws {
-            // to give it some time to save everything
-            try await _Concurrency.Task.sleep(for: .seconds(0.25))
-        }
-        
         let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
             module
@@ -281,18 +276,15 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
         }
         
         let task = try addTask("task", schedule: .daily(hour: 0, minute: 0, startingAt: .now))
-        try await waitABit()
         
         do {
             let events = try module.queryEvents(forTaskWithId: "task", in: Calendar.current.rangeOfDay(for: .now))
             #expect(events.count == 1)
             try #require(events.first).complete()
         }
-        try await waitABit()
         
         // update the task (this will create a new version)
         let task2 = try addTask("task", schedule: .daily(hour: 23, minute: 59, second: 59, startingAt: .now))
-        try await waitABit()
         #expect(task2 == task.nextVersion)
         #expect(task2.previousVersion == task)
         
@@ -301,10 +293,8 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
             #expect(events.count == 1)
             try #require(events.first).complete()
         }
-        try await waitABit()
         
         try module.deleteAllVersions(of: task2)
-        try await waitABit()
         
         #expect(try module.queryAllTasks().isEmpty)
     }
@@ -312,11 +302,6 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
     
     @Test
     func deleteTaskSingleVersionNoOutcomes() async throws {
-        func waitABit() async throws {
-            // to give it some time to save everything
-            try await _Concurrency.Task.sleep(for: .seconds(0.25))
-        }
-        
         let cal = Calendar.current
         let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
@@ -339,7 +324,6 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
         }
         
         let task = try addTask("task", startingAt: cal.startOfMonth(for: .now))
-        try await waitABit()
         
         try module.deleteTasks(task)
         
@@ -350,11 +334,6 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
     
     @Test
     func deleteTaskSingleVersionSomeOutcomes() async throws {
-        func waitABit() async throws {
-            // to give it some time to save everything
-            try await _Concurrency.Task.sleep(for: .seconds(0.25))
-        }
-        
         let cal = Calendar.current
         let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
@@ -377,7 +356,6 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
         }
         
         let task = try addTask("task", startingAt: cal.startOfMonth(for: .now))
-        try await waitABit()
         
         for event in try module.queryEvents(for: cal.rangeOfMonth(for: .now)) {
             try event.complete()
@@ -395,11 +373,6 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
     
     @Test(arguments: DeleteAllTaskVersionsApproach.allCases)
     func deleteTaskMultipleVersionsNoOutcomes(deleteAllVersionsApproach: DeleteAllTaskVersionsApproach) async throws {
-        func waitABit() async throws {
-            // to give it some time to save everything
-            try await _Concurrency.Task.sleep(for: .seconds(0.25))
-        }
-        
         let cal = Calendar.current
         let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
@@ -422,10 +395,7 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
         }
         
         let taskV1 = try addTask("task", startingAt: cal.startOfMonth(for: .now))
-        try await waitABit()
-        
         let taskV2 = try addTask("task", startingAt: cal.startOfNextMonth(for: .now))
-        try await waitABit()
         
         #expect(try Set(module.queryAllTasks()) == [taskV1, taskV2])
         #expect(try module.queryAllOutcomes().isEmpty)
@@ -445,11 +415,6 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
     
     @Test(arguments: DeleteAllTaskVersionsApproach.allCases)
     func deleteTaskMultipleVersionsSomeOutcomes(deleteAllVersionsApproach: DeleteAllTaskVersionsApproach) async throws {
-        func waitABit() async throws {
-            // to give it some time to save everything
-            try await _Concurrency.Task.sleep(for: .seconds(0.25))
-        }
-        
         let cal = Calendar.current
         let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
@@ -472,18 +437,14 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
         }
         
         let taskV1 = try addTask("task", title: "V1", startingAt: cal.startOfMonth(for: .now))
-        try await waitABit()
         for event in try module.queryEvents(for: cal.rangeOfMonth(for: .now)) {
             try event.complete()
         }
-        try await waitABit()
         
         let taskV2 = try addTask("task", title: "V2", startingAt: cal.startOfNextMonth(for: .now))
-        try await waitABit()
         for event in try module.queryEvents(for: cal.rangeOfMonth(for: cal.startOfNextMonth(for: .now))) {
             try event.complete()
         }
-        try await waitABit()
         
         #expect(try Set(module.queryAllTasks()) == [taskV1, taskV2])
         #expect(try module.queryAllOutcomes().count == cal.numberOfDaysInMonth(for: .now) + cal.numberOfDaysInMonth(for: cal.startOfNextMonth(for: .now))) // swiftlint:disable:this line_length
@@ -504,11 +465,6 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
     
     @Test(arguments: DeleteAllTaskVersionsApproach.allCases)
     func deleteTask(deleteAllVersionsApproach: DeleteAllTaskVersionsApproach) async throws {
-        func waitABit() async throws {
-            // to give it some time to save everything
-            try await _Concurrency.Task.sleep(for: .seconds(0.25))
-        }
-        
         let cal = Calendar.current
         let module = Scheduler(persistence: .inMemory)
         withDependencyResolution {
@@ -531,7 +487,6 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
         }
         
         try addTask("task", startingAt: cal.startOfMonth(for: .now))
-        try await waitABit()
         
         for idx in 0..<12 {
             let task = try #require(module.queryAllTasks().max { $1.effectiveFrom > $0.effectiveFrom })
