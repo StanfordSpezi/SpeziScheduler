@@ -73,6 +73,7 @@ import SwiftData
 /// - ``nextVersion``
 /// - ``previousVersion``
 /// - ``isLatestVersion``
+/// - ``firstVersion``
 @Model
 @dynamicMemberLookup
 public final class Task {
@@ -159,6 +160,11 @@ public final class Task {
     /// This is also the version that will currently be used by the ``Scheduler``.
     public var latestVersion: Task {
         nextVersion?.latestVersion ?? self
+    }
+    
+    /// The first version of this task.
+    public var firstVersion: Task {
+        previousVersion?.firstVersion ?? self
     }
 
     /// A reference to a previous version of this task.
@@ -468,6 +474,8 @@ extension Task: CustomStringConvertible {
         category: \(category.map { $0.description } ?? "nil"), \
         schedule: \(schedule), \
         completionPolicy: \(completionPolicy), \
+        scheduleNotifications: \(scheduleNotifications), \
+        notificationThread: \(notificationThread), \
         tags: \(tags), \
         outcomes: <redacted for performance reasons>, \
         effectiveFrom: \(effectiveFrom), \
