@@ -79,8 +79,8 @@ public final class Outcome {
     init(task: Task, occurrence: Occurrence) {
         self.id = UUID()
         self.completionDate = .now
-        self.task = task
         self.occurrenceStartDate = occurrence.start
+        self.task = task
     }
 }
 
