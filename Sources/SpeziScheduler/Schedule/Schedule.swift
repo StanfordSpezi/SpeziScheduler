@@ -6,6 +6,8 @@
 // SPDX-License-Identifier: MIT
 //
 
+// swiftlint:disable file_length
+
 import Foundation
 
 
@@ -263,7 +265,7 @@ extension Schedule {
     ///   - start: The date at which the schedule starts.
     ///   - end: Optional end date of the schedule. Otherwise, it repeats indefinitely.
     ///   - duration: The duration of a single occurrence. By default one hour.
-    /// - Returns: Returns the schedule that repeats daily.
+    /// - Returns: Returns the schedule that repeats hourly.
     public static func hourly(
         calendar: Calendar = .current, // swiftlint:disable:this function_default_parameter_at_end
         interval: Int = 1, // swiftlint:disable:this function_default_parameter_at_end
@@ -413,7 +415,7 @@ extension Schedule {
     ///   - start: The date at which the schedule starts.
     ///   - end: Optional end date of the schedule. Otherwise, it repeats indefinitely.
     ///   - duration: The duration of a single occurrence. By default one hour.
-    /// - Returns: Returns the schedule that repeats daily.
+    /// - Returns: Returns the schedule that repeats monthly.
     public static func monthly(
         calendar: Calendar = .current, // swiftlint:disable:this function_default_parameter_at_end
         interval: Int = 1, // swiftlint:disable:this function_default_parameter_at_end
@@ -452,7 +454,7 @@ extension Schedule {
     ///   - start: The date at which the schedule starts.
     ///   - end: Optional end date of the schedule. Otherwise, it repeats indefinitely.
     ///   - duration: The duration of a single occurrence. By default one hour.
-    /// - Returns: Returns the schedule that repeats daily.
+    /// - Returns: Returns the schedule that repeats yearly.
     public static func yearly(
         calendar: Calendar = .current, // swiftlint:disable:this function_default_parameter_at_end
         interval: Int = 1, // swiftlint:disable:this function_default_parameter_at_end
