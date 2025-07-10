@@ -13,7 +13,7 @@ import UserNotifications
 extension Schedule {
     enum NotificationMatchingHint: Codable, Sendable, Hashable {
         case none
-        case components(hour: Int, minute: Int, second: Int, weekday: Int?)
+        case components(hour: Int?, minute: Int, second: Int, weekday: Int?)
         case allDayNotification(weekday: Int?)
         
         func dateComponents(calendar: Calendar, allDayNotificationTime: NotificationTime) -> DateComponents? {
@@ -46,7 +46,7 @@ extension Schedule {
     static func notificationMatchingHint( // swiftlint:disable:this function_parameter_count
         forMatchingInterval interval: Int,
         calendar: Calendar,
-        hour: Int,
+        hour: Int?,
         minute: Int,
         second: Int,
         weekday: Int? = nil, // swiftlint:disable:this function_default_parameter_at_end

@@ -284,7 +284,7 @@ extension Schedule {
         let notificationIntervalHint = Schedule.notificationMatchingHint(
             forMatchingInterval: interval,
             calendar: calendar,
-            hour: 0,
+            hour: nil,
             minute: minute,
             second: second,
             consider: duration
