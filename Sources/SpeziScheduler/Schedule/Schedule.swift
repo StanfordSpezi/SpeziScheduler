@@ -34,8 +34,11 @@ import Foundation
 ///
 /// ### Creating Schedules
 /// - ``init(startingAt:duration:recurrence:)``
+/// - ``hourly(calendar:interval:minute:second:startingAt:end:duration:)``
 /// - ``daily(calendar:interval:hour:minute:second:startingAt:end:duration:)``
 /// - ``weekly(calendar:interval:weekday:hour:minute:second:startingAt:end:duration:)``
+/// - ``monthly(calendar:interval:day:hour:minute:second:startingAt:end:duration:)``
+/// - ``yearly(calendar:interval:month:day:hour:minute:second:startingAt:end:duration:)``
 /// - ``once(at:duration:)``
 ///
 /// ### Retrieving Occurrences
@@ -240,6 +243,59 @@ extension Schedule {
     ) -> Schedule {
         Schedule(startingAt: date, duration: duration)
     }
+    
+    /// Create a schedule that repeats hourly.
+    ///
+    /// ```swift
+    /// // create a schedule at 8am and 8pm daily, starting from today, reoccur indefinitely
+    /// let schedule: Schedule = .hourly(
+    ///     interval: 12,
+    ///     minute: 0,
+    ///     startingAt: Calendar.current.date(bySettingHour: 0, minute: minute, second: second, of: .today)!
+    /// )
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - calendar: The calendar
+    ///   - interval: The interval in which the hourly recurrence repeats (e.g., every `interval` hours).
+    ///   - minute: The minute.
+    ///   - second: The second.
+    ///   - start: The date at which the schedule starts.
+    ///   - end: Optional end date of the schedule. Otherwise, it repeats indefinitely.
+    ///   - duration: The duration of a single occurrence. By default one hour.
+    /// - Returns: Returns the schedule that repeats daily.
+    public static func hourly(
+        calendar: Calendar = .current, // swiftlint:disable:this function_default_parameter_at_end
+        interval: Int = 1, // swiftlint:disable:this function_default_parameter_at_end
+        minute: Int,
+        second: Int = 0, // swiftlint:disable:this function_default_parameter_at_end
+        startingAt start: Date,
+        end: Calendar.RecurrenceRule.End = .never,
+        duration: Duration = .tillEndOfDay
+    ) -> Schedule {
+        guard let startTime = calendar.date(bySetting: .minute, value: 0, of: start).flatMap({
+            calendar.date(bySetting: .second, value: second, of: $0)
+        }) else {
+            preconditionFailure(
+                "Failed to set time of start date for hourly schedule. Can't set \(minute):\(second) for minute and second of \(start)."
+            )
+        }
+        // TODO test that this works!
+        let notificationIntervalHint = Schedule.notificationMatchingHint(
+            forMatchingInterval: interval,
+            calendar: calendar,
+            hour: 0,
+            minute: minute,
+            second: second,
+            consider: duration
+        )
+        return Schedule(
+            startingAt: startTime,
+            duration: duration,
+            recurrence: .hourly(calendar: calendar, interval: interval, end: end),
+            notificationIntervalHint: notificationIntervalHint
+        )
+    }
 
     /// Create a schedule that repeats daily.
     ///
@@ -268,7 +324,7 @@ extension Schedule {
         end: Calendar.RecurrenceRule.End = .never,
         duration: Duration = .tillEndOfDay
     ) -> Schedule {
-        guard let startTime = Calendar.current.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
+        guard let startTime = calendar.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start date for daily schedule. Can't set \(hour):\(minute):\(second) for \(start).")
         }
 
@@ -318,11 +374,11 @@ extension Schedule {
         end: Calendar.RecurrenceRule.End = .never,
         duration: Duration = .tillEndOfDay
     ) -> Schedule {
-        guard let startTime = Calendar.current.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
+        guard let startTime = calendar.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start time for weekly schedule. Can't set \(hour):\(minute):\(second) for \(start).")
         }
 
-        let weekdayNum = weekday.map { $0.ordinal } ?? Calendar.current.component(.weekday, from: startTime)
+        let weekdayNum = weekday.map { $0.ordinal } ?? calendar.component(.weekday, from: startTime)
         let notificationIntervalHint = Schedule.notificationMatchingHint(
             forMatchingInterval: interval,
             calendar: calendar,
@@ -338,6 +394,85 @@ extension Schedule {
             duration: duration,
             recurrence: .weekly(calendar: calendar, interval: interval, end: end, weekdays: weekday.map { [.every($0)] } ?? []),
             notificationIntervalHint: notificationIntervalHint
+        )
+    }
+    
+    /// Create a schedule that repeats monthly.
+    ///
+    /// ```swift
+    /// // create a schedule at the first of every month, starting from today, reoccur indefinitely
+    /// let schedule: Schedule = .daily(hour: 8, minute: 0, startingAt: .today)
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - calendar: The calendar
+    ///   - interval: The interval in which the daily recurrence repeats (e.g., every `interval`-days).
+    ///   - hour: The hour.
+    ///   - minute: The minute.
+    ///   - second: The second.
+    ///   - start: The date at which the schedule starts.
+    ///   - end: Optional end date of the schedule. Otherwise, it repeats indefinitely.
+    ///   - duration: The duration of a single occurrence. By default one hour.
+    /// - Returns: Returns the schedule that repeats daily.
+    public static func monthly(
+        calendar: Calendar = .current, // swiftlint:disable:this function_default_parameter_at_end
+        interval: Int = 1, // swiftlint:disable:this function_default_parameter_at_end
+        day: Int,
+        hour: Int,
+        minute: Int,
+        second: Int = 0, // swiftlint:disable:this function_default_parameter_at_end
+        startingAt start: Date,
+        end: Calendar.RecurrenceRule.End = .never,
+        duration: Duration = .tillEndOfDay
+    ) -> Schedule {
+        guard let startTime = calendar.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
+            preconditionFailure("Failed to set time of start date for monthly schedule. Can't set \(hour):\(minute):\(second) for \(start).")
+        }
+        return Schedule(
+            startingAt: startTime,
+            duration: duration,
+            recurrence: .monthly(calendar: calendar, interval: interval, end: end, daysOfTheMonth: [day]),
+            notificationIntervalHint: .none
+        )
+    }
+    
+    /// Create a schedule that repeats yearly.
+    ///
+    /// ```swift
+    /// // create a schedule at every 4th of july, starting from today, reoccur indefinitely
+    /// let schedule: Schedule = .yearly(month: 7, day: 4, hour: 0, minute: 0, startingAt: .today)
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - calendar: The calendar
+    ///   - interval: The interval in which the daily recurrence repeats (e.g., every `interval`-days).
+    ///   - hour: The hour.
+    ///   - minute: The minute.
+    ///   - second: The second.
+    ///   - start: The date at which the schedule starts.
+    ///   - end: Optional end date of the schedule. Otherwise, it repeats indefinitely.
+    ///   - duration: The duration of a single occurrence. By default one hour.
+    /// - Returns: Returns the schedule that repeats daily.
+    public static func yearly(
+        calendar: Calendar = .current, // swiftlint:disable:this function_default_parameter_at_end
+        interval: Int = 1, // swiftlint:disable:this function_default_parameter_at_end
+        month: Int,
+        day: Int,
+        hour: Int,
+        minute: Int,
+        second: Int = 0, // swiftlint:disable:this function_default_parameter_at_end
+        startingAt start: Date,
+        end: Calendar.RecurrenceRule.End = .never,
+        duration: Duration = .tillEndOfDay
+    ) -> Schedule {
+        guard let startTime = calendar.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
+            preconditionFailure("Failed to set time of start date for monthly schedule. Can't set \(hour):\(minute):\(second) for \(start).")
+        }
+        return Schedule(
+            startingAt: startTime,
+            duration: duration,
+            recurrence: .yearly(calendar: calendar, interval: interval, end: end, months: [.init(month)], daysOfTheMonth: [day]),
+            notificationIntervalHint: .none
         )
     }
 }
