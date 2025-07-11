@@ -8,6 +8,7 @@
 
 import OSLog
 import Spezi
+@_spi(Testing)
 import SpeziScheduler
 import SpeziViews
 import SwiftUI
@@ -34,7 +35,7 @@ struct NotificationsView: View {
                 .toolbar {
                     if requestAuthorization {
                         AsyncButton(state: $viewState) {
-                            try await requestNotificationAuthorization(options: [.alert, .sound, .badge])
+                            _ = try await requestNotificationAuthorization(options: [.alert, .sound, .badge])
                             await queryAuthorization()
                             scheduler.manuallyScheduleNotificationRefresh()
                         } label: {
@@ -45,6 +46,7 @@ struct NotificationsView: View {
         }
         .task {
             await queryAuthorization()
+            scheduler.manuallyScheduleNotificationRefresh()
         }
     }
 

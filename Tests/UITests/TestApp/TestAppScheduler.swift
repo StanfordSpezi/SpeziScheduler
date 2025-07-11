@@ -102,6 +102,16 @@ final class TestAppScheduler: Module {
                 scheduleNotifications: false,
                 shadowedOutcomesHandling: .delete
             )
+            
+            try scheduler.createOrUpdateTask(
+                id: "12hourlyTask",
+                title: "EVERY TWELVE HOURS",
+                instructions: "",
+//                schedule: .monthly(day: 11, hour: 13, minute: 0, startingAt: .today),
+//                schedule: .hourly(interval: 1, minute: 42, second: 00, startingAt: Calendar.current.startOfHour(for: .now).addingTimeInterval(-60 * 125)),
+                schedule: .monthly(day: 11, hour: 17, minute: 59, startingAt: .today),
+                scheduleNotifications: true
+            )
         } catch {
             logger.error("Failed to scheduled TestApp tasks: \(error)")
             model.viewState = .error(AnyLocalizedError(

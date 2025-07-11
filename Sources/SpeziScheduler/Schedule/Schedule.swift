@@ -392,7 +392,15 @@ extension Schedule {
         return Schedule(
             startingAt: startTime,
             duration: duration,
-            recurrence: .weekly(calendar: calendar, interval: interval, end: end, weekdays: weekday.map { [.every($0)] } ?? []),
+            recurrence: .weekly(
+                calendar: calendar,
+                interval: interval,
+                end: end,
+                weekdays: weekday.map { [.every($0)] } ?? [],
+                hours: [hour],
+                minutes: [minute],
+                seconds: [second]
+            ),
             notificationIntervalHint: notificationIntervalHint
         )
     }
@@ -429,11 +437,22 @@ extension Schedule {
         guard let startTime = calendar.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start date for monthly schedule. Can't set \(hour):\(minute):\(second) for \(start).")
         }
+        let notificationInterval = Schedule.notificationMatchingHint(
+            forMatchingInterval: interval,
+            calendar: calendar,
+            month: nil,
+            day: day,
+            hour: hour,
+            minute: minute,
+            second: second,
+            weekday: nil,
+            consider: duration
+        )
         return Schedule(
             startingAt: startTime,
             duration: duration,
             recurrence: .monthly(calendar: calendar, interval: interval, end: end, daysOfTheMonth: [day]),
-            notificationIntervalHint: .none
+            notificationIntervalHint: notificationInterval
         )
     }
     
@@ -470,11 +489,22 @@ extension Schedule {
         guard let startTime = calendar.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start date for monthly schedule. Can't set \(hour):\(minute):\(second) for \(start).")
         }
+        let notificationInterval = Schedule.notificationMatchingHint(
+            forMatchingInterval: interval,
+            calendar: calendar,
+            month: month,
+            day: day,
+            hour: hour,
+            minute: minute,
+            second: second,
+            weekday: nil,
+            consider: duration
+        )
         return Schedule(
             startingAt: startTime,
             duration: duration,
             recurrence: .yearly(calendar: calendar, interval: interval, end: end, months: [.init(month)], daysOfTheMonth: [day]),
-            notificationIntervalHint: .none
+            notificationIntervalHint: notificationInterval
         )
     }
     
