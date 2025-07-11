@@ -22,7 +22,6 @@ jobs:
     with:
       runsonlabels: '["macOS", "self-hosted"]'
       scheme: SpeziScheduler-Package
-      destination: 'platform=iOS Simulator,name=iPhone 16 Pro Max'
       resultBundle: SpeziScheduler-iOS.xcresult
       artifactname: SpeziScheduler-iOS.xcresult
   buildandtest_watchos:
