@@ -744,7 +744,7 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
             try #require(cal.date(from: .init(year: 2027, month: 10, day: 7))),
             try #require(cal.date(from: .init(year: 2028, month: 1, day: 7))),
             try #require(cal.date(from: .init(year: 2028, month: 4, day: 7))),
-            try #require(cal.date(from: .init(year: 2028, month: 7, day: 7))),
+            try #require(cal.date(from: .init(year: 2028, month: 7, day: 7)))
         ]
         let events = try scheduler.queryEvents(for: startDate..<(try #require(expectedDates.last)).addingTimeInterval(1))
         #expect(events.count == expectedDates.count)
@@ -776,7 +776,7 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
             try #require(cal.date(from: .init(year: 2029, month: 11, day: 11, hour: 11, minute: 11, second: 11))),
             try #require(cal.date(from: .init(year: 2030, month: 11, day: 11, hour: 11, minute: 11, second: 11))),
             try #require(cal.date(from: .init(year: 2031, month: 11, day: 11, hour: 11, minute: 11, second: 11))),
-            try #require(cal.date(from: .init(year: 2032, month: 11, day: 11, hour: 11, minute: 11, second: 11))),
+            try #require(cal.date(from: .init(year: 2032, month: 11, day: 11, hour: 11, minute: 11, second: 11)))
         ]
         let events = try scheduler.queryEvents(for: startDate..<(try #require(expectedDates.last)).addingTimeInterval(1))
         #expect(events.count == expectedDates.count)
@@ -810,7 +810,7 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
             try #require(cal.date(from: .init(year: 2043, month: 2, day: 1))),
             try #require(cal.date(from: .init(year: 2046, month: 2, day: 1))),
             try #require(cal.date(from: .init(year: 2049, month: 2, day: 1))),
-            try #require(cal.date(from: .init(year: 2052, month: 2, day: 1))),
+            try #require(cal.date(from: .init(year: 2052, month: 2, day: 1)))
         ]
         let events = try scheduler.queryEvents(for: startDate..<(try #require(expectedDates.last)).addingTimeInterval(1))
         #expect(events.count == expectedDates.count)
