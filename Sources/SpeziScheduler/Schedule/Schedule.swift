@@ -275,14 +275,14 @@ extension Schedule {
         end: Calendar.RecurrenceRule.End = .never,
         duration: Duration = .tillEndOfDay
     ) -> Schedule {
-        guard let startTime = calendar.date(bySetting: .minute, value: 0, of: start).flatMap({
+        assertValidInterval(interval)
+        guard let startTime = calendar.date(bySetting: .minute, value: minute, of: start).flatMap({
             calendar.date(bySetting: .second, value: second, of: $0)
         }) else {
             preconditionFailure(
                 "Failed to set time of start date for hourly schedule. Can't set \(minute):\(second) for minute and second of \(start)."
             )
         }
-        // TODO test that this works!
         let notificationIntervalHint = Schedule.notificationMatchingHint(
             forMatchingInterval: interval,
             calendar: calendar,
@@ -294,7 +294,7 @@ extension Schedule {
         return Schedule(
             startingAt: startTime,
             duration: duration,
-            recurrence: .hourly(calendar: calendar, interval: interval, end: end),
+            recurrence: .hourly(calendar: calendar, interval: interval, end: end, minutes: [minute]),
             notificationIntervalHint: notificationIntervalHint
         )
     }
@@ -326,10 +326,10 @@ extension Schedule {
         end: Calendar.RecurrenceRule.End = .never,
         duration: Duration = .tillEndOfDay
     ) -> Schedule {
+        assertValidInterval(interval)
         guard let startTime = calendar.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start date for daily schedule. Can't set \(hour):\(minute):\(second) for \(start).")
         }
-
         let notificationIntervalHint = Schedule.notificationMatchingHint(
             forMatchingInterval: interval,
             calendar: calendar,
@@ -338,7 +338,6 @@ extension Schedule {
             second: second,
             consider: duration
         )
-
         return Schedule(
             startingAt: startTime,
             duration: duration,
@@ -376,10 +375,10 @@ extension Schedule {
         end: Calendar.RecurrenceRule.End = .never,
         duration: Duration = .tillEndOfDay
     ) -> Schedule {
+        assertValidInterval(interval)
         guard let startTime = calendar.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start time for weekly schedule. Can't set \(hour):\(minute):\(second) for \(start).")
         }
-
         let weekdayNum = weekday.map { $0.ordinal } ?? calendar.component(.weekday, from: startTime)
         let notificationIntervalHint = Schedule.notificationMatchingHint(
             forMatchingInterval: interval,
@@ -390,7 +389,6 @@ extension Schedule {
             weekday: weekdayNum,
             consider: duration
         )
-
         return Schedule(
             startingAt: startTime,
             duration: duration,
@@ -427,6 +425,7 @@ extension Schedule {
         end: Calendar.RecurrenceRule.End = .never,
         duration: Duration = .tillEndOfDay
     ) -> Schedule {
+        assertValidInterval(interval)
         guard let startTime = calendar.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start date for monthly schedule. Can't set \(hour):\(minute):\(second) for \(start).")
         }
@@ -467,6 +466,7 @@ extension Schedule {
         end: Calendar.RecurrenceRule.End = .never,
         duration: Duration = .tillEndOfDay
     ) -> Schedule {
+        assertValidInterval(interval)
         guard let startTime = calendar.date(bySettingHour: hour, minute: minute, second: second, of: start) else {
             preconditionFailure("Failed to set time of start date for monthly schedule. Can't set \(hour):\(minute):\(second) for \(start).")
         }
@@ -476,6 +476,12 @@ extension Schedule {
             recurrence: .yearly(calendar: calendar, interval: interval, end: end, months: [.init(month)], daysOfTheMonth: [day]),
             notificationIntervalHint: .none
         )
+    }
+    
+    private static func assertValidInterval(_ interval: Int, callee: StaticString = #function) {
+        guard interval >= 1 else {
+            preconditionFailure("Invalid interval passed to \(callee): Must be 1 or greater.")
+        }
     }
 }
 

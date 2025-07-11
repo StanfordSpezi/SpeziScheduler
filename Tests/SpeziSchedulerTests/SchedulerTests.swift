@@ -598,6 +598,226 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
         try scheduler.deleteAllVersions(of: task)
         try #expect(scheduler.queryTasks(for: allTime).isEmpty)
     }
+    
+    @Test
+    func hourlyTask() throws {
+        let cal = Calendar.current
+        let scheduler = Scheduler(persistence: .inMemory)
+        withDependencyResolution {
+            scheduler
+        }
+        let startDate = cal.startOfHour(for: .now)
+        _ = try scheduler.createOrUpdateTask(
+            id: "hourlyTask",
+            title: "",
+            instructions: "",
+            schedule: .hourly(minute: 59, second: 59, startingAt: startDate),
+            effectiveFrom: startDate
+        )
+        let endDate = try #require(cal.date(byAdding: .day, value: 3, to: startDate))
+        let events = try scheduler.queryEvents(for: startDate..<endDate)
+        #expect(events.count == 72)
+        let expectedDates = Array(cal.dates(
+            byMatching: DateComponents(minute: 59, second: 59),
+            startingAt: startDate,
+            in: startDate..<endDate
+        ))
+        #expect(expectedDates.count == 72)
+        for (event, expectedDate) in zip(events, expectedDates) {
+            #expect(cal.component(.minute, from: event.occurrence.start) == 59)
+            #expect(cal.component(.second, from: event.occurrence.start) == 59)
+            #expect(event.occurrence.start == expectedDate)
+        }
+    }
+    
+    @Test
+    func hourlyTask12HourInterval() throws {
+        let cal = Calendar.current
+        let scheduler = Scheduler(persistence: .inMemory)
+        withDependencyResolution {
+            scheduler
+        }
+        let startDate = try #require(cal.date(from: .init(year: 2025, month: 7, day: 11, hour: 8)))
+        _ = try scheduler.createOrUpdateTask(
+            id: "12hourlyTask",
+            title: "",
+            instructions: "",
+            schedule: .hourly(interval: 12, minute: 0, startingAt: startDate),
+            effectiveFrom: startDate
+        )
+        let expectedDates: [Date] = [
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 11, hour: 8))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 11, hour: 20))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 12, hour: 8))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 12, hour: 20))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 13, hour: 8))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 13, hour: 20))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 14, hour: 8))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 14, hour: 20))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 15, hour: 8))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 15, hour: 20))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 16, hour: 8))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 16, hour: 20))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 17, hour: 8))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 17, hour: 20))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 18, hour: 8))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 18, hour: 20))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 19, hour: 8))),
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 19, hour: 20)))
+        ]
+        let events = try scheduler.queryEvents(for: startDate..<(try #require(expectedDates.last)).addingTimeInterval(1))
+        #expect(events.count == expectedDates.count)
+        for (event, expectedDate) in zip(events, expectedDates) {
+            #expect(event.occurrence.start == expectedDate)
+        }
+    }
+    
+    @Test
+    func monthlyTask() throws {
+        let cal = Calendar.current
+        let scheduler = Scheduler(persistence: .inMemory)
+        withDependencyResolution {
+            scheduler
+        }
+        let startDate = try #require(cal.date(from: .init(year: 2025, month: 7, day: 11, hour: 8)))
+        _ = try scheduler.createOrUpdateTask(
+            id: "12hourlyTask",
+            title: "",
+            instructions: "",
+            schedule: .monthly(day: 12, hour: 0, minute: 0, startingAt: startDate),
+            effectiveFrom: startDate
+        )
+        let expectedDates: [Date] = [
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 12))),
+            try #require(cal.date(from: .init(year: 2025, month: 8, day: 12))),
+            try #require(cal.date(from: .init(year: 2025, month: 9, day: 12))),
+            try #require(cal.date(from: .init(year: 2025, month: 10, day: 12))),
+            try #require(cal.date(from: .init(year: 2025, month: 11, day: 12))),
+            try #require(cal.date(from: .init(year: 2025, month: 12, day: 12))),
+            try #require(cal.date(from: .init(year: 2026, month: 1, day: 12))),
+            try #require(cal.date(from: .init(year: 2026, month: 2, day: 12))),
+            try #require(cal.date(from: .init(year: 2026, month: 3, day: 12))),
+            try #require(cal.date(from: .init(year: 2026, month: 4, day: 12))),
+            try #require(cal.date(from: .init(year: 2026, month: 5, day: 12))),
+            try #require(cal.date(from: .init(year: 2026, month: 6, day: 12))),
+            try #require(cal.date(from: .init(year: 2026, month: 7, day: 12))),
+            try #require(cal.date(from: .init(year: 2026, month: 8, day: 12))),
+            try #require(cal.date(from: .init(year: 2026, month: 9, day: 12))),
+            try #require(cal.date(from: .init(year: 2026, month: 10, day: 12))),
+            try #require(cal.date(from: .init(year: 2026, month: 11, day: 12))),
+            try #require(cal.date(from: .init(year: 2026, month: 12, day: 12))),
+            try #require(cal.date(from: .init(year: 2027, month: 1, day: 12))),
+            try #require(cal.date(from: .init(year: 2027, month: 2, day: 12)))
+        ]
+        let events = try scheduler.queryEvents(for: startDate..<(try #require(expectedDates.last)).addingTimeInterval(1))
+        #expect(events.count == expectedDates.count)
+        for (event, expectedDate) in zip(events, expectedDates) {
+            #expect(event.occurrence.start == expectedDate)
+        }
+    }
+    
+    @Test
+    func monthlyTask3MonthInterval() throws {
+        let cal = Calendar.current
+        let scheduler = Scheduler(persistence: .inMemory)
+        withDependencyResolution {
+            scheduler
+        }
+        let startDate = try #require(cal.date(from: .init(year: 2025, month: 7, day: 2)))
+        _ = try scheduler.createOrUpdateTask(
+            id: "3monthlyTask",
+            title: "",
+            instructions: "",
+            schedule: .monthly(interval: 3, day: 7, hour: 0, minute: 0, startingAt: startDate),
+            effectiveFrom: startDate
+        )
+        let expectedDates: [Date] = [
+            try #require(cal.date(from: .init(year: 2025, month: 7, day: 7))),
+            try #require(cal.date(from: .init(year: 2025, month: 10, day: 7))),
+            try #require(cal.date(from: .init(year: 2026, month: 1, day: 7))),
+            try #require(cal.date(from: .init(year: 2026, month: 4, day: 7))),
+            try #require(cal.date(from: .init(year: 2026, month: 7, day: 7))),
+            try #require(cal.date(from: .init(year: 2026, month: 10, day: 7))),
+            try #require(cal.date(from: .init(year: 2027, month: 1, day: 7))),
+            try #require(cal.date(from: .init(year: 2027, month: 4, day: 7))),
+            try #require(cal.date(from: .init(year: 2027, month: 7, day: 7))),
+            try #require(cal.date(from: .init(year: 2027, month: 10, day: 7))),
+            try #require(cal.date(from: .init(year: 2028, month: 1, day: 7))),
+            try #require(cal.date(from: .init(year: 2028, month: 4, day: 7))),
+            try #require(cal.date(from: .init(year: 2028, month: 7, day: 7))),
+        ]
+        let events = try scheduler.queryEvents(for: startDate..<(try #require(expectedDates.last)).addingTimeInterval(1))
+        #expect(events.count == expectedDates.count)
+        for (event, expectedDate) in zip(events, expectedDates) {
+            #expect(event.occurrence.start == expectedDate)
+        }
+    }
+    
+    @Test
+    func yearlyTask() throws {
+        let cal = Calendar.current
+        let scheduler = Scheduler(persistence: .inMemory)
+        withDependencyResolution {
+            scheduler
+        }
+        let startDate = try #require(cal.date(from: .init(year: 2025, month: 7, day: 11, hour: 8)))
+        _ = try scheduler.createOrUpdateTask(
+            id: "12hourlyTask",
+            title: "",
+            instructions: "",
+            schedule: .yearly(month: 11, day: 11, hour: 11, minute: 11, second: 11, startingAt: startDate),
+            effectiveFrom: startDate
+        )
+        let expectedDates: [Date] = [
+            try #require(cal.date(from: .init(year: 2025, month: 11, day: 11, hour: 11, minute: 11, second: 11))),
+            try #require(cal.date(from: .init(year: 2026, month: 11, day: 11, hour: 11, minute: 11, second: 11))),
+            try #require(cal.date(from: .init(year: 2027, month: 11, day: 11, hour: 11, minute: 11, second: 11))),
+            try #require(cal.date(from: .init(year: 2028, month: 11, day: 11, hour: 11, minute: 11, second: 11))),
+            try #require(cal.date(from: .init(year: 2029, month: 11, day: 11, hour: 11, minute: 11, second: 11))),
+            try #require(cal.date(from: .init(year: 2030, month: 11, day: 11, hour: 11, minute: 11, second: 11))),
+            try #require(cal.date(from: .init(year: 2031, month: 11, day: 11, hour: 11, minute: 11, second: 11))),
+            try #require(cal.date(from: .init(year: 2032, month: 11, day: 11, hour: 11, minute: 11, second: 11))),
+        ]
+        let events = try scheduler.queryEvents(for: startDate..<(try #require(expectedDates.last)).addingTimeInterval(1))
+        #expect(events.count == expectedDates.count)
+        for (event, expectedDate) in zip(events, expectedDates) {
+            #expect(event.occurrence.start == expectedDate)
+        }
+    }
+    
+    @Test
+    func yearlyTask3YearInterval() throws {
+        let cal = Calendar.current
+        let scheduler = Scheduler(persistence: .inMemory)
+        withDependencyResolution {
+            scheduler
+        }
+        let startDate = try #require(cal.date(from: .init(year: 2025, month: 1, day: 2)))
+        _ = try scheduler.createOrUpdateTask(
+            id: "3monthlyTask",
+            title: "",
+            instructions: "",
+            schedule: .yearly(interval: 3, month: 2, day: 1, hour: 0, minute: 0, startingAt: startDate),
+            effectiveFrom: startDate
+        )
+        let expectedDates: [Date] = [
+            try #require(cal.date(from: .init(year: 2025, month: 2, day: 1))),
+            try #require(cal.date(from: .init(year: 2028, month: 2, day: 1))),
+            try #require(cal.date(from: .init(year: 2031, month: 2, day: 1))),
+            try #require(cal.date(from: .init(year: 2034, month: 2, day: 1))),
+            try #require(cal.date(from: .init(year: 2037, month: 2, day: 1))),
+            try #require(cal.date(from: .init(year: 2040, month: 2, day: 1))),
+            try #require(cal.date(from: .init(year: 2043, month: 2, day: 1))),
+            try #require(cal.date(from: .init(year: 2046, month: 2, day: 1))),
+            try #require(cal.date(from: .init(year: 2049, month: 2, day: 1))),
+            try #require(cal.date(from: .init(year: 2052, month: 2, day: 1))),
+        ]
+        let events = try scheduler.queryEvents(for: startDate..<(try #require(expectedDates.last)).addingTimeInterval(1))
+        #expect(events.count == expectedDates.count)
+        for (event, expectedDate) in zip(events, expectedDates) {
+            #expect(event.occurrence.start == expectedDate)
+        }
+    }
 }
 
 
