@@ -368,7 +368,7 @@ extension SchedulerNotifications {
                 return
             }
             do {
-                try await requestNotificationAuthorization(options: [.alert, .sound, .badge, .provisional])
+                _ = try await requestNotificationAuthorization(options: [.alert, .sound, .badge, .provisional])
                 logger.debug("Request provisional notification authorization to deliver event notifications.")
             } catch {
                 logger.error("Failed to request provisional notification authorization: \(error)")
@@ -431,7 +431,6 @@ extension SchedulerNotifications {
                     if let standard = standard as? any SchedulerNotificationsConstraint {
                         standard.notificationContent(for: event.task, content: content)
                     }
-                    
                     let notificationDate = Schedule.notificationTime(
                         for: event.occurrence.start,
                         duration: event.occurrence.schedule.duration,
@@ -444,12 +443,14 @@ extension SchedulerNotifications {
                     ))
                     numScheduledNotificationRequests += 1
                 }
-                if upcomingEventsForCurrentTask.count > 1,
-                   Set(eventsDistances).count == 1,
+                if implies(upcomingEventsForCurrentTask.count > 1, Set(eventsDistances).count == 1),
                    case let hint = event.task.schedule.notificationMatchingHint,
                    hint != .none,
                    event.task.schedule.canBeScheduledAsRepeatingCalendarTrigger(allDayNotificationTime: allDayNotificationTime, now: now),
-                   let triggerDateComponents = hint.dateComponents(calendar: event.task.schedule.recurrence?.calendar ?? cal, allDayNotificationTime: allDayNotificationTime) { // swiftlint:disable:this line_length
+                   let triggerDateComponents = hint.dateComponents(
+                    calendar: event.task.schedule.recurrence?.calendar ?? cal,
+                    allDayNotificationTime: allDayNotificationTime
+                   ) {
                     // ... if they are (and we actually have multiple events), we can schedule them via a single, repeating UNCalendarNotificationTrigger ...
                     let content = event.task.notificationContent()
                     if let standard = standard as? any SchedulerNotificationsConstraint {
@@ -650,6 +651,11 @@ extension UNNotificationRequest {
     var isSpeziSchedulerRequest: Bool {
         identifier.starts(with: SchedulerNotifications.baseNotificationId)
     }
+}
+
+@inline(__always)
+func implies(_ lhs: Bool, _ rhs: @autoclosure () -> Bool) -> Bool {
+    !lhs || rhs()
 }
 
 // swiftlint:disable:this file_length

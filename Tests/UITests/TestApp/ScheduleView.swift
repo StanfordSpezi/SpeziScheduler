@@ -143,11 +143,3 @@ extension HorizontalAlignment: @retroactive Hashable {
         hasher.combine(key)
     }
 }
-
-
-#if DEBUG
-#Preview {
-    ScheduleView()
-        .environment(SchedulerModel())
-}
-#endif

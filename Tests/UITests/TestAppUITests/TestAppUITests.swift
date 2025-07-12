@@ -123,7 +123,7 @@ class TestAppUITests: XCTestCase {
             sound: true,
             interruption: .timeSensitive,
             type: "Interval",
-            nextTrigger: "in 1 week",
+            nextTrigger: "in 6 days, 23 hours",
             nextTriggerExistenceTimeout: 60
         )
     }
@@ -227,10 +227,11 @@ class TestAppUITests: XCTestCase {
         testCaseButton.tap()
         
         XCTAssert(app.staticTexts["did trigger, false"].waitForExistence(timeout: 2))
-        app.buttons["Complete"].firstMatch.tap()
+        let completeButton = app.otherElements["ObserveNewOutcomesView"].buttons["Complete"].firstMatch
+        completeButton.tap()
         XCTAssert(app.staticTexts["did trigger, false"].waitForNonExistence(timeout: 2))
         XCTAssert(app.staticTexts["did trigger, true"].waitForExistence(timeout: 2))
-        XCTAssert(app.buttons["Complete"].waitForNonExistence(timeout: 2))
+        XCTAssert(completeButton.waitForNonExistence(timeout: 2))
     }
 }
 
