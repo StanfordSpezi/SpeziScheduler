@@ -36,11 +36,15 @@ import Foundation
 ///
 /// ### Creating Schedules
 /// - ``init(startingAt:duration:recurrence:)``
+///
+/// ### Repeating Schedules
 /// - ``hourly(calendar:interval:minute:second:startingAt:end:duration:)``
 /// - ``daily(calendar:interval:hour:minute:second:startingAt:end:duration:)``
 /// - ``weekly(calendar:interval:weekday:hour:minute:second:startingAt:end:duration:)``
 /// - ``monthly(calendar:interval:day:hour:minute:second:startingAt:end:duration:)``
 /// - ``yearly(calendar:interval:month:day:hour:minute:second:startingAt:end:duration:)``
+///
+/// ### One-Time Schedules
 /// - ``once(at:duration:)``
 ///
 /// ### Retrieving Occurrences
@@ -150,7 +154,7 @@ public struct Schedule {
     }
 
 
-    /// Create a new schedule.
+    /// Creates a schedule.
     ///
     /// ```swift
     /// // the first weekend day of each month (either saturday or sunday, whichever comes first)
@@ -227,7 +231,7 @@ extension Schedule: Hashable, Sendable, Codable {/*
 
 
 extension Schedule {
-    /// Create a schedule for a single occurrence.
+    /// Creates a schedule with a single occurrence.
     ///
     /// ```swift
     /// // create a schedule that occurs exactly once, tomorrow at the same time as now
@@ -246,7 +250,7 @@ extension Schedule {
         Schedule(startingAt: date, duration: duration)
     }
     
-    /// Create a schedule that repeats hourly.
+    /// Creates a schedule that repeats hourly.
     ///
     /// ```swift
     /// // create a schedule at 8am and 8pm daily, starting from today, reoccur indefinitely
@@ -259,7 +263,7 @@ extension Schedule {
     ///
     /// - Parameters:
     ///   - calendar: The calendar
-    ///   - interval: The interval in which the hourly recurrence repeats (e.g., every `interval` hours).
+    ///   - interval: The interval in which the hourly recurrence repeats (i.e., every `interval` hours). Must be at least `1`.
     ///   - minute: The minute.
     ///   - second: The second.
     ///   - start: The date at which the schedule starts.
@@ -299,7 +303,7 @@ extension Schedule {
         )
     }
 
-    /// Create a schedule that repeats daily.
+    /// Creates a schedule that repeats daily.
     ///
     /// ```swift
     /// // create a schedule at 8 am daily, starting from today, reoccur indefinitely
@@ -308,7 +312,7 @@ extension Schedule {
     ///
     /// - Parameters:
     ///   - calendar: The calendar
-    ///   - interval: The interval in which the daily recurrence repeats (e.g., every `interval`-days).
+    ///   - interval: The interval in which the daily recurrence repeats (i.e., every `interval` days). Must be at least `1`.
     ///   - hour: The hour.
     ///   - minute: The minute.
     ///   - second: The second.
@@ -346,7 +350,7 @@ extension Schedule {
         )
     }
 
-    /// Create a schedule that repeats weekly.
+    /// Creates a schedule that repeats weekly.
     ///
     /// ```swift
     /// // create a schedule at 8 am bi-weekly, starting from the next wednesday from today, reoccur indefinitely
@@ -355,7 +359,7 @@ extension Schedule {
     ///
     /// - Parameters:
     ///   - calendar: The calendar
-    ///   - interval: The interval in which the weekly recurrence repeats (e.g., every `interval`-weeks).
+    ///   - interval: The interval in which the weekly recurrence repeats (i.e., every `interval` weeks). Must be at least `1`.
     ///   - weekday: The weekday on which the schedule repeats. If `nil`, it uses the same weekday as the `start` date.
     ///   - hour: The hour.
     ///   - minute: The minute.
@@ -405,16 +409,17 @@ extension Schedule {
         )
     }
     
-    /// Create a schedule that repeats monthly.
+    /// Creates a schedule that repeats monthly.
     ///
     /// ```swift
     /// // create a schedule at the first of every month, starting from today, reoccur indefinitely
-    /// let schedule: Schedule = .daily(hour: 8, minute: 0, startingAt: .today)
+    /// let schedule: Schedule = .monthly(day: 1, hour: 8, minute: 0, startingAt: .today)
     /// ```
     ///
     /// - Parameters:
     ///   - calendar: The calendar
-    ///   - interval: The interval in which the daily recurrence repeats (e.g., every `interval`-days).
+    ///   - interval: The interval in which the monthly recurrence repeats (i.e., every `interval` months). Must be at least `1`.
+    ///   - day: The day.
     ///   - hour: The hour.
     ///   - minute: The minute.
     ///   - second: The second.
@@ -456,7 +461,7 @@ extension Schedule {
         )
     }
     
-    /// Create a schedule that repeats yearly.
+    /// Creates a schedule that repeats yearly.
     ///
     /// ```swift
     /// // create a schedule at every 4th of july, starting from today, reoccur indefinitely
@@ -465,7 +470,9 @@ extension Schedule {
     ///
     /// - Parameters:
     ///   - calendar: The calendar
-    ///   - interval: The interval in which the daily recurrence repeats (e.g., every `interval`-days).
+    ///   - interval: The interval in which the yearly recurrence repeats (i.e., every `interval` years). Must be at least `1`.
+    ///   - month: The month.
+    ///   - day: The day.
     ///   - hour: The hour.
     ///   - minute: The minute.
     ///   - second: The second.
