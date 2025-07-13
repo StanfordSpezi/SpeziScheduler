@@ -13,15 +13,16 @@ import UserNotifications
 extension Schedule {
     enum NotificationMatchingHint: Codable, Sendable, Hashable {
         case none
-        case components(hour: Int, minute: Int, second: Int, weekday: Int?)
+        // swiftlint:disable:next enum_case_associated_values_count
+        case components(month: Int?, day: Int?, hour: Int?, minute: Int, second: Int, weekday: Int?)
         case allDayNotification(weekday: Int?)
         
         func dateComponents(calendar: Calendar, allDayNotificationTime: NotificationTime) -> DateComponents? {
             switch self {
             case .none:
                 return nil
-            case let .components(hour, minute, second, weekday):
-                return DateComponents(calendar: calendar, hour: hour, minute: minute, second: second, weekday: weekday)
+            case let .components(month, day, hour, minute, second, weekday):
+                return DateComponents(calendar: calendar, month: month, day: day, hour: hour, minute: minute, second: second, weekday: weekday)
             case let .allDayNotification(weekday):
                 let time = allDayNotificationTime
                 return DateComponents(calendar: calendar, hour: time.hour, minute: time.minute, second: time.second, weekday: weekday)
@@ -43,14 +44,18 @@ extension Schedule {
     }
     
     
+    // swiftlint:disable function_default_parameter_at_end
     static func notificationMatchingHint( // swiftlint:disable:this function_parameter_count
         forMatchingInterval interval: Int,
         calendar: Calendar,
-        hour: Int,
+        month: Int? = nil,
+        day: Int? = nil,
+        hour: Int?,
         minute: Int,
         second: Int,
-        weekday: Int? = nil, // swiftlint:disable:this function_default_parameter_at_end
+        weekday: Int? = nil,
         consider duration: Duration
+        // swiftlint:enable function_default_parameter_at_end
     ) -> NotificationMatchingHint {
         guard interval == 1 else {
             return .none
@@ -58,7 +63,7 @@ extension Schedule {
         if duration.isAllDay {
             return .allDayNotification(weekday: weekday)
         } else {
-            return .components(hour: hour, minute: minute, second: second, weekday: weekday)
+            return .components(month: month, day: day, hour: hour, minute: minute, second: second, weekday: weekday)
         }
     }
 
@@ -92,7 +97,6 @@ extension Schedule {
 
         if duration.isAllDay {
             // we deliver notifications for all day occurrences at a different time
-
             let time = allDayNotificationTime
             guard let modifiedOccurrence = Calendar.current.date(
                 bySettingHour: time.hour,
@@ -102,7 +106,6 @@ extension Schedule {
             ) else {
                 preconditionFailure("Failed to set notification time for date \(nextOccurrence.start)")
             }
-
             return nextDate == modifiedOccurrence
         } else {
             return nextDate == nextOccurrence.start

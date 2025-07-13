@@ -39,6 +39,8 @@ struct ObserveNewOutcomesTestingView: View {
                 }
             }
         }
+        .accessibilityElement()
+        .accessibilityIdentifier("ObserveNewOutcomesView")
         .onAppear {
             guard observationToken == nil else {
                 return
