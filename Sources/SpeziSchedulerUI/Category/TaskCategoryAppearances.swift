@@ -56,12 +56,7 @@ public struct TaskCategoryAppearances: Sendable {
     /// - Parameter category: The task category.
     /// - Returns: The appearance stored for the category.
     public subscript(_ category: Task.Category) -> Task.Category.Appearance? {
-        for provider in providers.reversed() {
-            if let appearance = provider(category) {
-                return appearance
-            }
-        }
-        return buildIntDefault(for: category)
+        providers.reversed().lazy.compactMap { $0(category) }.first ?? buildIntDefault(for: category)
     }
 }
 
