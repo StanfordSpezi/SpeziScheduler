@@ -29,7 +29,14 @@ class TestAppUITests: XCTestCase {
         XCTAssert(app.staticTexts["Today"].exists)
         XCTAssert(app.staticTexts["Social Support Questionnaire"].exists)
         XCTAssert(app.staticTexts["Questionnaire"].exists)
-        XCTAssert(app.staticTexts["4:00 PM"].exists)
+        switch Locale.current.hourCycle {
+        case .oneToTwelve, .zeroToEleven:
+            XCTAssert(app.staticTexts["4:00 PM"].exists)
+        case .oneToTwentyFour, .zeroToTwentyThree:
+            XCTAssert(app.staticTexts["16:00"].exists)
+        @unknown default:
+            break
+        }
 
         XCTAssert(app.buttons["More Information"].exists)
         app.buttons.matching(identifier: "More Information").element(boundBy: 1).tap()
