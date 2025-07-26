@@ -13,58 +13,62 @@ import SwiftUI
 
 
 /// Stores all configured category appearances for the view hierarchy.
-public struct TaskCategoryAppearances {
-    private let appearances: [Task.Category: Task.Category.Appearance]
+public struct TaskCategoryAppearances: Sendable {
+    public typealias AppearanceProvider = @Sendable (Task.Category) -> Task.Category.Appearance?
+    
+    private let providers: [AppearanceProvider]
     private let disableDefaultAppearances: Bool // for test purposes
-
+    
     init() {
-        self.init([:], disableDefaultAppearances: false)
+        self.init(providers: [], disableDefaultAppearances: false)
     }
-
-    init(_ appearances: [Task.Category: Task.Category.Appearance], disableDefaultAppearances: Bool) {
-        self.appearances = appearances
+    
+    init(providers: [AppearanceProvider], disableDefaultAppearances: Bool) {
+        self.providers = providers
         self.disableDefaultAppearances = disableDefaultAppearances
     }
-
+    
     private func buildIntDefault(for category: Task.Category) -> Task.Category.Appearance? {
         guard !disableDefaultAppearances else {
             return nil
         }
-
         return switch category {
         case .questionnaire:
-                .init(label: "Questionnaire", image: .system("heart.text.clipboard.fill"))
+            .init(label: "Questionnaire", image: .system("heart.text.clipboard.fill"))
         case .measurement:
-                .init(label: "Measurement", image: .system("heart.text.square.fill"))
+            .init(label: "Measurement", image: .system("heart.text.square.fill"))
         case .medication:
-                .init(label: "Medication", image: .system("pills.circle.fill"))
+            .init(label: "Medication", image: .system("pills.circle.fill"))
         default:
             nil
         }
     }
-
-    func inserting(_ appearance: Task.Category.Appearance, for category: Task.Category) -> Self {
-        var appearances = appearances
-        appearances[category] = appearance
-        return TaskCategoryAppearances(appearances, disableDefaultAppearances: disableDefaultAppearances)
+    
+    func appending(_ provider: @escaping AppearanceProvider) -> Self {
+        Self(providers: providers + [provider], disableDefaultAppearances: disableDefaultAppearances)
     }
 
-    func disableDefaultAppearances(_ disabled: Bool = true) -> Self {
-        TaskCategoryAppearances(appearances, disableDefaultAppearances: disabled)
+    func disablingDefaultAppearances(_ disabled: Bool = true) -> Self {
+        Self(providers: providers, disableDefaultAppearances: disabled)
     }
 
     /// Retrieve the appearance for a given category.
     /// - Parameter category: The task category.
     /// - Returns: The appearance stored for the category.
     public subscript(_ category: Task.Category) -> Task.Category.Appearance? {
-        appearances[category] ?? buildIntDefault(for: category)
+        for provider in providers.reversed() {
+            if let appearance = provider(category) {
+                return appearance
+            }
+        }
+        return buildIntDefault(for: category)
     }
 }
 
 
 extension Task.Category {
     /// Visual cues on how to render a task category to the user.
-    public struct Appearance {
+    public struct Appearance: Equatable, Sendable {
         /// The user-visible, localized label.
         public let label: LocalizedStringResource
         /// An optional image, that represents the category.
@@ -76,12 +80,6 @@ extension Task.Category {
         }
     }
 }
-
-
-extension Task.Category.Appearance: Sendable, Equatable {}
-
-
-extension TaskCategoryAppearances: Sendable, Equatable {}
 
 
 extension EnvironmentValues {
