@@ -276,12 +276,14 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     ///   - completionPolicy: The policy to decide when an event can be completed by the user.
     ///   - scheduleNotifications: Automatically schedule notifications for upcoming events.
     ///   - notificationThread: The behavior how task notifications are grouped in the notification center.
+    ///   - notificationTime: The time when the Task's notifications should be sent out.
+    ///       Specifying `nil` will result in notifications being scheduled for the respective ``Occurrence``'s start date.
     ///   - tags: Custom tags associated with the task.
     ///   - effectiveFrom: The date from which this version of the task is effective. You typically do not want to modify this parameter.
-    ///     If you do specify a custom value, make sure to specify it relative to `now`.
+    ///       If you do specify a custom value, make sure to specify it relative to `now`.
     ///   - shadowedOutcomesHandling: How the scheduler should deal with shadowed outcomes when updating a task.
-    ///     You need to specify this parameter if you want to be able to proactively complete upcoming events.
-    ///     In this case, the call to `createOrUpdateTask` might
+    ///       You need to specify this parameter if you want to be able to proactively complete upcoming events.
+    ///       In this case, the call to `createOrUpdateTask` might
     ///   - contextClosure: The closure that allows to customize the ``Task/Context`` that is stored with the task.
     /// - Returns: Returns the latest version of the `task` and if the task was updated or created indicated by `didChange`.
     @discardableResult
@@ -294,6 +296,7 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         completionPolicy: AllowedCompletionPolicy = .sameDay,
         scheduleNotifications: Bool = false,
         notificationThread: NotificationThread = .global,
+        notificationTime: NotificationTime? = nil,
         tags: [String]? = nil, // swiftlint:disable:this discouraged_optional_collection
         effectiveFrom: Date = .now,
         shadowedOutcomesHandling: TaskUpdateShadowedOutcomesHandling = .throwError,
@@ -318,6 +321,7 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
                 completionPolicy: completionPolicy,
                 scheduleNotifications: scheduleNotifications,
                 notificationThread: notificationThread,
+                notificationTime: notificationTime,
                 tags: tags,
                 effectiveFrom: effectiveFrom,
                 with: contextClosure
@@ -344,6 +348,7 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
                 completionPolicy: completionPolicy,
                 scheduleNotifications: scheduleNotifications,
                 notificationThread: notificationThread,
+                notificationTime: notificationTime,
                 tags: tags,
                 effectiveFrom: effectiveFrom,
                 with: contextClosure
@@ -363,6 +368,7 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
                 schedule: schedule,
                 completionPolicy: completionPolicy,
                 scheduleNotifications: scheduleNotifications,
+                notificationTime: notificationTime,
                 notificationThread: notificationThread,
                 tags: tags ?? [],
                 effectiveFrom: effectiveFrom,

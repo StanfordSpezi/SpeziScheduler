@@ -21,7 +21,7 @@ struct DisableCategoryDefaultAppearancesModifier: ViewModifier { // swiftlint:di
 
     func body(content: Content) -> some View {
         content
-            .environment(\.taskCategoryAppearances, taskCategoryAppearances.disableDefaultAppearances(disabled))
+            .environment(\.taskCategoryAppearances, taskCategoryAppearances.disablingDefaultAppearances(disabled))
     }
 }
 

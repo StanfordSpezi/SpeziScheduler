@@ -84,7 +84,8 @@ struct ScheduleView: View {
                 EventDetailView(event)
             }
         }
-        .taskCategoryAppearance(for: Task.Category.labResults, label: "Enter Lab Results")
+        .taskCategoryAppearance(for: .labResults, label: "Enter Lab Results")
+        .taskCategoryAppearance(for: .timedWalkingTest, label: "Active Task", image: .system("figure.walk"))
     }
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
@@ -103,13 +104,11 @@ struct ScheduleView: View {
                 Text("Center").tag(HorizontalAlignment.center)
                 Text("Trailing").tag(HorizontalAlignment.trailing)
             }
-
             Picker("Date", selection: $dateSelection) {
                 Text("Today").tag(DateSelection.today)
                 Text("Tomorrow").tag(DateSelection.tomorrow)
                 Text("Date").tag(DateSelection.date)
             }
-
             Button("Hide Content", action: hide)
         }
     }

@@ -6,6 +6,8 @@
 // SPDX-License-Identifier: MIT
 //
 
+// swiftlint:disable file_length
+
 import Foundation
 import SpeziFoundation
 import SwiftData
@@ -58,6 +60,7 @@ import SwiftData
 /// ### Notifications
 ///
 /// - ``scheduleNotifications``
+/// - ``notificationTime``
 /// - ``notificationThread``
 ///
 /// ### Modifying a task
@@ -131,6 +134,11 @@ public final class Task {
     /// events of this task. Refer to the documentation of `SchedulerNotifications` for all necessary steps and configuration in order to use this feature.
     public private(set) var scheduleNotifications: Bool
     
+    /// The time when the task's notifications should be sent out.
+    ///
+    /// In the case of a `nil` value, the notifications will match the respective ``Occurrence``'s start dates.
+    public private(set) var notificationTime: NotificationTime?
+    
     /// The behavior how task notifications are grouped in the notification center.
     public private(set) var notificationThread: NotificationThread
 
@@ -196,6 +204,7 @@ public final class Task {
         schedule: Schedule,
         completionPolicy: AllowedCompletionPolicy,
         scheduleNotifications: Bool,
+        notificationTime: NotificationTime?,
         notificationThread: NotificationThread,
         tags: [String],
         effectiveFrom: Date,
@@ -208,6 +217,7 @@ public final class Task {
         self.schedule = schedule
         self.completionPolicy = completionPolicy
         self.scheduleNotifications = scheduleNotifications
+        self.notificationTime = notificationTime
         self.notificationThread = notificationThread
         self.outcomes = []
         self.tags = tags
@@ -226,6 +236,7 @@ public final class Task {
         schedule: Schedule,
         completionPolicy: AllowedCompletionPolicy,
         scheduleNotifications: Bool,
+        notificationTime: NotificationTime?,
         notificationThread: NotificationThread,
         tags: [String],
         effectiveFrom: Date,
@@ -242,6 +253,7 @@ public final class Task {
             schedule: schedule,
             completionPolicy: completionPolicy,
             scheduleNotifications: scheduleNotifications,
+            notificationTime: notificationTime,
             notificationThread: notificationThread,
             tags: tags,
             effectiveFrom: effectiveFrom,
@@ -263,6 +275,7 @@ public final class Task {
     ///   - completionPolicy: The policy to decide when an event can be completed by the user.
     ///   - scheduleNotifications: Automatically schedule notifications for upcoming events.
     ///   - notificationThread: The behavior how task notifications are grouped in the notification center.
+    ///   - notificationTime: The time the tasks notifications should be sent out.
     ///   - tags: Custom tags associated with the task.
     ///   - effectiveFrom: The date this update is effective from.
     ///   - contextClosure: The updated context or `nil` if the context should not be updated.
@@ -288,6 +301,7 @@ public final class Task {
             completionPolicy: completionPolicy,
             scheduleNotifications: scheduleNotifications,
             notificationThread: notificationThread,
+            notificationTime: notificationTime,
             tags: tags,
             effectiveFrom: effectiveFrom,
             with: contextClosure
@@ -304,6 +318,7 @@ public final class Task {
         completionPolicy: AllowedCompletionPolicy?,
         scheduleNotifications: Bool?, // swiftlint:disable:this discouraged_optional_boolean
         notificationThread: NotificationThread?,
+        notificationTime: NotificationTime?,
         tags: [String]?, // swiftlint:disable:this discouraged_optional_collection
         effectiveFrom: Date,
         with contextClosure: ((inout Context) -> Void)?
@@ -324,6 +339,7 @@ public final class Task {
             || didChange(tags, for: \.tags)
             || didChange(scheduleNotifications, for: \.scheduleNotifications)
             || didChange(notificationThread, for: \.notificationThread)
+            || didChange(notificationTime, for: \.notificationTime)
             || didChange(context?.userInfo, for: \.userInfo)
     }
 
@@ -336,6 +352,7 @@ public final class Task {
         completionPolicy: AllowedCompletionPolicy?,
         scheduleNotifications: Bool?, // swiftlint:disable:this discouraged_optional_boolean
         notificationThread: NotificationThread?,
+        notificationTime: NotificationTime?,
         tags: [String]?, // swiftlint:disable:this discouraged_optional_collection
         effectiveFrom: Date,
         with contextClosure: ((inout Context) -> Void)?
@@ -348,6 +365,7 @@ public final class Task {
             completionPolicy: completionPolicy,
             scheduleNotifications: scheduleNotifications,
             notificationThread: notificationThread,
+            notificationTime: notificationTime,
             tags: tags,
             effectiveFrom: effectiveFrom,
             with: contextClosure
@@ -383,6 +401,7 @@ public final class Task {
             schedule: schedule ?? self.schedule,
             completionPolicy: completionPolicy ?? self.completionPolicy,
             scheduleNotifications: scheduleNotifications ?? self.scheduleNotifications,
+            notificationTime: notificationTime ?? self.notificationTime,
             notificationThread: notificationThread ?? self.notificationThread,
             tags: tags ?? self.tags,
             effectiveFrom: effectiveFrom,

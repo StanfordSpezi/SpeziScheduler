@@ -17,15 +17,34 @@ extension Schedule {
         case components(month: Int?, day: Int?, hour: Int?, minute: Int, second: Int, weekday: Int?)
         case allDayNotification(weekday: Int?)
         
-        func dateComponents(calendar: Calendar, allDayNotificationTime: NotificationTime) -> DateComponents? {
+        func dateComponents(
+            calendar: Calendar,
+            preferredNotificationTime: NotificationTime?,
+            allDayNotificationTime: NotificationTime
+        ) -> DateComponents? {
             switch self {
             case .none:
                 return nil
             case let .components(month, day, hour, minute, second, weekday):
-                return DateComponents(calendar: calendar, month: month, day: day, hour: hour, minute: minute, second: second, weekday: weekday)
+                let time = preferredNotificationTime
+                return DateComponents(
+                    calendar: calendar,
+                    month: month,
+                    day: day,
+                    hour: time?.hour ?? hour,
+                    minute: time?.minute ?? minute,
+                    second: time?.second ?? second,
+                    weekday: weekday
+                )
             case let .allDayNotification(weekday):
                 let time = allDayNotificationTime
-                return DateComponents(calendar: calendar, hour: time.hour, minute: time.minute, second: time.second, weekday: weekday)
+                return DateComponents(
+                    calendar: calendar,
+                    hour: time.hour,
+                    minute: time.minute,
+                    second: time.second,
+                    weekday: weekday
+                )
             }
         }
     }
@@ -67,7 +86,11 @@ extension Schedule {
         }
     }
 
-    func canBeScheduledAsRepeatingCalendarTrigger(allDayNotificationTime: NotificationTime, now: Date = .now) -> Bool {
+    func canBeScheduledAsRepeatingCalendarTrigger(
+        preferredNotificationTime: NotificationTime?,
+        allDayNotificationTime: NotificationTime,
+        now: Date
+    ) -> Bool {
         guard notificationMatchingHint != .none, let recurrence else {
             return false // needs to be repetitive and have a interval hint
         }
@@ -79,6 +102,7 @@ extension Schedule {
         // otherwise, check if it still works (e.g., we have Monday, start date is Wednesday and schedule reoccurs every Friday).
         guard let components = notificationMatchingHint.dateComponents(
             calendar: recurrence.calendar,
+            preferredNotificationTime: preferredNotificationTime,
             allDayNotificationTime: allDayNotificationTime
         ) else {
             return false
@@ -94,21 +118,16 @@ extension Schedule {
             // we require at least two next occurrences to justify a **repeating** calendar-based trigger
             return false
         }
-
-        if duration.isAllDay {
+        
+        /// The time the next occurrence's notification should be sent out.
+        let nextOccurrenceEffectiveNotificationTime: Date = if duration.isAllDay {
             // we deliver notifications for all day occurrences at a different time
-            let time = allDayNotificationTime
-            guard let modifiedOccurrence = Calendar.current.date(
-                bySettingHour: time.hour,
-                minute: time.minute,
-                second: time.second,
-                of: nextOccurrence.start
-            ) else {
-                preconditionFailure("Failed to set notification time for date \(nextOccurrence.start)")
-            }
-            return nextDate == modifiedOccurrence
+            allDayNotificationTime.date(in: nextOccurrence.start, using: recurrence.calendar)
+        } else if let preferredNotificationTime {
+            preferredNotificationTime.date(in: nextOccurrence.start, using: recurrence.calendar)
         } else {
-            return nextDate == nextOccurrence.start
+            nextOccurrence.start
         }
+        return nextDate == nextOccurrenceEffectiveNotificationTime
     }
 }
