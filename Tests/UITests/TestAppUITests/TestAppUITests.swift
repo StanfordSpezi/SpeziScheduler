@@ -273,7 +273,7 @@ class TestAppUITests: XCTestCase {
         XCTAssert(app.collectionViews.staticTexts["Tomorrow"].waitForExistence(timeout: 1))
         XCTAssert(app.collectionViews.staticTexts["Timed Walking Test"].waitForExistence(timeout: 1))
         XCTAssert(app.collectionViews.staticTexts.matching(
-            NSPredicate(format: "label MATCHES 'Timed Walking Test, Active Task, In .*, \(uses12HourClock ? "0:00 AM" : "00:00")'")
+            NSPredicate(format: "label MATCHES 'Timed Walking Test, Active Task, In .*, \(uses12HourClock ? "12:00 AM" : "00:00")'")
         ).element.exists)
         
         // Part 2: verify the actual notification scheduling
@@ -294,7 +294,7 @@ class TestAppUITests: XCTestCase {
         )
         XCTAssert(app.staticTexts.matching(
             NSPredicate(format: "label MATCHES 'Date, calendar: .*hour: 0 minute: 5 second: 0.*'")
-        ).element.exists)
+        ).element.exists, "DateComponents don't match expected time values.")
     }
 }
 
