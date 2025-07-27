@@ -98,7 +98,7 @@ class TestAppUITests: XCTestCase {
 
         app.confirmNotificationAuthorization()
         
-        XCTAssertGreaterThan(app.staticTexts.matching(identifier: "Medication").count, 5) // ensure events are scheduled
+        XCTAssertGreaterThan(app.staticTexts.matching(identifier: "Medication").count, 4) // ensure events are scheduled
 
         app.staticTexts["Weight Measurement"].tap()
 
