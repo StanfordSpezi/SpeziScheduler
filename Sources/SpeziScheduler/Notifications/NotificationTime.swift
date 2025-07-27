@@ -6,9 +6,11 @@
 // SPDX-License-Identifier: MIT
 //
 
+import Foundation
+
 
 /// Hour, minute and second date components to determine the scheduled time of a notification.
-public struct NotificationTime {
+public struct NotificationTime: Hashable, Codable, Sendable {
     /// The hour component.
     public let hour: Int
     /// The minute component.
@@ -26,12 +28,17 @@ public struct NotificationTime {
         self.hour = hour
         self.minute = minute
         self.second = second
-
         precondition((0..<24).contains(hour), "hour must be between 0 and 23")
         precondition((0..<60).contains(minute), "minute must be between 0 and 59")
         precondition((0..<60).contains(second), "second must be between 0 and 59")
     }
+    
+    
+    /// Returns a `Date` that represents this notification time in the specified day.
+    func date(in day: Date, using calendar: Calendar) -> Date {
+        guard let result = calendar.date(bySettingHour: hour, minute: minute, second: second, of: day) else {
+            preconditionFailure("Unable to adjust date.")
+        }
+        return result
+    }
 }
-
-
-extension NotificationTime: Sendable, Codable, Hashable {}

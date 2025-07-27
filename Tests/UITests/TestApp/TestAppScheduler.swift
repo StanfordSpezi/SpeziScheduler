@@ -26,6 +26,7 @@ enum TaskIdentifier {
     static let testMeasurement = "test-measurement"
     static let testMedication = "test-medication"
     static let enterLabResults = "enter-lab-results"
+    static let timedWalkingTest = "timed-walking-test"
 }
 
 
@@ -102,6 +103,16 @@ final class TestAppScheduler: Module {
                 scheduleNotifications: false,
                 shadowedOutcomesHandling: .delete
             )
+            
+            try scheduler.createOrUpdateTask(
+                id: TaskIdentifier.timedWalkingTest,
+                title: "Timed Walking Test",
+                instructions: "Walk for 6 minutes!",
+                category: .timedWalkingTest,
+                schedule: .daily(hour: 0, minute: 0, startingAt: .tomorrow),
+                scheduleNotifications: true,
+                notificationTime: NotificationTime(hour: 0, minute: 5)
+            )
         } catch {
             logger.error("Failed to scheduled TestApp tasks: \(error)")
             model.viewState = .error(AnyLocalizedError(
@@ -126,4 +137,5 @@ final class TestAppScheduler: Module {
 
 extension Task.Category {
     static let labResults = Self.custom("lab-results")
+    static let timedWalkingTest = Self.custom("timed-walking-test")
 }

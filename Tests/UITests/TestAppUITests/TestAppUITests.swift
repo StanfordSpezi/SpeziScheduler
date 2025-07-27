@@ -12,6 +12,17 @@ import XCTSpeziNotifications
 
 
 class TestAppUITests: XCTestCase {
+    private var uses12HourClock: Bool {
+        switch Locale.current.hourCycle {
+        case .zeroToEleven, .oneToTwelve:
+            true
+        case .zeroToTwentyThree, .oneToTwentyFour:
+            false
+        @unknown default:
+            true // just assume it's running in the US
+        }
+    }
+    
     override func setUp() {
         continueAfterFailure = false
     }
@@ -29,13 +40,10 @@ class TestAppUITests: XCTestCase {
         XCTAssert(app.staticTexts["Today"].exists)
         XCTAssert(app.staticTexts["Social Support Questionnaire"].exists)
         XCTAssert(app.staticTexts["Questionnaire"].exists)
-        switch Locale.current.hourCycle {
-        case .oneToTwelve, .zeroToEleven:
+        if uses12HourClock {
             XCTAssert(app.staticTexts["4:00 PM"].exists)
-        case .oneToTwentyFour, .zeroToTwentyThree:
+        } else {
             XCTAssert(app.staticTexts["16:00"].exists)
-        @unknown default:
-            break
         }
 
         XCTAssert(app.buttons["More Information"].exists)
@@ -149,7 +157,7 @@ class TestAppUITests: XCTestCase {
         
         XCTAssert(app.buttons["Complete Enter Lab Results"].waitForExistence(timeout: 2))
         
-        app.goToTab("Notifications")
+        app.goToTab(.notifications)
 
         XCTAssert(app.staticTexts["Pending Notifications"].waitForExistence(timeout: 2.0))
 
@@ -173,10 +181,10 @@ class TestAppUITests: XCTestCase {
         )
         
         // Complete the task for today
-        app.goToTab("Schedule")
+        app.goToTab(.schedule)
         app.buttons["Complete Enter Lab Results"].tap()
         sleep(1)
-        app.goToTab("Notifications")
+        app.goToTab(.notifications)
         
         app.staticTexts["Enter Lab Results"].firstMatch.tap()
 
@@ -240,12 +248,65 @@ class TestAppUITests: XCTestCase {
         XCTAssert(app.staticTexts["did trigger, true"].waitForExistence(timeout: 2))
         XCTAssert(completeButton.waitForNonExistence(timeout: 2))
     }
+    
+    
+    @MainActor
+    func testExplicitNotificationTime() throws {
+        // What we test for here is that, when we define a Task with an explicit notificationTime,
+        // the start date of the task's occurrences and the time for which the notifications are scheduled,
+        // are both correct (and, importantly, different from each other!).
+        // In this case, we have a task that is scheduled for midnight, but doesn't want its notification until 00:05.
+        // (Note that the reason why these specific times are chosen is to minimise the likelihood the tests accidentally fail;
+        // if the test runs while the next occurrence is > 24 hours away the scheduler needs to fall back to a TimeInterval-based
+        // trigger, which we can't (easily) decompose into date components.)
+        let app = XCUIApplication()
+        app.deleteAndLaunch(withSpringboardAppName: "TestApp")
+        XCTAssert(app.wait(for: .runningForeground, timeout: 2.0))
+        
+        XCTAssert(app.collectionViews.staticTexts["Today"].waitForExistence(timeout: 1))
+        XCTAssertFalse(app.collectionViews.staticTexts["Timed Walking Test"].exists)
+        
+        // Part 1: verify the Schedule tab
+        app.navigationBars.buttons["More"].tap()
+        app.buttons["Date"].tap()
+        app.buttons["Tomorrow"].tap()
+        XCTAssert(app.collectionViews.staticTexts["Tomorrow"].waitForExistence(timeout: 1))
+        XCTAssert(app.collectionViews.staticTexts["Timed Walking Test"].waitForExistence(timeout: 1))
+        XCTAssert(app.collectionViews.staticTexts.matching(
+            NSPredicate(format: "label MATCHES 'Timed Walking Test, Active Task, In .*, \(uses12HourClock ? "0:00 AM" : "00:00")'")
+        ).element.exists)
+        
+        // Part 2: verify the actual notification scheduling
+        app.goToTab(.notifications)
+        XCTAssert(app.staticTexts["Pending Notifications"].waitForExistence(timeout: 1))
+        app.staticTexts["Timed Walking Test"].firstMatch.tap()
+        XCTAssert(app.navigationBars.staticTexts["Timed Walking Test"].waitForExistence(timeout: 1))
+        app.assertNotificationDetails(
+            identifier: "edu.stanford.spezi.scheduler.notification.task.timed-walking-test",
+            title: "Timed Walking Test",
+            body: "Walk for 6 minutes!",
+            category: "edu.stanford.spezi.scheduler.notification.category.timed-walking-test",
+            thread: "edu.stanford.spezi.scheduler.notification",
+            sound: true,
+            interruption: .timeSensitive,
+            type: "Calendar",
+            nextTrigger: nil
+        )
+        XCTAssert(app.staticTexts.matching(
+            NSPredicate(format: "label MATCHES 'Date, calendar: .*hour: 0 minute: 5 second: 0.*'")
+        ).element.exists)
+    }
 }
 
 
 extension XCUIApplication {
-    func goToTab(_ name: String, line: UInt = #line) {
-        let tab = self.tabBars.buttons[name]
+    enum Tab: String {
+        case schedule = "Schedule"
+        case notifications = "Notifications"
+    }
+    
+    func goToTab(_ tab: Tab, line: UInt = #line) {
+        let tab = self.tabBars.buttons[tab.rawValue]
         XCTAssert(tab.waitForExistence(timeout: 2.0), line: line)
         tab.tap()
         tab.tap()

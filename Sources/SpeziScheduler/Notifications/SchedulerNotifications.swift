@@ -420,6 +420,7 @@ extension SchedulerNotifications {
                     // ... if no events are left for this task we can immediately continue onto the next one
                     continue
                 }
+                let cal = event.task.schedule.recurrence?.calendar ?? cal
                 // ... we check whether this task's events are equidistant wrt to their start dates ...
                 let eventsDistances = upcomingEventsForCurrentTask.adjacentPairs().map { event0, event1 in
                     // Note that we're intentionally using DateComponents here, instead of simply calling timeIntervalSince;
@@ -431,11 +432,15 @@ extension SchedulerNotifications {
                     if let standard = standard as? any SchedulerNotificationsConstraint {
                         standard.notificationContent(for: event.task, content: content)
                     }
-                    let notificationDate = Schedule.notificationTime(
-                        for: event.occurrence.start,
-                        duration: event.occurrence.schedule.duration,
-                        allDayNotificationTime: allDayNotificationTime
-                    )
+                    let notificationDate = if let notificationTime = event.task.notificationTime {
+                        notificationTime.date(in: event.occurrence.start, using: cal)
+                    } else {
+                        Schedule.notificationTime(
+                            for: event.occurrence.start,
+                            duration: event.occurrence.schedule.duration,
+                            allDayNotificationTime: allDayNotificationTime
+                        )
+                    }
                     try await notifications.add(request: UNNotificationRequest(
                         identifier: Self.notificationId(for: event),
                         content: content,
@@ -446,9 +451,14 @@ extension SchedulerNotifications {
                 if implies(upcomingEventsForCurrentTask.count > 1, Set(eventsDistances).count == 1),
                    case let hint = event.task.schedule.notificationMatchingHint,
                    hint != .none,
-                   event.task.schedule.canBeScheduledAsRepeatingCalendarTrigger(allDayNotificationTime: allDayNotificationTime, now: now),
+                   event.task.schedule.canBeScheduledAsRepeatingCalendarTrigger(
+                    preferredNotificationTime: event.task.notificationTime,
+                    allDayNotificationTime: allDayNotificationTime,
+                    now: now
+                   ),
                    let triggerDateComponents = hint.dateComponents(
-                    calendar: event.task.schedule.recurrence?.calendar ?? cal,
+                    calendar: cal,
+                    preferredNotificationTime: event.task.notificationTime,
                     allDayNotificationTime: allDayNotificationTime
                    ) {
                     // ... if they are (and we actually have multiple events), we can schedule them via a single, repeating UNCalendarNotificationTrigger ...
@@ -460,7 +470,11 @@ extension SchedulerNotifications {
                         dateMatching: triggerDateComponents,
                         repeats: true
                     )
-                    let nextTriggerDate = event.occurrence.start
+                    let nextTriggerDate = if let notificationTime = event.task.notificationTime {
+                        notificationTime.date(in: event.occurrence.start, using: cal)
+                    } else {
+                        event.occurrence.start
+                    }
                     guard let nextNotificationTriggerDate = trigger.nextTriggerDate() else {
                         // this should probably be practically unreachable.
                         continue
