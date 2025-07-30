@@ -25,6 +25,31 @@ public enum AllowedCompletionPolicy: Hashable, Sendable, Codable {
 
 
 extension AllowedCompletionPolicy {
+    /// Determine if an event is allowed to be completed at a specific date.
+    /// - Parameters:
+    ///   - event: The event.
+    ///   - date: The date for which the completion policy should be evaluated. Defaults to the `now` date.
+    ///   - calendar: The `Calendar` that should be used by the function.
+    /// - Returns: `true` if the event is allowed to be completed at `date`; `false` otherwise.
+    ///
+    /// - Note: If the date at which the event is allowed to be completed is still in the future,
+    ///     you can use the ``dateOnceCompletionIsAllowed(for:now:)`` and ``dateOnceCompletionBecomesDisallowed(for:now:)`` methods to retrieve the time
+    ///     when you need to update your UI.
+    public func isAllowedToComplete(event: Event, at date: Date = .now, using calendar: Calendar = .current) -> Bool {
+        switch self {
+        case .sameDay:
+            calendar.isDateInToday(date)
+        case .afterStart:
+            date >= event.occurrence.start
+        case .sameDayAfterStart:
+            calendar.isDateInToday(date) && date >= event.occurrence.start
+        case .duringEvent:
+            (event.occurrence.start..<event.occurrence.end).contains(date)
+        case .anytime:
+            true
+        }
+    }
+    
     /// Determine if an event is currently allowed to be completed.
     /// - Parameters:
     ///   - event: The event.
@@ -32,19 +57,9 @@ extension AllowedCompletionPolicy {
     /// - Returns: `true` if the event is currently allowed to be completed. `false` otherwise. If the date at which the event is allowed to be completed is still in the future,
     ///     you can use the ``dateOnceCompletionIsAllowed(for:now:)`` and ``dateOnceCompletionBecomesDisallowed(for:now:)`` methods to retrieve the time
     ///     when you need to update your UI.
+    @available(*, deprecated, renamed: "isAllowedToComplete(_:at:using:)")
     public func isAllowedToComplete(event: Event, now: Date = .now) -> Bool {
-        switch self {
-        case .sameDay:
-            Calendar.current.isDateInToday(now)
-        case .afterStart:
-            now >= event.occurrence.start
-        case .sameDayAfterStart:
-            Calendar.current.isDateInToday(now) && now >= event.occurrence.start
-        case .duringEvent:
-            (event.occurrence.start..<event.occurrence.end).contains(now)
-        case .anytime:
-            true
-        }
+        isAllowedToComplete(event: event, at: now)
     }
     
     /// Retrieve the date at which the result of `isAllowedToComplete` changes to allowed.

@@ -42,18 +42,28 @@ import SwiftUI
 /// })
 /// ```
 public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
+    /// The visibility of a component of an ``InstructionsTile``.
+    public enum ComponentVisibility: Hashable, Sendable {
+        /// The component should always be visible.
+        case showAlways
+        /// The component should be hidden if the event has already been completed.
+        case hideIfCompleted
+    }
+    
     private let alignment: HorizontalAlignment
     private let event: Event
     private let header: Header
     private let footer: Footer
-    private let moreInformation: Info
-
-    @State private var presentingMoreInformation: Bool = false
-
-
-    private var moreInfoButton: some View {
+    private let footerVisibility: ComponentVisibility
+    private let moreInfo: Info
+    private let moreInfoVisibility: ComponentVisibility
+    
+    @State private var isShowingMoreInfoSheet: Bool = false
+    
+    
+    private var moreButton: some View {
         Button {
-            presentingMoreInformation = true
+            isShowingMoreInfoSheet = true
         } label: {
             Label {
                 Text("More Information", bundle: .module)
@@ -62,10 +72,22 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
                     .accessibilityHidden(true)
             }
         }
-            .buttonStyle(.borderless)
-            .accessibilityLabel("More Information")
+        .buttonStyle(.borderless)
+        .accessibilityLabel("More Information")
     }
-
+    
+    private var moreButtonCompact: some View {
+        moreButton
+            .labelStyle(.iconOnly)
+            .font(.title3)
+    }
+    
+    private var moreButtonExtended: some View {
+        moreButton
+            .labelStyle(.titleAndIcon)
+            .font(.footnote)
+    }
+    
     private var tileAlignment: HorizontalAlignment {
         if event.isCompleted {
             .leading
@@ -73,32 +95,35 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
             alignment
         }
     }
-
+    
     public var body: some View {
         SimpleTile(alignment: tileAlignment) {
             if event.isCompleted {
-                CompletedTileHeader(alignment: tileAlignment) {
-                    Text(event.task.title)
+                HStack {
+                    CompletedTileHeader(alignment: tileAlignment) {
+                        Text(event.task.title)
+                    }
+                    switch moreInfoVisibility {
+                    case .showAlways:
+                        Spacer()
+                        moreButtonCompact
+                    case .hideIfCompleted:
+                        EmptyView() // if we end up in here, the event is already completed.
+                    }
                 }
             } else if Info.self != EmptyView.self {
                 let layout = alignment == .center
                 ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
                 : AnyLayout(HStackLayout(alignment: .center))
-
                 layout {
                     header
-
                     if alignment == .center {
-                        moreInfoButton
-                            .labelStyle(.titleAndIcon)
-                            .font(.footnote)
+                        moreButtonExtended
                     } else {
                         if alignment == .leading {
                             Spacer()
                         }
-                        moreInfoButton
-                            .labelStyle(.iconOnly)
-                            .font(.title3)
+                        moreButtonCompact
                     }
                 }
             } else {
@@ -108,18 +133,52 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
             Text(event.task.instructions)
                 .font(.callout)
         } footer: {
-            if !event.isCompleted {
+            switch footerVisibility {
+            case .showAlways:
                 footer
+            case .hideIfCompleted:
+                if !event.isCompleted {
+                    footer
+                }
             }
         }
-            .sheet(isPresented: $presentingMoreInformation) {
-                moreInformation
-            }
-            .accessibilityAction(named: Text("More Information")) {
-                presentingMoreInformation = true
-            }
+        .sheet(isPresented: $isShowingMoreInfoSheet) {
+            moreInfo
+        }
+        .accessibilityAction(named: Text("More Information")) {
+            isShowingMoreInfoSheet = true
+        }
     }
     
+    
+    /// Create a new instructions with a header, a details view and a footer view.
+    /// - Parameters:
+    ///   - event: The event instance.
+    ///   - alignment: The horizontal alignment of the tile.
+    ///   - header: A custom header that is shown on the top of the tile. You can use the [`TileHeader`](https://swiftpackageindex.com/stanfordspezi/speziviews/documentation/speziviews/tileheader)
+    ///   - more: An optional view that is presented as a sheet if the user presses the "more information" button. The view can be used to provide additional explanation or instructions for a task.
+    ///   - footer: A footer that is shown below the body of the tile. You may use the ``EventActionButton``.
+    public init(
+        _ event: Event,
+        alignment: HorizontalAlignment = .leading,
+        footerVisibility: ComponentVisibility = .hideIfCompleted,
+        moreInfoVisibility: ComponentVisibility = .hideIfCompleted,
+        @ViewBuilder header: () -> Header,
+        @ViewBuilder footer: () -> Footer,
+        @ViewBuilder more: () -> Info
+    ) {
+        self.alignment = alignment
+        self.event = event
+        self.header = header()
+        self.footer = footer()
+        self.moreInfo = more()
+        self.footerVisibility = footerVisibility
+        self.moreInfoVisibility = moreInfoVisibility
+    }
+}
+
+
+extension InstructionsTile {
     /// Create a new instructions with an action button.
     ///
     /// This initializers uses the ``EventActionButton``.
@@ -130,9 +189,10 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
     public init(
         _ event: Event,
         alignment: HorizontalAlignment = .leading,
+        footerVisibility: ComponentVisibility = .hideIfCompleted,
         action: @escaping () -> Void
     ) where Header == DefaultTileHeader, Footer == EventActionButton, Info == EmptyView {
-        self.init(event, alignment: alignment, action: action) {
+        self.init(event, alignment: alignment, footerVisibility: footerVisibility, action: action) {
             DefaultTileHeader(event, alignment: alignment)
         }
     }
@@ -148,10 +208,11 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
     public init(
         _ event: Event,
         alignment: HorizontalAlignment = .leading,
+        footerVisibility: ComponentVisibility = .hideIfCompleted,
         action: @escaping () -> Void,
         @ViewBuilder header: () -> Header
     ) where Footer == EventActionButton, Info == EmptyView {
-        self.init(event, alignment: alignment, action: action, header: header) {
+        self.init(event, alignment: alignment, footerVisibility: footerVisibility, action: action, header: header) {
             EmptyView()
         }
     }
@@ -168,12 +229,16 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
     public init(
         _ event: Event,
         alignment: HorizontalAlignment = .leading,
+        footerVisibility: ComponentVisibility = .hideIfCompleted,
+        moreInfoVisibility: ComponentVisibility = .hideIfCompleted,
         action: @escaping () -> Void,
         @ViewBuilder more: () -> Info
     ) where Header == DefaultTileHeader, Footer == EventActionButton {
         self.init(
             event,
             alignment: alignment,
+            footerVisibility: footerVisibility,
+            moreInfoVisibility: moreInfoVisibility,
             action: action,
             header: { DefaultTileHeader(event, alignment: alignment) },
             more: more
@@ -192,11 +257,21 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
     public init(
         _ event: Event,
         alignment: HorizontalAlignment = .leading,
+        footerVisibility: ComponentVisibility = .hideIfCompleted,
+        moreInfoVisibility: ComponentVisibility = .hideIfCompleted,
         action: @escaping () -> Void,
         @ViewBuilder header: () -> Header,
         @ViewBuilder more: () -> Info
     ) where Footer == EventActionButton {
-        self.init(event, alignment: alignment, header: header, footer: { EventActionButton(event: event, action: action) }, more: more)
+        self.init(
+            event,
+            alignment: alignment,
+            footerVisibility: footerVisibility,
+            moreInfoVisibility: moreInfoVisibility,
+            header: header,
+            footer: { EventActionButton(event: event, action: action) },
+            more: more
+        )
     }
     
     /// Create a new instructions.
@@ -224,9 +299,16 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
     public init(
         _ event: Event,
         alignment: HorizontalAlignment = .leading,
+        footerVisibility: ComponentVisibility = .hideIfCompleted,
         @ViewBuilder footer: () -> Footer
     ) where Header == DefaultTileHeader, Info == EmptyView {
-        self.init(event, alignment: alignment, header: { DefaultTileHeader(event, alignment: alignment) }, footer: footer)
+        self.init(
+            event,
+            alignment: alignment,
+            footerVisibility: footerVisibility,
+            header: { DefaultTileHeader(event, alignment: alignment) },
+            footer: footer
+        )
     }
 
     /// Create a new instructions tile with a details view.
@@ -240,9 +322,16 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
     public init(
         _ event: Event,
         alignment: HorizontalAlignment = .leading,
+        moreInfoVisibility: ComponentVisibility = .hideIfCompleted,
         @ViewBuilder more: () -> Info
     ) where Header == DefaultTileHeader, Footer == EmptyView {
-        self.init(event, alignment: alignment, header: { DefaultTileHeader(event, alignment: alignment) }, more: more)
+        self.init(
+            event,
+            alignment: alignment,
+            moreInfoVisibility: moreInfoVisibility,
+            header: { DefaultTileHeader(event, alignment: alignment) },
+            more: more
+        )
     }
     
     /// Create a new instructions with a header and no action view.
@@ -271,10 +360,11 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
     public init(
         _ event: Event,
         alignment: HorizontalAlignment = .leading,
+        footerVisibility: ComponentVisibility = .hideIfCompleted,
         @ViewBuilder header: () -> Header,
         @ViewBuilder footer: () -> Footer
     ) where Info == EmptyView {
-        self.init(event, alignment: alignment, header: header, footer: footer) {
+        self.init(event, alignment: alignment, footerVisibility: footerVisibility, header: header, footer: footer) {
             EmptyView()
         }
     }
@@ -289,31 +379,18 @@ public struct InstructionsTile<Header: View, Info: View, Footer: View>: View {
     public init(
         _ event: Event,
         alignment: HorizontalAlignment = .leading,
+        moreInfoVisibility: ComponentVisibility = .hideIfCompleted,
         @ViewBuilder header: () -> Header,
         @ViewBuilder more: () -> Info
     ) where Footer == EmptyView {
-        self.init(event, alignment: alignment, header: header, footer: { EmptyView() }, more: more)
-    }
-
-    /// Create a new instructions with a header, a details view and a footer view.
-    /// - Parameters:
-    ///   - event: The event instance.
-    ///   - alignment: The horizontal alignment of the tile.
-    ///   - header: A custom header that is shown on the top of the tile. You can use the [`TileHeader`](https://swiftpackageindex.com/stanfordspezi/speziviews/documentation/speziviews/tileheader)
-    ///   - more: An optional view that is presented as a sheet if the user presses the "more information" button. The view can be used to provide additional explanation or instructions for a task.
-    ///   - footer: A footer that is shown below the body of the tile. You may use the ``EventActionButton``.
-    public init(
-        _ event: Event,
-        alignment: HorizontalAlignment = .leading,
-        @ViewBuilder header: () -> Header,
-        @ViewBuilder footer: () -> Footer,
-        @ViewBuilder more: () -> Info
-    ) {
-        self.alignment = alignment
-        self.event = event
-        self.header = header()
-        self.footer = footer()
-        self.moreInformation = more()
+        self.init(
+            event,
+            alignment: alignment,
+            moreInfoVisibility: moreInfoVisibility,
+            header: header,
+            footer: { EmptyView() },
+            more: more
+        )
     }
 }
 
