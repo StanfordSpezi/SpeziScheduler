@@ -14,11 +14,13 @@ import SwiftUI
 
 /// A default design for a tile that displays information about an event.
 public struct DefaultTileHeader: View {
-    private let alignment: HorizontalAlignment
-    private let event: Event
-
+    @Environment(\.calendar)
+    private var calendar
     @Environment(\.taskCategoryAppearances)
     private var taskCategoryAppearances
+    
+    private let alignment: HorizontalAlignment
+    private let event: Event
 
     public var body: some View {
         TileHeader(alignment: alignment) {
@@ -108,13 +110,15 @@ public struct DefaultTileHeader: View {
         case .allDay:
             nil
         case .tillEndOfDay:
-            if Calendar.current.isDateInToday(event.occurrence.start) {
+            if event.occurrence.start == calendar.startOfDay(for: .now) {
+                nil
+            } else if calendar.isDateInToday(event.occurrence.start) {
                 occurrenceStartTimeText()
             } else {
                 Text("\(dateOffsetText()), \(occurrenceStartTimeText())")
             }
         case .duration:
-            if Calendar.current.isDateInToday(event.occurrence.start) {
+            if calendar.isDateInToday(event.occurrence.start) {
                 occurrenceDurationText()
             } else {
                 Text("\(dateOffsetText()), \(occurrenceDurationText())")
