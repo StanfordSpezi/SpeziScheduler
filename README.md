@@ -20,13 +20,17 @@ Schedule and observe tasks for your users to complete, such as taking surveys or
 
 ## Overview
 
-The Scheduler module allows the scheduling and observation of tasks adhering to a specific schedule.
+The Scheduler module helps you create and manage recurring tasks that users need to complete, such as daily questionnaires, medication reminders, or health measurements.
 
-A task is a potentially repeated action or work that a user is supposed to perform. An event represents a single occurrence of a task, that is derived from its schedule.
+### Key Concepts
 
-You use the Scheduler module to manage the persistence store of your tasks. It provides a versioned, append-only store for tasks. It allows you to modify the properties (e.g., schedule) of future events without affecting occurrences of the past.
+- **Task**: A repeatable action users should perform (e.g., "Take daily medication")
+- **Event**: A single instance when a task should be completed (e.g., "Take medication today at 8 AM")
+- **Schedule**: Defines when and how often a task repeats (e.g., daily, weekly, monthly)
 
-You create and automatically update your tasks using `createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)`.
+The module automatically handles task persistence and versioning. When you update a task's schedule or details, it creates a new version without affecting previously completed events. This ensures your historical data remains intact.
+
+You create tasks using `createOrUpdateTask()`, and the module takes care of generating the appropriate events based on your schedule.
 
 ### Setup
 
