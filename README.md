@@ -326,9 +326,7 @@ To connect actual questionnaires to scheduled tasks, you can use the SpeziQuesti
 When creating tasks, include a questionnaire context that references your FHIR questionnaire:
 
 ```swift
-import SpeziQuestionnaire
-
-try await scheduler.createOrUpdateTask(
+try scheduler.createOrUpdateTask(
     id: "daily-mood-questionnaire",
     title: "Daily Mood Assessment",
     description: "Please complete your daily mood questionnaire.",
@@ -345,16 +343,21 @@ try await scheduler.createOrUpdateTask(
 Create a Bundle extension to load FHIR questionnaires:
 
 ```swift
-import ModelsR4
+import Foundation
+import SpeziQuestionnaire
 
 extension Bundle {
     func questionnaire(withName name: String) -> Questionnaire {
-        guard let questionnairePath = url(forResource: name, withExtension: "json"),
-              let questionnaireData = try? Data(contentsOf: questionnairePath) else {
-            fatalError("Could not load questionnaire \(name) from the main bundle.")
+        guard let resourceURL = self.url(forResource: name, withExtension: "json") else {
+            fatalError("Could not find the questionnaire \"\(name).json\" in the bundle.")
         }
         
-        return try! JSONDecoder().decode(Questionnaire.self, from: questionnaireData)
+        do {
+            let resourceData = try Data(contentsOf: resourceURL)
+            return try JSONDecoder().decode(Questionnaire.self, from: resourceData)
+        } catch {
+            fatalError("Could not decode the FHIR questionnaire named \"\(name).json\": \(error)")
+        }
     }
 }
 ```
