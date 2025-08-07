@@ -333,6 +333,8 @@ extension Task.Context {
 }
 ```
 
+For the complete implementation, see [TemplateApplicationScheduler.swift](https://github.com/StanfordSpezi/SpeziTemplateApplication/blob/main/TemplateApplication/Schedule/TemplateApplicationScheduler.swift#L46-L48) in the SpeziTemplateApplication.
+
 #### 2. Create Tasks with Questionnaire Context
 
 When creating tasks, include a questionnaire context. You can load questionnaires from JSON files, create them programmatically, or fetch them from a server:
@@ -356,6 +358,8 @@ try scheduler.createOrUpdateTask(
 }
 ```
 
+For the complete implementation, see [TemplateApplicationScheduler.swift](https://github.com/StanfordSpezi/SpeziTemplateApplication/blob/main/TemplateApplication/Schedule/TemplateApplicationScheduler.swift#L30-L38) and [Bundle+Questionnaire.swift](https://github.com/StanfordSpezi/SpeziTemplateApplication/blob/main/TemplateApplication/Schedule/Bundle+Questionnaire.swift) in the SpeziTemplateApplication.
+
 #### 3. Display Questionnaires in Response to Tasks
 
 When presenting questionnaires, use the SpeziQuestionnaire module's QuestionnaireView:
@@ -377,6 +381,8 @@ if let questionnaire = event.task.questionnaire {
     }
 }
 ```
+
+For the complete implementation, see [EventView.swift](https://github.com/StanfordSpezi/SpeziTemplateApplication/blob/main/TemplateApplication/Schedule/EventView.swift#L25-L39) in the SpeziTemplateApplication.
 
 #### 4. Integrate with Schedule UI
 
