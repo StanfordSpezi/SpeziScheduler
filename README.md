@@ -380,50 +380,32 @@ if let questionnaire = event.task.questionnaire {
 
 #### 4. Integrate with Schedule UI
 
-Present questionnaires as modal sheets when users tap on scheduled tasks:
+Present questionnaires when users interact with scheduled tasks:
 
 ```swift
-struct ScheduleView: View {
-    @State private var selectedEvent: Event?
-    
-    var body: some View {
-        NavigationStack {
-            EventScheduleList { event in
-                InstructionsTile(event) {
-                    selectedEvent = event  // Open questionnaire modal
-                }
-            }
-            .navigationTitle("Today's Schedule")
-        }
-        .sheet(item: $selectedEvent) { event in
-            EventView(event: event)
-        }
-    }
+// In your schedule view, present questionnaires as sheets
+.sheet(item: $selectedEvent) { event in
+    // Your questionnaire presentation view here
 }
 ```
+
+For a complete implementation, see [ScheduleView.swift](https://github.com/StanfordSpezi/SpeziTemplateApplication/blob/main/TemplateApplication/Schedule/ScheduleView.swift) and [EventView.swift](https://github.com/StanfordSpezi/SpeziTemplateApplication/blob/main/TemplateApplication/Schedule/EventView.swift) in the SpeziTemplateApplication.
 
 #### 5. Handle Response Storage
 
-Implement response storage in your Standard:
+Add a method to your Standard actor to store questionnaire responses:
 
 ```swift
-@Standard
-actor MyAppStandard {
-    func add(
-        response: QuestionnaireResponse,
-        for questionnaire: Questionnaire
-    ) async {
-        // Store questionnaire response in your preferred data layer
-        // e.g., Firebase, Core Data, or local storage
-        
-        let responseId = response.identifier?.value?.value?.string ?? UUID().uuidString
-        print("Storing response \(responseId) for questionnaire: \(questionnaire.id?.value?.string ?? "unknown")")
-        // Your storage implementation here
+actor MyAppStandard: Standard {
+    func add(response: QuestionnaireResponse, for questionnaire: Questionnaire) async {
+        // Store in your preferred data layer (Firebase, Core Data, etc.)
     }
 }
 ```
 
-This approach provides a clean separation between task scheduling and questionnaire presentation, while leveraging FHIR standards for questionnaire definitions and responses. For a complete working example, see the [SpeziTemplateApplication](https://github.com/StanfordSpezi/SpeziTemplateApplication).
+For a complete implementation, see [TemplateApplicationStandard.swift](https://github.com/StanfordSpezi/SpeziTemplateApplication/blob/main/TemplateApplication/TemplateApplicationStandard.swift) in the SpeziTemplateApplication.
+
+This approach provides a clean separation between task scheduling and questionnaire presentation, while leveraging FHIR standards for questionnaire definitions and responses.
 
 For more information, please refer to the [API documentation](https://swiftpackageindex.com/StanfordSpezi/SpeziScheduler/documentation).
 
