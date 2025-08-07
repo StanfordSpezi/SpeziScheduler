@@ -46,7 +46,7 @@ struct ScheduleView: View {
         NavigationStack {
             EventScheduleList { event in
                 InstructionsTile(event) {
-                    event.complete()
+                    try event.complete()
                 }
             }
             .navigationTitle("Today's Schedule")
@@ -60,7 +60,7 @@ You can also display events for different dates:
 ```swift
 EventScheduleList(date: .tomorrow) { event in
     InstructionsTile(event) {
-        event.complete()
+        try event.complete()
     }
 }
 ```
@@ -72,12 +72,12 @@ The ``InstructionsTile`` component provides a polished card interface for indivi
 ```swift
 // Basic tile with completion button
 InstructionsTile(event) {
-    event.complete()
+    try event.complete()
 }
 
 // Tile with additional information sheet
 InstructionsTile(event) {
-    event.complete()
+    try event.complete()
 } more: {
     VStack(alignment: .leading, spacing: 16) {
         Text("Detailed Instructions")
@@ -89,7 +89,7 @@ InstructionsTile(event) {
 
 // Centered alignment for featured tasks
 InstructionsTile(event, alignment: .center) {
-    event.complete()
+    try event.complete()
 }
 ```
 
@@ -100,7 +100,7 @@ You can customize how different task categories appear in the UI using the `task
 ```swift
 EventScheduleList { event in
     InstructionsTile(event) {
-        event.complete()
+        try event.complete()
     }
 }
 .taskCategoryAppearance(for: .questionnaire, label: "Survey", image: .system("list.clipboard.fill"))

@@ -89,28 +89,7 @@ let customSchedule = Schedule(startingAt: .today, recurrence: customRule)
 
 ### Notifications
 
-The Scheduler can automatically schedule notifications for upcoming tasks. First, ensure your `Standard` conforms to the ``SchedulerNotificationsConstraint`` protocol:
-
-```swift
-actor ExampleStandard: Standard, SchedulerNotificationsConstraint {
-    @MainActor
-    func notificationContent(for task: borrowing Task, content: borrowing UNMutableNotificationContent) {
-        // Customize notification content if needed
-    }
-}
-```
-
-Then configure the ``SchedulerNotifications`` module and enable notifications for specific tasks:
-
-```swift
-try scheduler.createOrUpdateTask(
-    id: "reminder-task",
-    title: "Daily Check-in",
-    instructions: "Complete your daily check-in.",
-    schedule: .daily(hour: 18, minute: 0, startingAt: .today),
-    scheduleNotifications: true
-)
-```
+For basic notification support, you can use the [Notifications](https://github.com/StanfordSpezi/SpeziNotifications) module in your app configuration. For advanced scheduler-specific notification features, see the ``SchedulerNotifications`` module.
 
 ## Topics
 
