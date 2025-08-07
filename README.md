@@ -136,39 +136,21 @@ try scheduler.createOrUpdateTask(
 
 ### Notifications
 
-The Scheduler can automatically schedule notifications for upcoming tasks. First, ensure your `Standard` conforms to the [`SchedulerNotificationsConstraint`](https://swiftpackageindex.com/stanfordspezi/spezischeduler/documentation/spezischeduler/schedulernotificationsconstraint) protocol:
-
-```swift
-actor ExampleStandard: Standard, SchedulerNotificationsConstraint {
-    @MainActor
-    func notificationContent(for task: borrowing Task, content: borrowing UNMutableNotificationContent) {
-        // Customize notification content if needed
-    }
-}
-```
-
-Then configure the [`SchedulerNotifications`](https://swiftpackageindex.com/stanfordspezi/spezischeduler/documentation/spezischeduler/schedulernotifications) module and enable notifications for specific tasks:
+For basic notification support, you can use the [`Notifications`](https://github.com/StanfordSpezi/SpeziNotifications) module in your app configuration:
 
 ```swift
 class ExampleAppDelegate: SpeziAppDelegate {
     override var configuration: Configuration {
         Configuration(standard: ExampleStandard()) {
-            Scheduler()
-            SchedulerNotifications()
             MySchedulerModule()
+            Scheduler()
+            Notifications()
         }
     }
 }
-
-// In your task creation
-try scheduler.createOrUpdateTask(
-    id: "reminder-task",
-    title: "Daily Check-in",
-    instructions: "Complete your daily check-in.",
-    schedule: .daily(hour: 18, minute: 0, startingAt: .today),
-    scheduleNotifications: true
-)
 ```
+
+For advanced scheduler-specific notification features, see the [`SchedulerNotifications`](https://swiftpackageindex.com/stanfordspezi/spezischeduler/documentation/spezischeduler/schedulernotifications) module documentation.
 
 ### Querying Tasks and Events
 
