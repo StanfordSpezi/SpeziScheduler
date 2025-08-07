@@ -189,6 +189,32 @@ let taskEvents = try scheduler.queryEvents(forTaskWithId: "daily-questionnaire",
 
 The `SpeziSchedulerUI` module provides ready-to-use SwiftUI components for displaying scheduled tasks and events in your app.
 
+<table>
+<tr>
+<td>
+
+![Schedule Today](Sources/SpeziSchedulerUI/SpeziSchedulerUI.docc/Resources/Schedule-Today.png)
+
+*Use EventScheduleList and InstructionsTile to present the user's schedule*
+
+</td>
+<td>
+
+![Schedule Today Center](Sources/SpeziSchedulerUI/SpeziSchedulerUI.docc/Resources/Schedule-Today-Center.png)
+
+*A schedule view with center aligned InstructionsTile*
+
+</td>
+<td>
+
+![Schedule Tomorrow](Sources/SpeziSchedulerUI/SpeziSchedulerUI.docc/Resources/Schedule-Tomorrow.png)
+
+*Use EventScheduleList to display schedules for arbitrary dates*
+
+</td>
+</tr>
+</table>
+
 ### Displaying Events in Lists
 
 Use `EventScheduleList` to display all events for a specific day. It automatically handles empty states and provides a clean, organized view of scheduled tasks:
