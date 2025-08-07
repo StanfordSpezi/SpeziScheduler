@@ -89,13 +89,13 @@ The Scheduler supports various scheduling patterns using the [`Schedule`](https:
 
 ```swift
 // One-time task
-let onceSchedule = Schedule.once(at: Date(), duration: .tillEndOfDay)
+let onceSchedule: Schedule = .once(at: Date(), duration: .tillEndOfDay)
 
 // Daily tasks
-let dailySchedule = Schedule.daily(hour: 8, minute: 30, startingAt: .today)
+let dailySchedule: Schedule = .daily(hour: 8, minute: 30, startingAt: .today)
 
 // Weekly tasks
-let weeklySchedule = Schedule.weekly(
+let weeklySchedule: Schedule = .weekly(
     weekday: .monday, 
     hour: 10, 
     minute: 0, 
@@ -103,7 +103,7 @@ let weeklySchedule = Schedule.weekly(
 )
 
 // Monthly tasks
-let monthlySchedule = Schedule.monthly(
+let monthlySchedule: Schedule = .monthly(
     day: 1, 
     hour: 9, 
     minute: 0, 

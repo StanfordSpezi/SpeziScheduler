@@ -14,7 +14,7 @@ Ready-to-use SwiftUI components for displaying scheduled tasks and events in you
 
 ## Overview
 
-The `SpeziSchedulerUI` module provides polished UI components that automatically connect to your configured `Scheduler` instance to display tasks and handle user interactions.
+The `SpeziSchedulerUI` target provides polished UI components that automatically connect to your configured `Scheduler` instance to display tasks and handle user interactions.
 
 @Row {
     @Column {
