@@ -193,21 +193,24 @@ The `SpeziSchedulerUI` module provides ready-to-use SwiftUI components for displ
 <tr>
 <td>
 
-![Schedule Today](Sources/SpeziSchedulerUI/SpeziSchedulerUI.docc/Resources/Schedule-Today.png)
+![Schedule Today](Sources/SpeziSchedulerUI/SpeziSchedulerUI.docc/Resources/Schedule-Today.png#gh-light-mode-only)
+![Schedule Today](Sources/SpeziSchedulerUI/SpeziSchedulerUI.docc/Resources/Schedule-Today~dark.png#gh-dark-mode-only)
 
 *Use EventScheduleList and InstructionsTile to present the user's schedule*
 
 </td>
 <td>
 
-![Schedule Today Center](Sources/SpeziSchedulerUI/SpeziSchedulerUI.docc/Resources/Schedule-Today-Center.png)
+![Schedule Today Center](Sources/SpeziSchedulerUI/SpeziSchedulerUI.docc/Resources/Schedule-Today-Center.png#gh-light-mode-only)
+![Schedule Today Center](Sources/SpeziSchedulerUI/SpeziSchedulerUI.docc/Resources/Schedule-Today-Center~dark.png#gh-dark-mode-only)
 
 *A schedule view with center aligned InstructionsTile*
 
 </td>
 <td>
 
-![Schedule Tomorrow](Sources/SpeziSchedulerUI/SpeziSchedulerUI.docc/Resources/Schedule-Tomorrow.png)
+![Schedule Tomorrow](Sources/SpeziSchedulerUI/SpeziSchedulerUI.docc/Resources/Schedule-Tomorrow.png#gh-light-mode-only)
+![Schedule Tomorrow](Sources/SpeziSchedulerUI/SpeziSchedulerUI.docc/Resources/Schedule-Tomorrow~dark.png#gh-dark-mode-only)
 
 *Use EventScheduleList to display schedules for arbitrary dates*
 
