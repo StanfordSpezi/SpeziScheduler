@@ -14,13 +14,13 @@ Schedule and observe tasks for your users to complete, such as taking surveys or
 
 ## Overview
 
-The Scheduler module helps you create and manage recurring tasks that users need to complete, such as daily questionnaires, medication reminders, or health measurements.
+The Scheduler module helps you create and manage recurring tasks that users need to complete, such as daily questionnaires, medication reminders, or health measurements. It can also be used for internal application logic and automated processes.
 
 ### Key Concepts
 
-- **Task**: A repeatable action users should perform (e.g., "Take daily medication")
-- **Event**: A single instance when a task should be completed (e.g., "Take medication today at 8 AM")
+- **Task**: A repeatable action users should perform (e.g., "Fill out a questionnaire.")
 - **Schedule**: Defines when and how often a task repeats (e.g., daily, weekly, monthly)
+- **Event**: A single instance when a task should be completed (e.g., "Fill out a questionnaire today at 8 AM")
 
 The module automatically handles task persistence and versioning. When you update a task's schedule or details, it creates a new version without affecting previously completed events. This ensures your historical data remains intact.
 
@@ -89,7 +89,7 @@ let customSchedule = Schedule(startingAt: .today, recurrence: customRule)
 
 ### Notifications
 
-For basic notification support, you can use the [Notifications](https://github.com/StanfordSpezi/SpeziNotifications) module in your app configuration. For advanced scheduler-specific notification features, see the ``SchedulerNotifications`` module.
+For basic notification support, you can use the [Notifications](https://github.com/StanfordSpezi/SpeziNotifications) module in your app configuration. For advanced scheduler-specific notification features, see the [``SchedulerNotifications``](https://swiftpackageindex.com/stanfordspezi/spezischeduler/documentation/spezischeduler/schedulernotifications) module.
 
 ## Topics
 

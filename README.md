@@ -20,13 +20,13 @@ Schedule and observe tasks for your users to complete, such as taking surveys or
 
 ## Overview
 
-The Scheduler module helps you create and manage recurring tasks that users need to complete, such as daily questionnaires, medication reminders, or health measurements.
+The Scheduler module helps you create and manage recurring tasks that users need to complete, such as daily questionnaires, medication reminders, or health measurements. It can also be used for internal application logic and automated processes.
 
 ### Key Concepts
 
 - **Task**: A repeatable action users should perform (e.g., "Take daily medication")
-- **Event**: A single instance when a task should be completed (e.g., "Take medication today at 8 AM")
 - **Schedule**: Defines when and how often a task repeats (e.g., daily, weekly, monthly)
+- **Event**: A single instance when a task should be completed (e.g., "Take medication today at 8 AM")
 
 The module automatically handles task persistence and versioning. When you update a task's schedule or details, it creates a new version without affecting previously completed events. This ensures your historical data remains intact.
 
@@ -83,38 +83,7 @@ class ExampleAppDelegate: SpeziAppDelegate {
 }
 ```
 
-### Task Scheduling Options
-
-The Scheduler supports various scheduling patterns using the [`Schedule`](https://swiftpackageindex.com/stanfordspezi/spezischeduler/documentation/spezischeduler/schedule) type:
-
-```swift
-// One-time task
-let onceSchedule: Schedule = .once(at: Date(), duration: .tillEndOfDay)
-
-// Daily tasks
-let dailySchedule: Schedule = .daily(hour: 8, minute: 30, startingAt: .today)
-
-// Weekly tasks
-let weeklySchedule: Schedule = .weekly(
-    weekday: .monday, 
-    hour: 10, 
-    minute: 0, 
-    startingAt: .today
-)
-
-// Monthly tasks
-let monthlySchedule: Schedule = .monthly(
-    day: 1, 
-    hour: 9, 
-    minute: 0, 
-    startingAt: .today
-)
-
-// Custom recurrence patterns
-var customRule = Calendar.RecurrenceRule.weekly(calendar: .current, end: .never)
-customRule.weekdays = [.every(.monday), .every(.wednesday), .every(.friday)]
-let customSchedule = Schedule(startingAt: .today, recurrence: customRule)
-```
+The Scheduler supports various scheduling patterns using the [`Schedule`](https://swiftpackageindex.com/stanfordspezi/spezischeduler/documentation/spezischeduler/schedule) type.
 
 ### Task Categories and Metadata
 
@@ -136,21 +105,7 @@ try scheduler.createOrUpdateTask(
 
 ### Notifications
 
-For basic notification support, you can use the [`Notifications`](https://github.com/StanfordSpezi/SpeziNotifications) module in your app configuration:
-
-```swift
-class ExampleAppDelegate: SpeziAppDelegate {
-    override var configuration: Configuration {
-        Configuration(standard: ExampleStandard()) {
-            MySchedulerModule()
-            Scheduler()
-            Notifications()
-        }
-    }
-}
-```
-
-For advanced scheduler-specific notification features, see the [`SchedulerNotifications`](https://swiftpackageindex.com/stanfordspezi/spezischeduler/documentation/spezischeduler/schedulernotifications) module documentation.
+The scheduler includes basic notification functionality. For more advanced features, see the [`SchedulerNotifications`](https://swiftpackageindex.com/stanfordspezi/spezischeduler/documentation/spezischeduler/schedulernotifications) module documentation.
 
 ### Querying Tasks and Events
 
@@ -273,130 +228,6 @@ EventScheduleList { event in
 .taskCategoryAppearance(for: .medication, label: "Medication", image: .system("pills.fill"))
 .taskCategoryAppearance(for: .measurement, label: "Measurement", image: .system("ruler.fill"))
 ```
-
-### Action Buttons
-
-For more control over task completion, use `EventActionButton` directly:
-
-```swift
-VStack {
-    Text(event.task.title)
-    Text(event.task.instructions)
-    
-    EventActionButton(event: event) {
-        // Custom completion logic
-        try event.complete()
-        // Handle completion (e.g., show success message, update UI, etc.)
-    }
-}
-```
-
-You can also customize the button label:
-
-```swift
-EventActionButton(event: event, "Start Survey") {
-    try event.complete()
-}
-```
-
-### Connecting Questionnaires
-
-To connect questionnaires to scheduled tasks, you can use the [SpeziQuestionnaire](https://github.com/StanfordSpezi/SpeziQuestionnaire) module with FHIR-compliant questionnaire definitions. FHIR-compliant questionnaires can be created using [Phoenix](https://github.com/StanfordBDHG/Phoenix). Here's the pattern used in the [SpeziTemplateApplication](https://github.com/StanfordSpezi/SpeziTemplateApplication):
-
-#### 1. Define Questionnaire Context Property
-
-First, extend Task.Context to store questionnaire data:
-
-```swift
-import SpeziQuestionnaire
-
-extension Task.Context {
-    @Property(coding: .json) var questionnaire: Questionnaire?
-}
-```
-
-For the complete implementation, see [TemplateApplicationScheduler.swift](https://github.com/StanfordSpezi/SpeziTemplateApplication/blob/main/TemplateApplication/Schedule/TemplateApplicationScheduler.swift#L46-L48) in the SpeziTemplateApplication.
-
-#### 2. Create Tasks with Questionnaire Context
-
-When creating tasks, include a questionnaire context. You can load questionnaires from JSON files, create them programmatically, or fetch them from a server:
-
-```swift
-// Load questionnaire from a JSON file
-guard let resourceURL = Bundle.main.url(forResource: "MoodQuestionnaire", withExtension: "json"),
-      let resourceData = try? Data(contentsOf: resourceURL),
-      let questionnaire = try? JSONDecoder().decode(Questionnaire.self, from: resourceData) else {
-    fatalError("Could not load questionnaire")
-}
-
-try scheduler.createOrUpdateTask(
-    id: "daily-mood-questionnaire",
-    title: "Daily Mood Assessment",
-    instructions: "Please complete your daily mood questionnaire.",
-    category: .questionnaire,
-    schedule: .daily(hour: 20, minute: 0, startingAt: .today)
-) { context in
-    context.questionnaire = questionnaire
-}
-```
-
-For the complete implementation, see [TemplateApplicationScheduler.swift](https://github.com/StanfordSpezi/SpeziTemplateApplication/blob/main/TemplateApplication/Schedule/TemplateApplicationScheduler.swift#L30-L38) and [Bundle+Questionnaire.swift](https://github.com/StanfordSpezi/SpeziTemplateApplication/blob/main/TemplateApplication/Schedule/Bundle+Questionnaire.swift) in the SpeziTemplateApplication.
-
-#### 3. Display Questionnaires in Response to Tasks
-
-When presenting questionnaires, use the [SpeziQuestionnaire](https://github.com/StanfordSpezi/SpeziQuestionnaire) module's QuestionnaireView:
-
-```swift
-import SpeziQuestionnaire
-
-// In your view that presents the questionnaire
-if let questionnaire = event.task.questionnaire {
-    QuestionnaireView(questionnaire: questionnaire) { result in
-        guard case let .completed(response) = result else {
-            // User cancelled
-            return
-        }
-        
-        // Complete the event and store the response
-        _ = try event.complete()
-        await standard.add(response: response, for: questionnaire)
-    }
-}
-```
-
-For the complete implementation, see [EventView.swift](https://github.com/StanfordSpezi/SpeziTemplateApplication/blob/main/TemplateApplication/Schedule/EventView.swift#L25-L39) in the SpeziTemplateApplication.
-
-#### 4. Integrate with Schedule UI
-
-Present questionnaires when users interact with scheduled tasks:
-
-```swift
-// In your schedule view, present questionnaires as sheets
-.sheet(item: $selectedEvent) { event in
-    // Your questionnaire presentation view here
-}
-```
-
-For a complete implementation, see [ScheduleView.swift](https://github.com/StanfordSpezi/SpeziTemplateApplication/blob/main/TemplateApplication/Schedule/ScheduleView.swift) and [EventView.swift](https://github.com/StanfordSpezi/SpeziTemplateApplication/blob/main/TemplateApplication/Schedule/EventView.swift) in the SpeziTemplateApplication.
-
-#### 5. Handle Response Storage
-
-Add a method to your Standard actor to store questionnaire responses:
-
-```swift
-actor MyAppStandard: Standard {
-    func add(response: QuestionnaireResponse, for questionnaire: Questionnaire) async {
-        // Store in your preferred data layer (Firebase, Core Data, etc.)
-    }
-}
-```
-
-For a complete implementation, see [TemplateApplicationStandard.swift](https://github.com/StanfordSpezi/SpeziTemplateApplication/blob/main/TemplateApplication/TemplateApplicationStandard.swift) in the SpeziTemplateApplication.
-
-This approach provides a clean separation between task scheduling and questionnaire presentation, while leveraging FHIR standards for questionnaire definitions and responses.
-
-For more information, please refer to the [API documentation](https://swiftpackageindex.com/StanfordSpezi/SpeziScheduler/documentation).
-
 
 ## The Spezi Template Application
 
