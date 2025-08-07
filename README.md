@@ -317,9 +317,9 @@ EventActionButton(event: event, "Start Survey") {
 }
 ```
 
-### Connecting Real Questionnaires
+### Connecting Questionnaires
 
-To connect actual questionnaires to scheduled tasks, you can use the SpeziQuestionnaire module with FHIR-compliant questionnaire definitions. Here's the pattern used in the [SpeziTemplateApplication](https://github.com/StanfordSpezi/SpeziTemplateApplication):
+To connect questionnaires to scheduled tasks, you can use the [SpeziQuestionnaire](https://github.com/StanfordSpezi/SpeziQuestionnaire) module with FHIR-compliant questionnaire definitions. FHIR-compliant questionnaires can be created using [Phoenix](https://github.com/StanfordBDHG/Phoenix). Here's the pattern used in the [SpeziTemplateApplication](https://github.com/StanfordSpezi/SpeziTemplateApplication):
 
 #### 1. Define Questionnaire Context Property
 
@@ -362,7 +362,7 @@ For the complete implementation, see [TemplateApplicationScheduler.swift](https:
 
 #### 3. Display Questionnaires in Response to Tasks
 
-When presenting questionnaires, use the SpeziQuestionnaire module's QuestionnaireView:
+When presenting questionnaires, use the [SpeziQuestionnaire](https://github.com/StanfordSpezi/SpeziQuestionnaire) module's QuestionnaireView:
 
 ```swift
 import SpeziQuestionnaire
