@@ -76,8 +76,8 @@ Then, configure the [`Scheduler`](https://swiftpackageindex.com/stanfordspezi/sp
 class ExampleAppDelegate: SpeziAppDelegate {
     override var configuration: Configuration {
         Configuration(standard: ExampleStandard()) {
-            Scheduler()
             MySchedulerModule()
+            Scheduler()
         }
     }
 }
@@ -230,7 +230,7 @@ struct ScheduleView: View {
         NavigationStack {
             EventScheduleList { event in
                 InstructionsTile(event) {
-                    event.complete()
+                    try event.complete()
                 }
             }
             .navigationTitle("Today's Schedule")
@@ -244,7 +244,7 @@ You can also display events for different dates:
 ```swift
 EventScheduleList(date: .tomorrow) { event in
     InstructionsTile(event) {
-        event.complete()
+        try event.complete()
     }
 }
 ```
@@ -256,12 +256,12 @@ The `InstructionsTile` component provides a polished card interface for individu
 ```swift
 // Basic tile with completion button
 InstructionsTile(event) {
-    event.complete()
+    try event.complete()
 }
 
 // Tile with additional information sheet
 InstructionsTile(event) {
-    event.complete()
+    try event.complete()
 } more: {
     VStack(alignment: .leading, spacing: 16) {
         Text("Detailed Instructions")
@@ -273,7 +273,7 @@ InstructionsTile(event) {
 
 // Centered alignment for featured tasks
 InstructionsTile(event, alignment: .center) {
-    event.complete()
+    try event.complete()
 }
 ```
 
@@ -284,7 +284,7 @@ You can customize how different task categories appear in the UI using the `task
 ```swift
 EventScheduleList { event in
     InstructionsTile(event) {
-        event.complete()
+        try event.complete()
     }
 }
 .taskCategoryAppearance(for: .questionnaire, label: "Survey", image: .system("list.clipboard.fill"))
@@ -303,7 +303,7 @@ VStack {
     
     EventActionButton(event: event) {
         // Custom completion logic
-        event.complete()
+        try event.complete()
         // Handle completion (e.g., show success message, update UI, etc.)
     }
 }
@@ -313,9 +313,140 @@ You can also customize the button label:
 
 ```swift
 EventActionButton(event: event, "Start Survey") {
-    event.complete()
+    try event.complete()
 }
 ```
+
+### Connecting Real Questionnaires
+
+To connect actual questionnaires to scheduled tasks, you can use the SpeziQuestionnaire module with FHIR-compliant questionnaire definitions. Here's the pattern used in the [SpeziTemplateApplication](https://github.com/StanfordSpezi/SpeziTemplateApplication):
+
+#### 1. Create Tasks with Questionnaire Context
+
+When creating tasks, include a questionnaire context that references your FHIR questionnaire:
+
+```swift
+import SpeziQuestionnaire
+
+try await scheduler.createOrUpdateTask(
+    id: "daily-mood-questionnaire",
+    title: "Daily Mood Assessment",
+    description: "Please complete your daily mood questionnaire.",
+    category: .questionnaire,
+    schedule: .daily(hour: 20, minute: 0, startingAt: .today)
+) { context in
+    // Load questionnaire from bundle
+    context.questionnaire = Bundle.main.questionnaire(withName: "MoodQuestionnaire")
+}
+```
+
+#### 2. Load Questionnaires from JSON Files
+
+Create a Bundle extension to load FHIR questionnaires:
+
+```swift
+import ModelsR4
+
+extension Bundle {
+    func questionnaire(withName name: String) -> Questionnaire {
+        guard let questionnairePath = url(forResource: name, withExtension: "json"),
+              let questionnaireData = try? Data(contentsOf: questionnairePath) else {
+            fatalError("Could not load questionnaire \(name) from the main bundle.")
+        }
+        
+        return try! JSONDecoder().decode(Questionnaire.self, from: questionnaireData)
+    }
+}
+```
+
+#### 3. Display Questionnaires in Response to Tasks
+
+Use a dedicated view to handle questionnaire presentation:
+
+```swift
+import SpeziQuestionnaire
+
+struct EventView: View {
+    let event: Event
+    @Environment(\.dismiss) private var dismiss
+    @State private var viewState: ViewState = .idle
+    
+    var body: some View {
+        Group {
+            if let questionnaire = event.task.questionnaire {
+                QuestionnaireView(questionnaire: questionnaire) { response in
+                    Task {
+                        do {
+                            // Complete the event with the questionnaire response
+                            _ = try event.complete()
+                            
+                            // Store the response in your data layer
+                            await standard?.add(response: response, for: questionnaire)
+                            
+                            dismiss()
+                        } catch {
+                            viewState = .error(error)
+                        }
+                    }
+                }
+            } else {
+                ContentUnavailableView(
+                    "No questionnaire available",
+                    systemImage: "list.clipboard"
+                )
+            }
+        }
+        .viewStateAlert(state: $viewState)
+    }
+}
+```
+
+#### 4. Integrate with Schedule UI
+
+Present questionnaires as modal sheets when users tap on scheduled tasks:
+
+```swift
+struct ScheduleView: View {
+    @State private var selectedEvent: Event?
+    
+    var body: some View {
+        NavigationStack {
+            EventScheduleList { event in
+                InstructionsTile(event) {
+                    selectedEvent = event  // Open questionnaire modal
+                }
+            }
+            .navigationTitle("Today's Schedule")
+        }
+        .sheet(item: $selectedEvent) { event in
+            EventView(event: event)
+        }
+    }
+}
+```
+
+#### 5. Handle Response Storage
+
+Implement response storage in your Standard:
+
+```swift
+@Standard
+actor MyAppStandard {
+    func add(
+        response: QuestionnaireResponse,
+        for questionnaire: Questionnaire
+    ) async {
+        // Store questionnaire response in your preferred data layer
+        // e.g., Firebase, Core Data, or local storage
+        
+        let responseId = response.identifier?.value?.value?.string ?? UUID().uuidString
+        print("Storing response \(responseId) for questionnaire: \(questionnaire.id?.value?.string ?? "unknown")")
+        // Your storage implementation here
+    }
+}
+```
+
+This approach provides a clean separation between task scheduling and questionnaire presentation, while leveraging FHIR standards for questionnaire definitions and responses. For a complete working example, see the [SpeziTemplateApplication](https://github.com/StanfordSpezi/SpeziTemplateApplication).
 
 For more information, please refer to the [API documentation](https://swiftpackageindex.com/StanfordSpezi/SpeziScheduler/documentation).
 
