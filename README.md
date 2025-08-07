@@ -16,11 +16,17 @@ SPDX-License-Identifier: MIT
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FStanfordSpezi%2FSpeziScheduler%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/StanfordSpezi/SpeziScheduler)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FStanfordSpezi%2FSpeziScheduler%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/StanfordSpezi/SpeziScheduler)
 
-Schedule and manage recurring tasks in your Spezi app.
+Schedule and observe tasks for your users to complete, such as taking surveys or taking measurements.
 
 ## Overview
 
-The Spezi Scheduler module enables apps to create, schedule, and manage recurring tasks with flexible scheduling options. Tasks can represent any repeatable action a user should perform, such as questionnaires, measurements, or medication reminders. The module provides comprehensive support for notifications, task versioning, and outcome tracking.
+The Scheduler module allows the scheduling and observation of tasks adhering to a specific schedule.
+
+A task is a potentially repeated action or work that a user is supposed to perform. An event represents a single occurrence of a task, that is derived from its schedule.
+
+You use the Scheduler module to manage the persistence store of your tasks. It provides a versioned, append-only store for tasks. It allows you to modify the properties (e.g., schedule) of future events without affecting occurrences of the past.
+
+You create and automatically update your tasks using `createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)`.
 
 ### Setup
 
@@ -31,9 +37,7 @@ You need to add the Spezi Scheduler Swift package to
 > [!IMPORTANT]  
 > If your application is not yet configured to use Spezi, follow the [Spezi setup article](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/initial-setup) to set up the core Spezi infrastructure.
 
-### Creating and Managing Tasks
-
-You can create and manage tasks by setting up a custom [`Module`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/module) that uses the [`Scheduler`](https://swiftpackageindex.com/stanfordspezi/spezischeduler/documentation/spezischeduler/scheduler) module. The module ensures tasks are automatically created and kept up to date.
+Below is an example on how to create your own [`Module`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/module) to manage your tasks and ensure they are always up to date.
 
 ```swift
 import Spezi
@@ -48,10 +52,10 @@ class MySchedulerModule: Module {
     func configure() {
         do {
             try scheduler.createOrUpdateTask(
-                id: "daily-questionnaire",
+                id: "my-daily-task",
                 title: "Daily Questionnaire",
-                instructions: "Please fill out the daily questionnaire.",
-                category: Task.Category("Questionnaire", systemName: "list.clipboard.fill"),
+                instructions: "Please fill out the Questionnaire every day.",
+                category: .questionnaire,
                 schedule: .daily(hour: 9, minute: 0, startingAt: .today)
             )
         } catch {
@@ -60,6 +64,8 @@ class MySchedulerModule: Module {
     }
 }
 ```
+
+### Creating and Managing Tasks
 
 Then, configure the [`Scheduler`](https://swiftpackageindex.com/stanfordspezi/spezischeduler/documentation/spezischeduler/scheduler) module and your custom module in your `SpeziAppDelegate`:
 ```swift
@@ -115,13 +121,12 @@ try scheduler.createOrUpdateTask(
     id: "medication-reminder",
     title: "Morning Medication",
     instructions: "Take your prescribed morning medication with water.",
-    category: Task.Category("Medication", systemName: "pills.fill"),
+    category: .medication,
     schedule: .daily(hour: 8, minute: 0, startingAt: .today),
     tags: ["health", "medication", "daily"]
 ) { context in
-    // Store additional metadata
-    context.medicationType = .prescription
-    context.dosage = "10mg"
+    // Store additional metadata using the @Property macro
+    context.about = "Take your daily medication as prescribed by your healthcare provider."
 }
 ```
 
