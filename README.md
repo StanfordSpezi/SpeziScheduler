@@ -321,44 +321,38 @@ EventActionButton(event: event, "Start Survey") {
 
 To connect actual questionnaires to scheduled tasks, you can use the SpeziQuestionnaire module with FHIR-compliant questionnaire definitions. Here's the pattern used in the [SpeziTemplateApplication](https://github.com/StanfordSpezi/SpeziTemplateApplication):
 
-#### 1. Create Tasks with Questionnaire Context
+#### 1. Define Questionnaire Context Property
 
-When creating tasks, include a questionnaire context that references your FHIR questionnaire:
+First, extend Task.Context to store questionnaire data:
 
 ```swift
-try scheduler.createOrUpdateTask(
-    id: "daily-mood-questionnaire",
-    title: "Daily Mood Assessment",
-    description: "Please complete your daily mood questionnaire.",
-    category: .questionnaire,
-    schedule: .daily(hour: 20, minute: 0, startingAt: .today)
-) { context in
-    // Load questionnaire from bundle
-    context.questionnaire = Bundle.main.questionnaire(withName: "MoodQuestionnaire")
+import SpeziQuestionnaire
+
+extension Task.Context {
+    @Property(coding: .json) var questionnaire: Questionnaire?
 }
 ```
 
-#### 2. Load Questionnaires from JSON Files
+#### 2. Create Tasks with Questionnaire Context
 
-Create a Bundle extension to load FHIR questionnaires:
+When creating tasks, include a questionnaire context. You can load questionnaires from JSON files, create them programmatically, or fetch them from a server:
 
 ```swift
-import Foundation
-import SpeziQuestionnaire
+// Load questionnaire from a JSON file
+guard let resourceURL = Bundle.main.url(forResource: "MoodQuestionnaire", withExtension: "json"),
+      let resourceData = try? Data(contentsOf: resourceURL),
+      let questionnaire = try? JSONDecoder().decode(Questionnaire.self, from: resourceData) else {
+    fatalError("Could not load questionnaire")
+}
 
-extension Bundle {
-    func questionnaire(withName name: String) -> Questionnaire {
-        guard let resourceURL = self.url(forResource: name, withExtension: "json") else {
-            fatalError("Could not find the questionnaire \"\(name).json\" in the bundle.")
-        }
-        
-        do {
-            let resourceData = try Data(contentsOf: resourceURL)
-            return try JSONDecoder().decode(Questionnaire.self, from: resourceData)
-        } catch {
-            fatalError("Could not decode the FHIR questionnaire named \"\(name).json\": \(error)")
-        }
-    }
+try scheduler.createOrUpdateTask(
+    id: "daily-mood-questionnaire",
+    title: "Daily Mood Assessment",
+    instructions: "Please complete your daily mood questionnaire.",
+    category: .questionnaire,
+    schedule: .daily(hour: 20, minute: 0, startingAt: .today)
+) { context in
+    context.questionnaire = questionnaire
 }
 ```
 
