@@ -185,6 +185,109 @@ let todayEvents = try scheduler.queryEvents(for: Date()..<Calendar.current.date(
 let taskEvents = try scheduler.queryEvents(forTaskWithId: "daily-questionnaire", in: Date()..<Date().addingTimeInterval(86400))
 ```
 
+## User Interface Components
+
+The `SpeziSchedulerUI` module provides ready-to-use SwiftUI components for displaying scheduled tasks and events in your app.
+
+### Displaying Events in Lists
+
+Use `EventScheduleList` to display all events for a specific day. It automatically handles empty states and provides a clean, organized view of scheduled tasks:
+
+```swift
+import SpeziSchedulerUI
+
+struct ScheduleView: View {
+    var body: some View {
+        NavigationStack {
+            EventScheduleList { event in
+                InstructionsTile(event) {
+                    event.complete()
+                }
+            }
+            .navigationTitle("Today's Schedule")
+        }
+    }
+}
+```
+
+You can also display events for different dates:
+
+```swift
+EventScheduleList(date: .tomorrow) { event in
+    InstructionsTile(event) {
+        event.complete()
+    }
+}
+```
+
+### Task Cards with InstructionsTile
+
+The `InstructionsTile` component provides a polished card interface for individual tasks:
+
+```swift
+// Basic tile with completion button
+InstructionsTile(event) {
+    event.complete()
+}
+
+// Tile with additional information sheet
+InstructionsTile(event) {
+    event.complete()
+} more: {
+    VStack(alignment: .leading, spacing: 16) {
+        Text("Detailed Instructions")
+            .font(.headline)
+        Text("Step-by-step guide on how to complete this task...")
+    }
+    .padding()
+}
+
+// Centered alignment for featured tasks
+InstructionsTile(event, alignment: .center) {
+    event.complete()
+}
+```
+
+### Customizing Task Appearance
+
+You can customize how different task categories appear in the UI using the `taskCategoryAppearance` modifier:
+
+```swift
+EventScheduleList { event in
+    InstructionsTile(event) {
+        event.complete()
+    }
+}
+.taskCategoryAppearance(for: .questionnaire, label: "Survey", image: .system("list.clipboard.fill"))
+.taskCategoryAppearance(for: .medication, label: "Medication", image: .system("pills.fill"))
+.taskCategoryAppearance(for: .measurement, label: "Measurement", image: .system("ruler.fill"))
+```
+
+### Action Buttons
+
+For more control over task completion, use `EventActionButton` directly:
+
+```swift
+VStack {
+    Text(event.task.title)
+    Text(event.task.instructions)
+    
+    EventActionButton(event: event) {
+        // Custom completion logic
+        event.complete()
+        // Handle completion (e.g., show success message, update UI, etc.)
+    }
+}
+```
+
+You can also customize the button label:
+
+```swift
+EventActionButton(event: event, "Start Survey") {
+    event.complete()
+}
+```
+
 For more information, please refer to the [API documentation](https://swiftpackageindex.com/StanfordSpezi/SpeziScheduler/documentation).
 
 
