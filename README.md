@@ -358,42 +358,22 @@ try scheduler.createOrUpdateTask(
 
 #### 3. Display Questionnaires in Response to Tasks
 
-Use a dedicated view to handle questionnaire presentation:
+When presenting questionnaires, use the SpeziQuestionnaire module's QuestionnaireView:
 
 ```swift
 import SpeziQuestionnaire
 
-struct EventView: View {
-    let event: Event
-    @Environment(\.dismiss) private var dismiss
-    @State private var viewState: ViewState = .idle
-    
-    var body: some View {
-        Group {
-            if let questionnaire = event.task.questionnaire {
-                QuestionnaireView(questionnaire: questionnaire) { response in
-                    Task {
-                        do {
-                            // Complete the event with the questionnaire response
-                            _ = try event.complete()
-                            
-                            // Store the response in your data layer
-                            await standard?.add(response: response, for: questionnaire)
-                            
-                            dismiss()
-                        } catch {
-                            viewState = .error(error)
-                        }
-                    }
-                }
-            } else {
-                ContentUnavailableView(
-                    "No questionnaire available",
-                    systemImage: "list.clipboard"
-                )
-            }
+// In your view that presents the questionnaire
+if let questionnaire = event.task.questionnaire {
+    QuestionnaireView(questionnaire: questionnaire) { result in
+        guard case let .completed(response) = result else {
+            // User cancelled
+            return
         }
-        .viewStateAlert(state: $viewState)
+        
+        // Complete the event and store the response
+        _ = try event.complete()
+        await standard.add(response: response, for: questionnaire)
     }
 }
 ```
