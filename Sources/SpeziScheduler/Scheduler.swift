@@ -138,11 +138,23 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         }
     }
     
+    /// URL of the directory where SpeziScheduler writes its files.
+    nonisolated private static let schedulerDirectory = URL.documentsDirectory.appending(component: "SpeziScheduler", directoryHint: .isDirectory)
+    nonisolated private static let persistentStorageUrl = schedulerDirectory.appending(component: "edu.stanford.spezi.scheduler.storage.sqlite")
+    nonisolated private static let didPerformIOS26MigrationFlagFileUrl = schedulerDirectory.appending(component: "didPerformIOS26Migration")
+    nonisolated private static let legacyPersistentStorageUrls: [URL] = [
+        URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite"),
+        URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite-shm"),
+        URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite-wal")
+    ]
+    
     @Application(\.logger)
     private var logger
     
     @Dependency(SchedulerNotifications.self)
     private var notifications
+    
+    private var pendingMigration: PreMigrationLocalizationValues?
     
     private let _container: Result<ModelContainer, any Error>
     
@@ -175,6 +187,10 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     
     /// Creates a new Scheduler, using the specified persistence configuration.
     public nonisolated init(persistence: PersistenceConfiguration) {
+        Self.setupPersistentStorageFileLocations()
+        // If necessary, migrate over to the new storage location
+        Self.migratePersistentStorageFileLocationIfNeeded()
+        
         switch persistence {
         case .onDisk:
             guard ProcessInfo.isRunningInSandbox else {
@@ -188,10 +204,20 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
                     """
                 )
             }
+            let fileManager = FileManager()
+            if fileManager.itemExists(at: Self.persistentStorageUrl) && !fileManager.itemExists(at: Self.didPerformIOS26MigrationFlagFileUrl) {
+                // this isn't our first launch (the database already exists), but we haven't yet performed the iOS 26 migration
+                // --> perform the migration
+                do {
+                    pendingMigration = try PreMigrationLocalizationValues(databaseUrl: Self.persistentStorageUrl)
+                } catch {
+                    preconditionFailure("Unable to create iOS 26 migration")
+                }
+            }
             _container = Result {
                 try ModelContainer(
                     for: Task.self, Outcome.self, // swiftlint:disable:this multiline_arguments
-                    configurations: ModelConfiguration(url: URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite"))
+                    configurations: ModelConfiguration(url: Self.persistentStorageUrl)
                 )
             }
         case .inMemory:
@@ -213,8 +239,15 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         switch _container {
         case .failure(let error):
             logger.error("Failed to initialize ModelContainer for Scheduler module: \(error)")
-        case .success:
-            break
+        case .success(let container):
+            if let pendingMigration = pendingMigration.take() {
+                do {
+                    try pendingMigration.apply(to: container.mainContext)
+                    _ = FileManager.default.createFile(at: Self.didPerformIOS26MigrationFlagFileUrl, contents: nil)
+                } catch {
+                    preconditionFailure("Failed to apply migration")
+                }
+            }
         }
         // This is a really good article explaining some of the concurrency considerations with SwiftData
         // https://medium.com/@samhastingsis/use-swiftdata-like-a-boss-92c05cba73bf
@@ -955,6 +988,43 @@ extension Scheduler {
                 // task lifetime is effectively an `PartialRangeFrom`. So all we do is to check if the closed `range` overlaps with the lower bound
                 task.effectiveFrom <= range.upperBound
             }
+        }
+    }
+}
+
+
+// MARK: Persistent Storage Location Handling
+
+extension Scheduler {
+    private nonisolated static func setupPersistentStorageFileLocations() {
+        let fileManager = FileManager()
+        guard !fileManager.fileExists(atPath: Self.schedulerDirectory.path) else {
+            return
+        }
+        do {
+            try fileManager.createDirectory(at: Self.schedulerDirectory, withIntermediateDirectories: true)
+        } catch {
+            preconditionFailure("Unable to create SpeziScheduler directory: \(error)")
+        }
+    }
+    
+    
+    private nonisolated static func migratePersistentStorageFileLocationIfNeeded() {
+        do {
+            let fileManager = FileManager()
+            guard fileManager.fileExists(atPath: Self.legacyPersistentStorageUrls[0].path) else {
+                // no file there; nothing to be done.
+                return
+            }
+            for url in Self.legacyPersistentStorageUrls where fileManager.itemExists(at: url) {
+                let newUrl = Self.schedulerDirectory.appending(component: url.lastPathComponent)
+//                print("WILL MOVE \(url) TO \(newUrl)")
+//                try fileManager.moveItem(at: url, to: <#T##URL#>)
+                try fileManager.copyItem(at: url, to: newUrl)
+            }
+//            fatalError()
+        } catch {
+            preconditionFailure("Unable to migrate persistent storage to new location: \(error)")
         }
     }
 }

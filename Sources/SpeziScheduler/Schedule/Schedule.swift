@@ -92,13 +92,13 @@ public struct Schedule {
     public var recurrence: Calendar.RecurrenceRule? {
         @storageRestrictions(initializes: recurrenceRule)
         init(initialValue) {
-            recurrenceRule = initialValue.map { Data(encoding: $0) }
+            recurrenceRule = initialValue.map { $0.encodingPropertyList() }
         }
         get {
-            recurrenceRule.map { Calendar.RecurrenceRule(fromEncoded: $0) }
+            recurrenceRule.map { Calendar.RecurrenceRule(decodingPropertyList: $0) }
         }
         set {
-            recurrenceRule = newValue.map { Data(encoding: $0) }
+            recurrenceRule = newValue.map { $0.encodingPropertyList() }
             // if someone updates the recurrence rule, our notificationMatchingHint is not valid anymore
             notificationMatchingHint = .none
         }
@@ -649,23 +649,23 @@ extension Schedule: CustomStringConvertible {
 }
 
 
-extension Calendar.RecurrenceRule {
-    fileprivate init(fromEncoded data: Data) {
+extension Decodable {
+    init(decodingPropertyList data: Data) {
         do {
-            self = try PropertyListDecoder().decode(Calendar.RecurrenceRule.self, from: data)
+            self = try PropertyListDecoder().decode(Self.self, from: data)
         } catch {
-            preconditionFailure("Failed to decode calendar from \(data): \(error)")
+            preconditionFailure("Failed to decode \(Self.self) from \(data): \(error)")
         }
     }
 }
 
 
-extension Data {
-    fileprivate init(encoding recurrenceRule: Calendar.RecurrenceRule) {
+extension Encodable {
+    func encodingPropertyList() -> Data {
         do {
-            self = try PropertyListEncoder().encode(recurrenceRule)
+            return try PropertyListEncoder().encode(self)
         } catch {
-            preconditionFailure("Failed to encode recurrence rule \(recurrenceRule): \(error)")
+            preconditionFailure("Failed to encode \(Self.self) \(self): \(error)")
         }
     }
 }

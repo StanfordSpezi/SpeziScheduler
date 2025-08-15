@@ -35,7 +35,8 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
         .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "601.0.0"),
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", from: "1.17.2"),
-        .package(url: "https://github.com/StanfordBDHG/XCTRuntimeAssertions.git", from: "2.1.0")
+        .package(url: "https://github.com/StanfordBDHG/XCTRuntimeAssertions.git", from: "2.1.0"),
+        .package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.15.4")
     ] + swiftLintPackage(),
     targets: [
         .macro(
@@ -58,7 +59,8 @@ let package = Package(
                 .product(name: "SpeziNotifications", package: "SpeziNotifications"),
                 .product(name: "SpeziLocalStorage", package: "SpeziStorage"),
                 .product(name: "Algorithms", package: "swift-algorithms"),
-                .product(name: "RuntimeAssertions", package: "XCTRuntimeAssertions")
+                .product(name: "RuntimeAssertions", package: "XCTRuntimeAssertions"),
+                .product(name: "SQLite", package: "SQLite.swift")
             ],
             swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
             plugins: [] + swiftLintPlugin()

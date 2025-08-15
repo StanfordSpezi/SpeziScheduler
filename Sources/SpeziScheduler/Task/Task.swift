@@ -79,7 +79,7 @@ import SwiftData
 /// - ``firstVersion``
 @Model
 @dynamicMemberLookup
-public final class Task {
+public final class Task { // swiftlint:disable:this type_body_length
     /// The `nextVersion` must be unique. `id` must be unique in combination with the `nextVersion` (e.g., no two task with the same id that have a next version of `nil`).
     #Unique<Task>([\.nextVersion], [\.id, \.nextVersion])
 
@@ -93,12 +93,43 @@ public final class Task {
     ///
     /// This is a identifier for this task (e.g., `"social-support-questionnaire"`).
     public private(set) var id: String
+    
+    /// The property-list-encoded title
+    private var titleData: Data?
+    
     /// The user-visible title for this task.
-    public private(set) var title: String.LocalizationValue
+    public private(set) var title: String.LocalizationValue {
+        @storageRestrictions(initializes: _titleData, accesses: _$backingData)
+        init(initialValue) {
+            _titleData = .init()
+            _$backingData.setValue(forKey: \.titleData, to: initialValue.encodingPropertyList())
+        }
+        get {
+            titleData.map { .init(decodingPropertyList: $0) } ?? ""
+        }
+        set {
+            titleData = newValue.encodingPropertyList()
+        }
+    }
+    
+    /// The property-list-encoded instructions
+    private var instructionsData: Data?
     /// Instructions for this task.
     ///
     /// Instructions might describe the purpose for this task.
-    public private(set) var instructions: String.LocalizationValue
+    public private(set) var instructions: String.LocalizationValue {
+        @storageRestrictions(initializes: _instructionsData, accesses: _$backingData)
+        init(initialValue) {
+            _instructionsData = .init()
+            _$backingData.setValue(forKey: \.instructionsData, to: initialValue.encodingPropertyList())
+        }
+        get {
+            instructionsData.map { .init(decodingPropertyList: $0) } ?? ""
+        }
+        set {
+            instructionsData = newValue.encodingPropertyList()
+        }
+    }
 
     /// For whatever reason, if we make it type `Category`, SwiftData fails to stored the category.
     /// You save the model, deinit the model class, query the model again and then the category property would just be gone.
@@ -484,6 +515,14 @@ extension Task {
                 userInfo.set(source, value: newValue, cache: &box.userInfoCache)
             }
         }
+    }
+}
+
+
+extension Task {
+    func _updateTitle(_ title: String.LocalizationValue, instructions: String.LocalizationValue) { // swiftlint:disable:this identifier_name
+        self.title = title
+        self.instructions = instructions
     }
 }
 
