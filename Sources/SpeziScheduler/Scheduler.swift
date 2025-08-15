@@ -216,7 +216,7 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
                     }
                 }
             } else {
-                _ = FileManager.default.createFile(at: Self.didPerformIOS26MigrationFlagFileUrl, contents: nil)
+                _ = fileManager.createFile(at: Self.didPerformIOS26MigrationFlagFileUrl, contents: nil)
             }
             _container = Result {
                 try ModelContainer(
@@ -1022,11 +1022,8 @@ extension Scheduler {
             }
             for url in Self.legacyPersistentStorageUrls where fileManager.itemExists(at: url) {
                 let newUrl = Self.schedulerDirectory.appending(component: url.lastPathComponent)
-//                print("WILL MOVE \(url) TO \(newUrl)")
-//                try fileManager.moveItem(at: url, to: <#T##URL#>)
-                try fileManager.copyItem(at: url, to: newUrl)
+                try fileManager.moveItem(at: url, to: newUrl)
             }
-//            fatalError()
         } catch {
             preconditionFailure("Unable to migrate persistent storage to new location: \(error)")
         }
