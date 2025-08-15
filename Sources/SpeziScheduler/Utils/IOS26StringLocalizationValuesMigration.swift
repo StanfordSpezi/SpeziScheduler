@@ -12,7 +12,11 @@ import SQLite
 import SwiftData
 
 
-struct PreMigrationLocalizationValues: ~Copyable {
+struct IOS26StringLocalizationValuesMigration: ~Copyable {
+    private struct MigrationError: Error {
+        let message: String
+    }
+    
     fileprivate struct Entry {
         let taskId: String
         /// The task's version, modeled as the index of this particular version of the task, in the ordered list of all its versions.
@@ -28,8 +32,8 @@ struct PreMigrationLocalizationValues: ~Copyable {
         let tasks = Table("ZTASK")
         let primaryKey = SQLite.Expression<Int64>("Z_PK")
         let id = SQLite.Expression<String>("ZID")
-        let prevVersion = SQLite.Expression<Int64>("ZPREVIOUSVERSION")
-        let nextVersion = SQLite.Expression<Int64>("ZNEXTVERSION")
+        let prevVersion = SQLite.Expression<Int64?>("ZPREVIOUSVERSION")
+        let nextVersion = SQLite.Expression<Int64?>("ZNEXTVERSION")
         let titleKey = SQLite.Expression<String>("ZKEY1")
         let titleArguments = SQLite.Expression<Blob>("ZARGUMENTS1")
         let instructionsKey = SQLite.Expression<String>("ZKEY")
@@ -37,9 +41,22 @@ struct PreMigrationLocalizationValues: ~Copyable {
         entries = try db.prepare(tasks).map { task in
             let title = try String.LocalizationValue.construct(fromKey: task[titleKey], arguments: task[titleArguments])
             let instructions = try String.LocalizationValue.construct(fromKey: task[instructionsKey], arguments: task[instructionsArguments])
-            let allTaskVersions = Array(try db.prepare(tasks.where(id == task[id])))
-            // TODO might need to explicitly sort these!!!!!!!
-            precondition(allTaskVersions.adjacentPairs().allSatisfy { $0[nextVersion] == $1[primaryKey] && $1[prevVersion] == $0[primaryKey] })
+            let allTaskVersions: [Row] = try { () -> [Row] in
+                var allTasks = Array(try db.prepare(tasks.where(id == task[id])))
+                guard let firstTaskIdx = allTasks.firstIndex(where: { $0[prevVersion] == nil }), allTasks.count(where: { $0[prevVersion] == nil }) == 1 else {
+                    throw MigrationError(message: "Unable to find first task version")
+                }
+                var sortedByVersion = [allTasks.remove(at: firstTaskIdx)]
+                while let currentTask = sortedByVersion.last, let nextTaskPrimaryKey = currentTask[nextVersion] {
+                    guard let nextTaskIdx = allTasks.firstIndex(where: { $0[primaryKey] == nextTaskPrimaryKey }) else {
+                        throw MigrationError(message: "Unable to find next task version")
+                    }
+                    sortedByVersion.append(allTasks.remove(at: nextTaskIdx))
+                }
+                assert(allTasks.isEmpty)
+                return sortedByVersion
+            }()
+            assert(allTaskVersions.adjacentPairs().allSatisfy { $0[nextVersion] == $1[primaryKey] && $1[prevVersion] == $0[primaryKey] })
             return Entry(
                 taskId: task[id],
                 taskVersion: allTaskVersions.firstIndex { $0[primaryKey] == task[primaryKey] }!, // swiftlint:disable:this force_unwrapping
@@ -68,7 +85,6 @@ extension String.LocalizationValue {
     }
     
     fileprivate static func construct(fromKey key: String, arguments: Blob) throws -> String.LocalizationValue {
-        print(arguments.bytes)
         guard let argumentsStringValue = String(data: Data(arguments.bytes), encoding: .utf8) else {
             throw ConstructionError.unableToReadArguments
         }

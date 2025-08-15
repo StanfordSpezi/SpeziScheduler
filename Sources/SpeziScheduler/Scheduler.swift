@@ -154,7 +154,7 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     @Dependency(SchedulerNotifications.self)
     private var notifications
     
-    private var pendingMigration: PreMigrationLocalizationValues?
+    private var pendingIOS26Migration: IOS26StringLocalizationValuesMigration?
     
     private let _container: Result<ModelContainer, any Error>
     
@@ -210,7 +210,7 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
                     // this isn't our first launch (the database already exists), but we haven't yet performed the iOS 26 migration
                     // --> perform the migration
                     do {
-                        pendingMigration = try PreMigrationLocalizationValues(databaseUrl: Self.persistentStorageUrl)
+                        pendingIOS26Migration = try IOS26StringLocalizationValuesMigration(databaseUrl: Self.persistentStorageUrl)
                     } catch {
                         preconditionFailure("Unable to create iOS 26 migration")
                     }
@@ -244,9 +244,9 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         case .failure(let error):
             logger.error("Failed to initialize ModelContainer for Scheduler module: \(error)")
         case .success(let container):
-            if let pendingMigration = pendingMigration.take() {
+            if let migration = pendingIOS26Migration.take() {
                 do {
-                    try pendingMigration.apply(to: container.mainContext)
+                    try migration.apply(to: container.mainContext)
                     _ = FileManager.default.createFile(at: Self.didPerformIOS26MigrationFlagFileUrl, contents: nil)
                 } catch {
                     preconditionFailure("Failed to apply migration")
