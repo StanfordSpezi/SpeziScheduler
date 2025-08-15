@@ -138,9 +138,6 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         }
     }
     
-    /// We disable that for now. We might need to restore some information to cancel notifications.
-    private static let purgeLegacyStorage = false
-    
     @Application(\.logger)
     private var logger
     
