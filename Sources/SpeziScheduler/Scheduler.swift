@@ -80,7 +80,7 @@ import SwiftUI
 /// - ``deleteAllVersions(of:)``
 /// - ``deleteAllVersions(ofTask:)``
 @MainActor
-public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializable, Sendable {
+public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializable, Sendable { // swiftlint:disable:this type_body_length
     /// How shadowed outcomes detected when updating a ``Task`` should be handled.
     public enum TaskUpdateShadowedOutcomesHandling {
         /// Attempting to update an already-existing task in a way that would shadow existing outcomes will result in an error
@@ -205,14 +205,18 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
                 )
             }
             let fileManager = FileManager()
-            if fileManager.itemExists(at: Self.persistentStorageUrl) && !fileManager.itemExists(at: Self.didPerformIOS26MigrationFlagFileUrl) {
-                // this isn't our first launch (the database already exists), but we haven't yet performed the iOS 26 migration
-                // --> perform the migration
-                do {
-                    pendingMigration = try PreMigrationLocalizationValues(databaseUrl: Self.persistentStorageUrl)
-                } catch {
-                    preconditionFailure("Unable to create iOS 26 migration")
+            if fileManager.itemExists(at: Self.persistentStorageUrl) {
+                if !fileManager.itemExists(at: Self.didPerformIOS26MigrationFlagFileUrl) {
+                    // this isn't our first launch (the database already exists), but we haven't yet performed the iOS 26 migration
+                    // --> perform the migration
+                    do {
+                        pendingMigration = try PreMigrationLocalizationValues(databaseUrl: Self.persistentStorageUrl)
+                    } catch {
+                        preconditionFailure("Unable to create iOS 26 migration")
+                    }
                 }
+            } else {
+                _ = FileManager.default.createFile(at: Self.didPerformIOS26MigrationFlagFileUrl, contents: nil)
             }
             _container = Result {
                 try ModelContainer(
