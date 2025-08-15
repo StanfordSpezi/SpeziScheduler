@@ -20,6 +20,8 @@ extension BGTaskScheduler.Error.Code: @retroactive CustomStringConvertible {
             "tooManyPendingTaskRequests"
         case .unavailable:
             "unavailable"
+        case .immediateRunIneligible:
+            "immediateRunIneligible"
         @unknown default:
             "BGTaskSchedulerErrorCode(rawValue: \(rawValue))"
         }
