@@ -83,7 +83,7 @@ let package = Package(
                 .product(name: "SpeziLocalStorage", package: "SpeziStorage"),
                 .product(name: "XCTRuntimeAssertions", package: "XCTRuntimeAssertions")
             ],
-            resources: [.copy("Resources")],
+            resources: [.process("Resources")],
             swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
             plugins: [] + swiftLintPlugin()
         ),
