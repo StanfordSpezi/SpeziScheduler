@@ -43,7 +43,9 @@ struct IOS26StringLocalizationValuesMigration: ~Copyable {
             let instructions = try String.LocalizationValue.construct(fromKey: task[instructionsKey], arguments: task[instructionsArguments])
             let allTaskVersions: [Row] = try { () -> [Row] in
                 var allTasks = Array(try db.prepare(tasks.where(id == task[id])))
-                guard let firstTaskIdx = allTasks.firstIndex(where: { $0[prevVersion] == nil }), allTasks.count(where: { $0[prevVersion] == nil }) == 1 else {
+                assert(allTasks.mapIntoSet { $0[primaryKey] }.count == allTasks.count)
+                guard let firstTaskIdx = allTasks.firstIndex(where: { $0[prevVersion] == nil }),
+                      allTasks.count(where: { $0[prevVersion] == nil }) == 1 else {
                     throw MigrationError(message: "Unable to find first task version")
                 }
                 var sortedByVersion = [allTasks.remove(at: firstTaskIdx)]
@@ -84,10 +86,12 @@ extension String.LocalizationValue {
         case unableToReadArguments
     }
     
+    /// Constructs a `String.LocalizationValue` from its SwiftData SQLite representation (i.e., a `key` String and a JSON-encoded `arguments` Blob)
     fileprivate static func construct(fromKey key: String, arguments: Blob) throws -> String.LocalizationValue {
         guard let argumentsStringValue = String(data: Data(arguments.bytes), encoding: .utf8) else {
             throw ConstructionError.unableToReadArguments
         }
+        // since arguments is already JSON-encoded, we simply drop it into the JSON string here.
         let json = #"{"key": "\#(key)", "arguments": \#(argumentsStringValue)}"#
         return try JSONDecoder().decode(String.LocalizationValue.self, from: Data(json.utf8))
     }

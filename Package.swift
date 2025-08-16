@@ -71,9 +71,7 @@ let package = Package(
                 .target(name: "SpeziScheduler"),
                 .product(name: "SpeziViews", package: "SpeziViews")
             ],
-            resources: [
-                .process("Resources")
-            ],
+            resources: [.process("Resources")],
             swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
             plugins: [] + swiftLintPlugin()
         ),
@@ -85,6 +83,7 @@ let package = Package(
                 .product(name: "SpeziLocalStorage", package: "SpeziStorage"),
                 .product(name: "XCTRuntimeAssertions", package: "XCTRuntimeAssertions")
             ],
+            resources: [.copy("Resources")],
             swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
             plugins: [] + swiftLintPlugin()
         ),

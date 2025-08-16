@@ -9,6 +9,15 @@
 import Foundation
 
 
+extension URL {
+    func isDescendant(of other: URL) -> Bool {
+        let ownComponents = self.absoluteURL.resolvingSymlinksInPath().pathComponents
+        let otherComponents = other.absoluteURL.resolvingSymlinksInPath().pathComponents
+        return ownComponents.count > otherComponents.count && ownComponents[0..<otherComponents.count] == otherComponents[...]
+    }
+}
+
+
 extension FileManager {
     func itemExists(at url: URL) -> Bool {
         self.fileExists(atPath: url.absoluteURL.path)

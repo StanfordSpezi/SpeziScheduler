@@ -818,6 +818,16 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
             #expect(event.occurrence.start == expectedDate)
         }
     }
+    
+//    @Test
+//    func iOS26SchemaMigration() throws {
+//        let fm = FileManager.default // swiftlint:disable:this identifier_name
+//        let scheduler = Scheduler(persistence: .onDisk(directory: <#T##URL#>))
+//        withDependencyResolution {
+//            scheduler
+//        }
+//        // TODO!
+//    }
 }
 
 
