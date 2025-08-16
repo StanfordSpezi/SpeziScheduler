@@ -623,7 +623,7 @@ extension Scheduler {
     /// - Returns: The list of `Task` that are effective in the specified date range and match the specified `predicate`. The result is ordered by the specified `sortDescriptors`.
     public func queryTasks(
         for range: ClosedRange<Date>,
-        predicate: Predicate<Task> = #Predicate { _ in true },
+        predicate: Predicate<Task> = .true,
         sortBy sortDescriptors: [SortDescriptor<Task>] = [],
         fetchLimit: Int? = nil,
         prefetchOutcomes: Bool = false
@@ -654,7 +654,7 @@ extension Scheduler {
     /// - Returns: The list of `Task` that are effective in the specified date range and match the specified `predicate`. The result is ordered by the specified `sortDescriptors`.
     public func queryTasks(
         for range: Range<Date>,
-        predicate: Predicate<Task> = #Predicate { _ in true },
+        predicate: Predicate<Task> = .true,
         sortBy sortDescriptors: [SortDescriptor<Task>] = [],
         fetchLimit: Int? = nil,
         prefetchOutcomes: Bool = false
@@ -670,7 +670,7 @@ extension Scheduler {
 
     func queryTasks(
         for range: PartialRangeFrom<Date>,
-        predicate: Predicate<Task> = #Predicate { _ in true },
+        predicate: Predicate<Task> = .true,
         sortBy sortDescriptors: [SortDescriptor<Task>] = [],
         fetchLimit: Int? = nil,
         prefetchOutcomes: Bool = false
@@ -697,10 +697,7 @@ extension Scheduler {
     ///   - taskPredicate: An additional predicate that allows to pre-filter the list of task that should be considered.
     /// - Returns: The list of events that occurred in the given date `range` for tasks that fulfill the provided `taskPredicate` returned as a list that is sorted by the events
     ///     ``Event/occurrence`` in ascending order.
-    public func queryEvents(
-        for range: Range<Date>,
-        predicate taskPredicate: Predicate<Task> = #Predicate { _ in true }
-    ) throws -> [Event] {
+    public func queryEvents(for range: Range<Date>, predicate taskPredicate: Predicate<Task> = .true) throws -> [Event] {
         let tasks = try queryTasks(for: range, predicate: taskPredicate)
         let outcomes = try queryOutcomes(for: range, predicate: taskPredicate)
         return assembleEvents(for: range, tasks: tasks, outcomes: outcomes)
@@ -831,10 +828,7 @@ extension Scheduler {
             .contains { _ in true }
     }
     
-    func queryEventsAnchor(
-        for range: Range<Date>,
-        predicate taskPredicate: Predicate<Task> = #Predicate { _ in true }
-    ) throws -> Set<PersistentIdentifier> {
+    func queryEventsAnchor(for range: Range<Date>, predicate taskPredicate: Predicate<Task> = .true) throws -> Set<PersistentIdentifier> {
         let taskIdentifier = try queryTaskIdentifiers(with: Task.inRangePredicate(for: range), combineWith: taskPredicate)
         let outcomeIdentifiers = try queryOutcomeIdentifiers(for: range, predicate: taskPredicate)
         
