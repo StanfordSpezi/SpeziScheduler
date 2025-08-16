@@ -1005,10 +1005,6 @@ extension Scheduler {
 // MARK: Persistent Storage Location Handling
 
 extension Scheduler {
-    /// URL of the directory where SpeziScheduler writes its files.
-//    nonisolated private static let schedulerDirectory = URL.documentsDirectory.appending(component: "SpeziScheduler", directoryHint: .isDirectory)
-//    nonisolated private static let persistentStorageUrl = schedulerDirectory.appending(component: "edu.stanford.spezi.scheduler.storage.sqlite")
-//    nonisolated private static let didPerformIOS26MigrationFlagFileUrl = schedulerDirectory.appending(component: "didPerformIOS26Migration")
     nonisolated private static let legacyPersistentStorageUrls: [URL] = [
         URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite"),
         URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite-shm"),
