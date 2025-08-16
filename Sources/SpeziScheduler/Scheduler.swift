@@ -185,7 +185,7 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         self.persistence = persistence
         switch persistence {
         case .onDisk(let directory):
-            guard implies(ProcessInfo.isRunningInSandbox, !directory.isDescendant(of: .documentsDirectory)) else {
+            guard implies(directory.isDescendant(of: .documentsDirectory), ProcessInfo.isRunningInSandbox) else {
                 preconditionFailure(
                     """
                     The current application is running in a non-sandboxed environment.

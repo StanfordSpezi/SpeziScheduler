@@ -864,6 +864,7 @@ final class OtherSchedulerTests: XCTestCase {
     @MainActor
     func testSandboxDetection() throws {
         #if os(macOS) || targetEnvironment(macCatalyst)
+        self.record(XCTIssue(type: .performanceRegression, compactDescription: "~/Documents: \(URL.documentsDirectory.absoluteURL.path)"))
         // we expect this to fail, since we're on macOS and the unit tests are not sandboxed
         XCTAssertRuntimePrecondition { @Sendable in
             _ = Scheduler(persistence: .onDisk)
