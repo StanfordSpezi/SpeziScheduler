@@ -263,6 +263,11 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         // It also makes it easier to understand the SwiftData-related infrastructure around Spezi Scheduler.
         // One could think that Apple could have provided a lot of this information in their documentation.
         notifications.registerProcessingTask(using: self)
+        
+        assert(
+            ((try? self.queryAllTasks()) ?? []).allSatisfy { $0.allVersions.adjacentPairs().allSatisfy { $0.effectiveFrom < $1.effectiveFrom } },
+            "Scheduler Database contains Tasks with non-increasing effectiveFrom values!"
+        )
     }
     
     /// Trigger a manual refresh of the scheduled notifications.
@@ -624,7 +629,7 @@ extension Scheduler {
         prefetchOutcomes: Bool = false
     ) throws -> [Task] {
         try queryTasks(
-            with: inClosedRangePredicate(for: range),
+            with: Task.inClosedRangePredicate(for: range),
             combineWith: predicate,
             sortBy: sortDescriptors,
             fetchLimit: fetchLimit,
@@ -655,7 +660,7 @@ extension Scheduler {
         prefetchOutcomes: Bool = false
     ) throws -> [Task] {
         try queryTasks(
-            with: inRangePredicate(for: range),
+            with: Task.inRangePredicate(for: range),
             combineWith: predicate,
             sortBy: sortDescriptors,
             fetchLimit: fetchLimit,
@@ -671,7 +676,7 @@ extension Scheduler {
         prefetchOutcomes: Bool = false
     ) throws -> [Task] {
         try queryTasks(
-            with: inPartialRangeFromPredicate(for: range),
+            with: Task.inPartialRangeFromPredicate(for: range),
             combineWith: predicate,
             sortBy: sortDescriptors,
             fetchLimit: fetchLimit,
@@ -704,18 +709,19 @@ extension Scheduler {
     
     /// Query all events for a specific task, in a specific time period.
     ///
-    /// - Note: This will query for events belonging to the latest version of the task.
+    /// - Note: This will query for events belonging to the latest version of the task that was in effect during the specified time period
     public func queryEvents(forTaskWithId taskId: String, in range: Range<Date>) throws -> [Event] {
-        let context = try context
-        guard let task = try context.fetch(FetchDescriptor<Task>(predicate: #Predicate { task in
-            task.id == taskId && task.nextVersion == nil
-        })).first else {
+        let taskIsEffectivePredicate = Task.inRangePredicate(for: range)
+        let effectiveTaskVersions = try context.fetch(FetchDescriptor<Task>(predicate: #Predicate { task in
+            task.id == taskId && taskIsEffectivePredicate.evaluate(task)
+        }))
+        guard let task = effectiveTaskVersions.max(by: { $0.effectiveFrom < $1.effectiveFrom }) else {
             return []
         }
         return try queryEvents(for: task, in: range)
     }
     
-    /// Query all upcoming events for a specific task, in a specific time period.
+    /// Query all upcoming events for a specific task version, in a specific time period.
     public func queryEvents(for task: Task, in range: Range<Date>) throws -> [Event] {
         let taskId = task.id
         let outcomes = try queryOutcomes(for: range, predicate: #Predicate { $0.id == taskId })
@@ -829,7 +835,7 @@ extension Scheduler {
         for range: Range<Date>,
         predicate taskPredicate: Predicate<Task> = #Predicate { _ in true }
     ) throws -> Set<PersistentIdentifier> {
-        let taskIdentifier = try queryTaskIdentifiers(with: inRangePredicate(for: range), combineWith: taskPredicate)
+        let taskIdentifier = try queryTaskIdentifiers(with: Task.inRangePredicate(for: range), combineWith: taskPredicate)
         let outcomeIdentifiers = try queryOutcomeIdentifiers(for: range, predicate: taskPredicate)
         
         return taskIdentifier.union(outcomeIdentifiers)
@@ -888,7 +894,7 @@ extension Scheduler {
 
 extension Scheduler {
     func hasTasksWithNotifications(for range: PartialRangeFrom<Date>) throws -> Bool {
-        let rangePredicate = inPartialRangeFromPredicate(for: range)
+        let rangePredicate = Task.inPartialRangeFromPredicate(for: range)
         let descriptor = FetchDescriptor<Task>(
             predicate: #Predicate { task in
                 rangePredicate.evaluate(task) && task.scheduleNotifications
@@ -959,45 +965,6 @@ extension Scheduler {
             }
         )
         return try Set(context.fetchIdentifiers(descriptor))
-    }
-}
-
-// MARK: - Predicate Creation
-
-extension Scheduler {
-    private func inRangePredicate(for range: Range<Date>) -> Predicate<Task> {
-        #Predicate<Task> { task in
-            if let effectiveTo = task.nextVersion?.effectiveFrom {
-                task.effectiveFrom < range.upperBound
-                    && range.lowerBound < effectiveTo
-            } else {
-                // task lifetime is effectively an `PartialRangeFrom`. So all we do is to check if the `range` overlaps with the lower bound
-                task.effectiveFrom < range.upperBound
-            }
-        }
-    }
-
-    private func inPartialRangeFromPredicate(for range: PartialRangeFrom<Date>) -> Predicate<Task> {
-        #Predicate<Task> { task in
-            if let effectiveTo = task.nextVersion?.effectiveFrom {
-                task.effectiveFrom <= range.lowerBound
-                    && range.lowerBound < effectiveTo
-            } else {
-                task.effectiveFrom <= range.lowerBound
-            }
-        }
-    }
-
-    private func inClosedRangePredicate(for range: ClosedRange<Date>) -> Predicate<Task> {
-        #Predicate<Task> { task in
-            if let effectiveTo = task.nextVersion?.effectiveFrom {
-                task.effectiveFrom <= range.upperBound
-                    && range.lowerBound < effectiveTo
-            } else {
-                // task lifetime is effectively an `PartialRangeFrom`. So all we do is to check if the closed `range` overlaps with the lower bound
-                task.effectiveFrom <= range.upperBound
-            }
-        }
     }
 }
 

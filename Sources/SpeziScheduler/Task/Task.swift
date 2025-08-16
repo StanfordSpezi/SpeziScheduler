@@ -527,6 +527,46 @@ extension Task {
 }
 
 
+// MARK: - Predicate Creation
+
+extension Task {
+    static func inRangePredicate(for range: Range<Date>) -> Predicate<Task> {
+        #Predicate<Task> { task in
+            if let effectiveTo = task.nextVersion?.effectiveFrom {
+                task.effectiveFrom < range.upperBound
+                    && range.lowerBound < effectiveTo
+            } else {
+                // task lifetime is effectively an `PartialRangeFrom`. So all we do is to check if the `range` overlaps with the lower bound
+                task.effectiveFrom < range.upperBound
+            }
+        }
+    }
+
+    static func inPartialRangeFromPredicate(for range: PartialRangeFrom<Date>) -> Predicate<Task> {
+        #Predicate<Task> { task in
+            if let effectiveTo = task.nextVersion?.effectiveFrom {
+                task.effectiveFrom <= range.lowerBound
+                    && range.lowerBound < effectiveTo
+            } else {
+                task.effectiveFrom <= range.lowerBound
+            }
+        }
+    }
+
+    static func inClosedRangePredicate(for range: ClosedRange<Date>) -> Predicate<Task> {
+        #Predicate<Task> { task in
+            if let effectiveTo = task.nextVersion?.effectiveFrom {
+                task.effectiveFrom <= range.upperBound
+                    && range.lowerBound < effectiveTo
+            } else {
+                // task lifetime is effectively an `PartialRangeFrom`. So all we do is to check if the closed `range` overlaps with the lower bound
+                task.effectiveFrom <= range.upperBound
+            }
+        }
+    }
+}
+
+
 extension Task: CustomStringConvertible {
     public var description: String {
         """
