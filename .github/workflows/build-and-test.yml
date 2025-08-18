@@ -35,6 +35,7 @@ jobs:
             destination: 'platform=watchOS Simulator,name=Apple Watch Series 10 (46mm)'
           - name: visionOS
             destination: 'platform=visionOS Simulator,name=Apple Vision Pro'
+      fail-fast: false
     with:
       runsonlabels: '["macOS", "self-hosted"]'
       scheme: SpeziScheduler-Package
