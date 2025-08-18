@@ -6,7 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
-#if canImport(BackgroundTasks)
+#if !os(watchOS) && canImport(BackgroundTasks)
 import BackgroundTasks
 
 
