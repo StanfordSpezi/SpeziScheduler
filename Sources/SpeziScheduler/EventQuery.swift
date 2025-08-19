@@ -111,10 +111,7 @@ public struct EventQuery {
     /// - Parameters:
     ///   - range: The date range to query events for.
     ///   - predicate: Optional `Predicate` allowing you to filter which events should be included in the query, based on their ``Task``.
-    public init(
-        in range: Range<Date>,
-        predicate: Predicate<Task> = #Predicate { _ in true }
-    ) {
+    public init(in range: Range<Date>, predicate: Predicate<Task> = .true) {
         configuration = Configuration(range: range, taskPredicate: predicate)
         binding = Binding(range: range)
     }

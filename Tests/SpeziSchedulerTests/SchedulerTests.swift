@@ -818,6 +818,49 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
             #expect(event.occurrence.start == expectedDate)
         }
     }
+    
+    @Test
+    func iOS26Migration() throws {
+        let fm = FileManager.default // swiftlint:disable:this identifier_name
+        let schedulerDir = URL.temporaryDirectory.appending(component: UUID().uuidString, directoryHint: .isDirectory)
+        try fm.createDirectory(at: schedulerDir, withIntermediateDirectories: true)
+        defer {
+            try? fm.removeItem(at: schedulerDir)
+        }
+        let didMigrateFlagUrl = schedulerDir.appending(component: Scheduler.didPerformIOS26MigrationFlagFilename)
+        #expect(try !fm.itemExists(at: didMigrateFlagUrl))
+        let copyInputFile = { (ext: String) in
+            let url = try #require(Bundle.module.url(forResource: "iOS26MigrationInput", withExtension: ext))
+            try fm.copyItem(at: url, to: schedulerDir.appending(component: "edu.stanford.spezi.scheduler.storage.\(ext)"))
+        }
+        try copyInputFile("sqlite")
+        try copyInputFile("sqlite-shm")
+        try copyInputFile("sqlite-wal")
+        let scheduler = Scheduler(persistence: .onDisk(directory: schedulerDir))
+        withDependencyResolution {
+            scheduler
+        }
+        #expect(try fm.itemExists(at: didMigrateFlagUrl))
+        let tasks = try scheduler.queryAllTasks()
+        #expect(tasks.count == 5)
+        #expect(tasks.mapIntoSet(\.id) == ["task1", "task2", "task3"])
+        #expect(tasks.count { $0.id == "task1" } == 2)
+        #expect(tasks.count { $0.id == "task2" } == 2)
+        #expect(tasks.count { $0.id == "task3" } == 1)
+        let task1Versions = Array(try #require(tasks.first { $0.id == "task1" }).allVersions)
+        #expect(task1Versions.map { String(localized: $0.title) } == ["Task 1 Title", "Task 1 Title (new)"])
+        #expect(task1Versions.map { String(localized: $0.instructions) } == ["Task 1 Instructions", "Task 1 Instructions (new)"])
+        let task2Versions = Array(try #require(tasks.first { $0.id == "task2" }).allVersions)
+        #expect(task2Versions.map { String(localized: $0.title) } == ["Task 2 Title (#items: 1)", "Task 2 Title (#items: 2)"])
+        #expect(task2Versions.map { String(localized: $0.instructions) } == ["Please answer 1 question", "Please answer 2 questions"])
+        let task3Versions = Array(try #require(tasks.first { $0.id == "task3" }).allVersions)
+        #expect(task3Versions.count == 1)
+        let task3 = try #require(task3Versions.first)
+        #expect(
+            task3.title == "Task 3 \(placeholder: .double) \(placeholder: .float) \(placeholder: .int) \(placeholder: .uint) \(placeholder: .object)"
+        )
+        #expect(String(localized: task3.instructions) == "Task 3")
+    }
 }
 
 

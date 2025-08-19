@@ -80,7 +80,7 @@ import SwiftUI
 /// - ``deleteAllVersions(of:)``
 /// - ``deleteAllVersions(ofTask:)``
 @MainActor
-public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializable, Sendable {
+public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializable, Sendable { // swiftlint:disable:this type_body_length
     /// How shadowed outcomes detected when updating a ``Task`` should be handled.
     public enum TaskUpdateShadowedOutcomesHandling {
         /// Attempting to update an already-existing task in a way that would shadow existing outcomes will result in an error
@@ -90,9 +90,10 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     }
     
     /// How the ``Scheduler`` should persist its data.
-    public enum PersistenceConfiguration {
+    public enum PersistenceConfiguration: Sendable {
         /// The ``Scheduler`` will use an on-disk database for persistence.
-        case onDisk
+        /// - parameter directory: the directory where SpeziScheduler should store its data.
+        case onDisk(directory: URL)
         /// The ``Scheduler`` will use an in-memory database for persistence.
         /// Intended for testing purposes.
         case inMemory
@@ -101,6 +102,11 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         /// - Note: This is intended for configuring the ``Scheduler`` with a pre-populated model container that is already configured for the ``Task`` and ``Outcome`` types.
         @_spi(TestingSupport)
         case testingContainer(ModelContainer)
+        
+        /// The ``Scheduler`` will use an on-disk database for persistence, located in the `~/Documents/SpeziScheduler` directory.
+        @inlinable public static var onDisk: Self {
+            .onDisk(directory: .documentsDirectory.appending(component: "SpeziScheduler", directoryHint: .isDirectory))
+        }
     }
     
     /// Utility type that allows us to easily defer a `context.save()` operation until the next run loop operation.
@@ -138,15 +144,13 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         }
     }
     
-    /// We disable that for now. We might need to restore some information to cancel notifications.
-    private static let purgeLegacyStorage = false
+    // swiftlint:disable attributes
+    @Application(\.logger) private var logger
+    @Dependency(SchedulerNotifications.self) private var notifications
+    // swiftlint:enable attributes
     
-    @Application(\.logger)
-    private var logger
-    
-    @Dependency(SchedulerNotifications.self)
-    private var notifications
-    
+    private let persistence: PersistenceConfiguration
+    private var pendingIOS26Migration: IOS26StringLocalizationValuesMigration?
     private let _container: Result<ModelContainer, any Error>
     
     private var container: ModelContainer {
@@ -178,9 +182,10 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     
     /// Creates a new Scheduler, using the specified persistence configuration.
     public nonisolated init(persistence: PersistenceConfiguration) {
+        self.persistence = persistence
         switch persistence {
-        case .onDisk:
-            guard ProcessInfo.isRunningInSandbox else {
+        case .onDisk(let directory):
+            guard implies(directory.isDescendant(of: .documentsDirectory), ProcessInfo.isRunningInSandbox) else {
                 preconditionFailure(
                     """
                     The current application is running in a non-sandboxed environment.
@@ -191,10 +196,29 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
                     """
                 )
             }
+            let fileManager = FileManager.default
+            Self.setupPersistentStorageFileLocations(in: directory)
+            // If necessary, migrate over to the new storage location
+            Self.migratePersistentStorageFileLocationIfNeeded(dstDirectory: directory)
+            let persistentStorageUrl = directory.appending(component: "edu.stanford.spezi.scheduler.storage.sqlite")
+            let iOS26MigrationFlagUrl = directory.appending(component: Self.didPerformIOS26MigrationFlagFilename)
+            if fileManager.itemExists(at: persistentStorageUrl) {
+                if !fileManager.itemExists(at: iOS26MigrationFlagUrl) {
+                    // this isn't our first launch (the database already exists), but we haven't yet performed the iOS 26 migration
+                    // --> perform the migration
+                    do {
+                        pendingIOS26Migration = try IOS26StringLocalizationValuesMigration(databaseUrl: persistentStorageUrl)
+                    } catch {
+                        preconditionFailure("Unable to create iOS 26 migration")
+                    }
+                }
+            } else {
+                _ = fileManager.createFile(at: iOS26MigrationFlagUrl, contents: nil)
+            }
             _container = Result {
                 try ModelContainer(
                     for: Task.self, Outcome.self, // swiftlint:disable:this multiline_arguments
-                    configurations: ModelConfiguration(url: URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite"))
+                    configurations: ModelConfiguration(url: persistentStorageUrl)
                 )
             }
         case .inMemory:
@@ -216,14 +240,34 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         switch _container {
         case .failure(let error):
             logger.error("Failed to initialize ModelContainer for Scheduler module: \(error)")
-        case .success:
-            break
+        case .success(let container):
+            if let migration = pendingIOS26Migration.take() {
+                do {
+                    try migration.apply(to: container.mainContext)
+                    switch persistence {
+                    case .onDisk(let directory):
+                        _ = FileManager.default.createFile(
+                            at: directory.appending(component: Self.didPerformIOS26MigrationFlagFilename),
+                            contents: nil
+                        )
+                    case .inMemory, .testingContainer:
+                        preconditionFailure("Invalid state: iOS 26 migration can only ever happen for on-disk model containers.")
+                    }
+                } catch {
+                    preconditionFailure("Failed to apply migration")
+                }
+            }
         }
         // This is a really good article explaining some of the concurrency considerations with SwiftData
         // https://medium.com/@samhastingsis/use-swiftdata-like-a-boss-92c05cba73bf
         // It also makes it easier to understand the SwiftData-related infrastructure around Spezi Scheduler.
         // One could think that Apple could have provided a lot of this information in their documentation.
         notifications.registerProcessingTask(using: self)
+        
+        assert(
+            ((try? self.queryAllTasks()) ?? []).allSatisfy { $0.allVersions.adjacentPairs().allSatisfy { $0.effectiveFrom < $1.effectiveFrom } },
+            "Scheduler Database contains Tasks with non-increasing effectiveFrom values!"
+        )
     }
     
     /// Trigger a manual refresh of the scheduled notifications.
@@ -579,13 +623,13 @@ extension Scheduler {
     /// - Returns: The list of `Task` that are effective in the specified date range and match the specified `predicate`. The result is ordered by the specified `sortDescriptors`.
     public func queryTasks(
         for range: ClosedRange<Date>,
-        predicate: Predicate<Task> = #Predicate { _ in true },
+        predicate: Predicate<Task> = .true,
         sortBy sortDescriptors: [SortDescriptor<Task>] = [],
         fetchLimit: Int? = nil,
         prefetchOutcomes: Bool = false
     ) throws -> [Task] {
         try queryTasks(
-            with: inClosedRangePredicate(for: range),
+            with: Task.inClosedRangePredicate(for: range),
             combineWith: predicate,
             sortBy: sortDescriptors,
             fetchLimit: fetchLimit,
@@ -610,13 +654,13 @@ extension Scheduler {
     /// - Returns: The list of `Task` that are effective in the specified date range and match the specified `predicate`. The result is ordered by the specified `sortDescriptors`.
     public func queryTasks(
         for range: Range<Date>,
-        predicate: Predicate<Task> = #Predicate { _ in true },
+        predicate: Predicate<Task> = .true,
         sortBy sortDescriptors: [SortDescriptor<Task>] = [],
         fetchLimit: Int? = nil,
         prefetchOutcomes: Bool = false
     ) throws -> [Task] {
         try queryTasks(
-            with: inRangePredicate(for: range),
+            with: Task.inRangePredicate(for: range),
             combineWith: predicate,
             sortBy: sortDescriptors,
             fetchLimit: fetchLimit,
@@ -626,13 +670,13 @@ extension Scheduler {
 
     func queryTasks(
         for range: PartialRangeFrom<Date>,
-        predicate: Predicate<Task> = #Predicate { _ in true },
+        predicate: Predicate<Task> = .true,
         sortBy sortDescriptors: [SortDescriptor<Task>] = [],
         fetchLimit: Int? = nil,
         prefetchOutcomes: Bool = false
     ) throws -> [Task] {
         try queryTasks(
-            with: inPartialRangeFromPredicate(for: range),
+            with: Task.inPartialRangeFromPredicate(for: range),
             combineWith: predicate,
             sortBy: sortDescriptors,
             fetchLimit: fetchLimit,
@@ -653,10 +697,7 @@ extension Scheduler {
     ///   - taskPredicate: An additional predicate that allows to pre-filter the list of task that should be considered.
     /// - Returns: The list of events that occurred in the given date `range` for tasks that fulfill the provided `taskPredicate` returned as a list that is sorted by the events
     ///     ``Event/occurrence`` in ascending order.
-    public func queryEvents(
-        for range: Range<Date>,
-        predicate taskPredicate: Predicate<Task> = #Predicate { _ in true }
-    ) throws -> [Event] {
+    public func queryEvents(for range: Range<Date>, predicate taskPredicate: Predicate<Task> = .true) throws -> [Event] {
         let tasks = try queryTasks(for: range, predicate: taskPredicate)
         let outcomes = try queryOutcomes(for: range, predicate: taskPredicate)
         return assembleEvents(for: range, tasks: tasks, outcomes: outcomes)
@@ -665,18 +706,19 @@ extension Scheduler {
     
     /// Query all events for a specific task, in a specific time period.
     ///
-    /// - Note: This will query for events belonging to the latest version of the task.
+    /// - Note: This will query for events belonging to the latest version of the task that was in effect during the specified time period
     public func queryEvents(forTaskWithId taskId: String, in range: Range<Date>) throws -> [Event] {
-        let context = try context
-        guard let task = try context.fetch(FetchDescriptor<Task>(predicate: #Predicate { task in
-            task.id == taskId && task.nextVersion == nil
-        })).first else {
+        let taskIsEffectivePredicate = Task.inRangePredicate(for: range)
+        let effectiveTaskVersions = try context.fetch(FetchDescriptor<Task>(predicate: #Predicate { task in
+            task.id == taskId && taskIsEffectivePredicate.evaluate(task)
+        }))
+        guard let task = effectiveTaskVersions.max(by: { $0.effectiveFrom < $1.effectiveFrom }) else {
             return []
         }
         return try queryEvents(for: task, in: range)
     }
     
-    /// Query all upcoming events for a specific task, in a specific time period.
+    /// Query all upcoming events for a specific task version, in a specific time period.
     public func queryEvents(for task: Task, in range: Range<Date>) throws -> [Event] {
         let taskId = task.id
         let outcomes = try queryOutcomes(for: range, predicate: #Predicate { $0.id == taskId })
@@ -786,11 +828,8 @@ extension Scheduler {
             .contains { _ in true }
     }
     
-    func queryEventsAnchor(
-        for range: Range<Date>,
-        predicate taskPredicate: Predicate<Task> = #Predicate { _ in true }
-    ) throws -> Set<PersistentIdentifier> {
-        let taskIdentifier = try queryTaskIdentifiers(with: inRangePredicate(for: range), combineWith: taskPredicate)
+    func queryEventsAnchor(for range: Range<Date>, predicate taskPredicate: Predicate<Task> = .true) throws -> Set<PersistentIdentifier> {
+        let taskIdentifier = try queryTaskIdentifiers(with: Task.inRangePredicate(for: range), combineWith: taskPredicate)
         let outcomeIdentifiers = try queryOutcomeIdentifiers(for: range, predicate: taskPredicate)
         
         return taskIdentifier.union(outcomeIdentifiers)
@@ -849,7 +888,7 @@ extension Scheduler {
 
 extension Scheduler {
     func hasTasksWithNotifications(for range: PartialRangeFrom<Date>) throws -> Bool {
-        let rangePredicate = inPartialRangeFromPredicate(for: range)
+        let rangePredicate = Task.inPartialRangeFromPredicate(for: range)
         let descriptor = FetchDescriptor<Task>(
             predicate: #Predicate { task in
                 rangePredicate.evaluate(task) && task.scheduleNotifications
@@ -923,41 +962,44 @@ extension Scheduler {
     }
 }
 
-// MARK: - Predicate Creation
+
+// MARK: Persistent Storage Location Handling
 
 extension Scheduler {
-    private func inRangePredicate(for range: Range<Date>) -> Predicate<Task> {
-        #Predicate<Task> { task in
-            if let effectiveTo = task.nextVersion?.effectiveFrom {
-                task.effectiveFrom < range.upperBound
-                    && range.lowerBound < effectiveTo
-            } else {
-                // task lifetime is effectively an `PartialRangeFrom`. So all we do is to check if the `range` overlaps with the lower bound
-                task.effectiveFrom < range.upperBound
-            }
+    nonisolated private static let legacyPersistentStorageUrls: [URL] = [
+        URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite"),
+        URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite-shm"),
+        URL.documentsDirectory.appending(path: "edu.stanford.spezi.scheduler.storage.sqlite-wal")
+    ]
+    
+    nonisolated static let didPerformIOS26MigrationFlagFilename = "didPerformIOS26Migration"
+    
+    private nonisolated static func setupPersistentStorageFileLocations(in directory: URL) {
+        let fileManager = FileManager.default
+        guard !fileManager.itemExists(at: directory) else {
+            return
+        }
+        do {
+            try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        } catch {
+            preconditionFailure("Unable to create SpeziScheduler directory: \(error)")
         }
     }
-
-    private func inPartialRangeFromPredicate(for range: PartialRangeFrom<Date>) -> Predicate<Task> {
-        #Predicate<Task> { task in
-            if let effectiveTo = task.nextVersion?.effectiveFrom {
-                task.effectiveFrom <= range.lowerBound
-                    && range.lowerBound < effectiveTo
-            } else {
-                task.effectiveFrom <= range.lowerBound
+    
+    
+    private nonisolated static func migratePersistentStorageFileLocationIfNeeded(dstDirectory: URL) {
+        do {
+            let fileManager = FileManager()
+            guard fileManager.fileExists(atPath: Self.legacyPersistentStorageUrls[0].path) else {
+                // no file there; nothing to be done.
+                return
             }
-        }
-    }
-
-    private func inClosedRangePredicate(for range: ClosedRange<Date>) -> Predicate<Task> {
-        #Predicate<Task> { task in
-            if let effectiveTo = task.nextVersion?.effectiveFrom {
-                task.effectiveFrom <= range.upperBound
-                    && range.lowerBound < effectiveTo
-            } else {
-                // task lifetime is effectively an `PartialRangeFrom`. So all we do is to check if the closed `range` overlaps with the lower bound
-                task.effectiveFrom <= range.upperBound
+            for url in Self.legacyPersistentStorageUrls where fileManager.itemExists(at: url) {
+                let newUrl = dstDirectory.appending(component: url.lastPathComponent)
+                try fileManager.moveItem(at: url, to: newUrl)
             }
+        } catch {
+            preconditionFailure("Unable to migrate persistent storage to new location: \(error)")
         }
     }
 }

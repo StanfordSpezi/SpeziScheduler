@@ -28,7 +28,7 @@ public struct EventActionButton: View {
     private var isEventCompletionAllowed: Bool {
         let policy = event.task.completionPolicy
         let now = Date.now
-        let allowed = policy.isAllowedToComplete(event: event, now: now)
+        let allowed = policy.isAllowedToComplete(event: event, at: now)
         if allowed {
             if let dateWhenDisallowed = policy.dateOnceCompletionBecomesDisallowed(for: event, now: now), dateWhenDisallowed != .distantFuture {
                 actionUpdate.schedule(at: dateWhenDisallowed)
