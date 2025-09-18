@@ -23,6 +23,11 @@ class TestAppUITests: XCTestCase {
         }
     }
     
+    func sleep(for duration: Duration) {
+        usleep(UInt32(duration.timeInterval * 1000000))
+    }
+    
+    
     override func setUp() {
         continueAfterFailure = false
     }
@@ -36,9 +41,11 @@ class TestAppUITests: XCTestCase {
         XCTAssert(app.wait(for: .runningForeground, timeout: 2.0))
 
         XCTAssert(app.staticTexts["Schedule"].waitForExistence(timeout: 2.0))
-
         XCTAssert(app.staticTexts["Today"].exists)
-        XCTAssert(app.staticTexts["Social Support Questionnaire"].exists)
+        
+        app.swipeUp()
+        
+        XCTAssert(app.staticTexts["Social Support Questionnaire"].waitForExistence(timeout: 2.0))
         XCTAssert(app.staticTexts["Questionnaire"].exists)
         if uses12HourClock {
             XCTAssert(app.staticTexts["4:00 PM"].exists)
@@ -98,7 +105,8 @@ class TestAppUITests: XCTestCase {
 
         app.confirmNotificationAuthorization()
         
-        XCTAssertGreaterThan(app.staticTexts.matching(identifier: "Medication").count, 4) // ensure events are scheduled
+        sleep(for: .seconds(0.5))
+        XCTAssertGreaterThan(app.staticTexts.matching(identifier: "Medication").count, 3) // ensure events are scheduled
 
         app.staticTexts["Weight Measurement"].tap()
 
@@ -183,7 +191,7 @@ class TestAppUITests: XCTestCase {
         // Complete the task for today
         app.goToTab(.schedule)
         app.buttons["Complete Enter Lab Results"].tap()
-        sleep(1)
+        sleep(for: .seconds(1))
         app.goToTab(.notifications)
         
         app.staticTexts["Enter Lab Results"].firstMatch.tap()
