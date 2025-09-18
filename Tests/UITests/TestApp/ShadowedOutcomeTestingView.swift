@@ -43,6 +43,6 @@ private struct TestCase: TestAppTestCase {
         for event in events.dropFirst(2) {
             try event.complete(ignoreCompletionPolicy: true)
         }
-        try XCTAssertNoThrow(try registerTask())
+        _ = try registerTask()
     }
 }

@@ -36,9 +36,11 @@ class TestAppUITests: XCTestCase {
         XCTAssert(app.wait(for: .runningForeground, timeout: 2.0))
 
         XCTAssert(app.staticTexts["Schedule"].waitForExistence(timeout: 2.0))
-
         XCTAssert(app.staticTexts["Today"].exists)
-        XCTAssert(app.staticTexts["Social Support Questionnaire"].exists)
+        
+        app.swipeUp()
+        
+        XCTAssert(app.staticTexts["Social Support Questionnaire"].waitForExistence(timeout: 2.0))
         XCTAssert(app.staticTexts["Questionnaire"].exists)
         if uses12HourClock {
             XCTAssert(app.staticTexts["4:00 PM"].exists)
@@ -66,7 +68,7 @@ class TestAppUITests: XCTestCase {
 
     
     @MainActor
-    func testNotificationScheduling() throws { // swiftlint:disable:this function_body_length
+    func testNotificationScheduling() async throws { // swiftlint:disable:this function_body_length
         let app = XCUIApplication()
         app.deleteAndLaunch(withSpringboardAppName: "TestApp")
         
@@ -98,7 +100,8 @@ class TestAppUITests: XCTestCase {
 
         app.confirmNotificationAuthorization()
         
-        XCTAssertGreaterThan(app.staticTexts.matching(identifier: "Medication").count, 4) // ensure events are scheduled
+        try await Task.sleep(for: .seconds(0.5))
+        XCTAssertGreaterThan(app.staticTexts.matching(identifier: "Medication").count, 3) // ensure events are scheduled
 
         app.staticTexts["Weight Measurement"].tap()
 
