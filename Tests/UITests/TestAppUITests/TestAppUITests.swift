@@ -191,7 +191,7 @@ class TestAppUITests: XCTestCase {
         // Complete the task for today
         app.goToTab(.schedule)
         app.buttons["Complete Enter Lab Results"].tap()
-        sleep(1)
+        sleep(for: .seconds(1))
         app.goToTab(.notifications)
         
         app.staticTexts["Enter Lab Results"].firstMatch.tap()
