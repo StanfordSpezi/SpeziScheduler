@@ -23,6 +23,11 @@ class TestAppUITests: XCTestCase {
         }
     }
     
+    func sleep(for duration: Duration) {
+        usleep(UInt32(duration.timeInterval * 1000000))
+    }
+    
+    
     override func setUp() {
         continueAfterFailure = false
     }
@@ -68,7 +73,7 @@ class TestAppUITests: XCTestCase {
 
     
     @MainActor
-    func testNotificationScheduling() async throws { // swiftlint:disable:this function_body_length
+    func testNotificationScheduling() throws { // swiftlint:disable:this function_body_length
         let app = XCUIApplication()
         app.deleteAndLaunch(withSpringboardAppName: "TestApp")
         
@@ -100,7 +105,7 @@ class TestAppUITests: XCTestCase {
 
         app.confirmNotificationAuthorization()
         
-        try await Task.sleep(for: .seconds(0.5))
+        sleep(for: .seconds(0.5))
         XCTAssertGreaterThan(app.staticTexts.matching(identifier: "Medication").count, 3) // ensure events are scheduled
 
         app.staticTexts["Weight Measurement"].tap()
