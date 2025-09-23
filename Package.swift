@@ -29,7 +29,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/StanfordSpezi/SpeziFoundation.git", from: "2.4.1"),
         .package(url: "https://github.com/StanfordSpezi/Spezi.git", from: "1.9.2"),
-        .package(url: "https://github.com/StanfordSpezi/SpeziViews.git", from: "1.12.3"),
+        .package(url: "https://github.com/StanfordSpezi/SpeziViews.git", from: "1.12.4"),
         .package(url: "https://github.com/StanfordSpezi/SpeziStorage.git", from: "2.1.1"),
         .package(url: "https://github.com/StanfordSpezi/SpeziNotifications.git", from: "1.0.8"),
         .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
