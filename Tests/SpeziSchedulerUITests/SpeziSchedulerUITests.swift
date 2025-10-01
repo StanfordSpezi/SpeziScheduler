@@ -11,11 +11,13 @@ import SpeziScheduler
 @_spi(TestingSupport)
 @testable import SpeziSchedulerUI
 import SwiftUI
-import XCTest
+import Testing
 
 
-final class SpeziSchedulerUITests: XCTestCase {
-    @MainActor
+@MainActor
+@Suite
+struct SpeziSchedulerUITests {
+    @Test
     func testTileHeaderLayout() {
         let event = SchedulerSampleData.makeTestEvent()
 
@@ -33,7 +35,7 @@ final class SpeziSchedulerUITests: XCTestCase {
 #endif
     }
 
-    @MainActor
+    @Test
     func testTileHeaderLayoutWithCategoryAppearance() {
         let event = SchedulerSampleData.makeTestEvent()
         
@@ -51,7 +53,7 @@ final class SpeziSchedulerUITests: XCTestCase {
 #endif
     }
 
-    @MainActor
+    @Test
     func testInstructionsTile() {
         let event = SchedulerSampleData.makeTestEvent()
 
@@ -89,11 +91,15 @@ final class SpeziSchedulerUITests: XCTestCase {
         assertSnapshot(of: tileCenterMore, as: .image(layout: .device(config: .iPhone13Pro)), named: "center-more")
         assertSnapshot(of: tileTrailingMore, as: .image(layout: .device(config: .iPhone13Pro)), named: "trailing-more")
 
+        // Note to whoever is reading this at some point in the future:
+        // if this test fails, and the reference image is fully transparent and the actual image is not,
+        // simply delete the reference image and replace it with a new one.
+        // See also: https://github.com/pointfreeco/swift-snapshot-testing/issues/1029
         assertSnapshot(of: tileWithAction, as: .image(layout: .device(config: .iPhone13Pro)), named: "action")
 #endif
     }
 
-    @MainActor
+    @Test
     func testInstructionsTileWithCategoryAppearance() {
         let event = SchedulerSampleData.makeTestEvent()
 
