@@ -89,6 +89,10 @@ final class SpeziSchedulerUITests: XCTestCase {
         assertSnapshot(of: tileCenterMore, as: .image(layout: .device(config: .iPhone13Pro)), named: "center-more")
         assertSnapshot(of: tileTrailingMore, as: .image(layout: .device(config: .iPhone13Pro)), named: "trailing-more")
 
+        // Note to whoever is reading this at some point in the future:
+        // if this test fails, and the reference image is fully transparent and the actual image is not,
+        // simply delete the reference image and replace it with a new one.
+        // See also: https://github.com/pointfreeco/swift-snapshot-testing/issues/1029
         assertSnapshot(of: tileWithAction, as: .image(layout: .device(config: .iPhone13Pro)), named: "action")
 #endif
     }

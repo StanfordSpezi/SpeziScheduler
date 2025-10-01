@@ -57,7 +57,7 @@ public struct EventActionButton: View {
             actionLabel
                 .frame(maxWidth: .infinity, minHeight: 30)
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyleGlassProminent()
         .disabled(!isEventCompletionAllowed)
     }
 
