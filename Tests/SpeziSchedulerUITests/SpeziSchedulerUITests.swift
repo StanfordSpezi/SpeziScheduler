@@ -11,13 +11,11 @@ import SpeziScheduler
 @_spi(TestingSupport)
 @testable import SpeziSchedulerUI
 import SwiftUI
-import Testing
+import XCTest
 
 
-@MainActor
-@Suite
-struct SpeziSchedulerUITests {
-    @Test
+final class SpeziSchedulerUITests: XCTestCase {
+    @MainActor
     func testTileHeaderLayout() {
         let event = SchedulerSampleData.makeTestEvent()
 
@@ -35,7 +33,7 @@ struct SpeziSchedulerUITests {
 #endif
     }
 
-    @Test
+    @MainActor
     func testTileHeaderLayoutWithCategoryAppearance() {
         let event = SchedulerSampleData.makeTestEvent()
         
@@ -53,7 +51,7 @@ struct SpeziSchedulerUITests {
 #endif
     }
 
-    @Test
+    @MainActor
     func testInstructionsTile() {
         let event = SchedulerSampleData.makeTestEvent()
 
@@ -99,7 +97,7 @@ struct SpeziSchedulerUITests {
 #endif
     }
 
-    @Test
+    @MainActor
     func testInstructionsTileWithCategoryAppearance() {
         let event = SchedulerSampleData.makeTestEvent()
 
