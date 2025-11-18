@@ -22,7 +22,7 @@ concurrency:
 jobs:
   package_tests:
     name: Build and Test Swift Package ${{ matrix.platform.name }} (${{ matrix.config }})
-    uses: StanfordBDHG/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
+    uses: StanfordBDHG/.github/.github/workflows/xcodebuild-or-fastlane.yml@lukas/extra-xcodebuild-args
     strategy:
       matrix:
         config: [Debug]
@@ -43,6 +43,7 @@ jobs:
       buildConfig: ${{ matrix.config }}
       resultBundle: ${{ format('SpeziScheduler-{0}-{1}.xcresult', matrix.platform.name, matrix.config) }}
       artifactname: ${{ format('SpeziScheduler-{0}-{1}.xcresult', matrix.platform.name, matrix.config) }}
+      xcodebuild-extra-flags: '-IDEPackageEnablePrebuilts=NO'
   ui_tests:
     name: Build and Test UI Tests ${{ matrix.platform.name }} (${{ matrix.config }})
     uses: StanfordBDHG/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2
