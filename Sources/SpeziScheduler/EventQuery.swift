@@ -119,7 +119,7 @@ public struct EventQuery {
 
 
 extension EventQuery: DynamicProperty {
-    public mutating nonisolated func update() {
+    nonisolated public mutating func update() {
         // This is not really ideal, however we require MainActor isolation and `DynamicProperty` doesn't annotate this guarantee
         // even though it will always be called from the main thread.
         // `EventQuery` is a non-Sendable type that must be initialized on the MainActor. This doesn't guarantee that

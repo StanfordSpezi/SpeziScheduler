@@ -16,8 +16,8 @@ import SpeziFoundation
 import SpeziLocalStorage
 import SpeziNotifications
 import SwiftData
-import UserNotifications
 import struct SwiftUI.AppStorage
+import UserNotifications
 
 
 /// Manage notifications for the Scheduler.
@@ -145,19 +145,19 @@ public final class SchedulerNotifications: Module, DefaultInitializable, Environ
     /// This options limits the maximum amount of local notifications request that SpeziScheduler schedules.
     ///
     /// - Note: Default is `30`.
-    public nonisolated let notificationLimit: Int
+    nonisolated public let notificationLimit: Int
     /// The time period for which we should schedule events in advance.
     ///
     /// - Note: Default is `4` weeks.
-    public nonisolated let schedulingInterval: TimeInterval
+    nonisolated public let schedulingInterval: TimeInterval
 
     /// The time at which we schedule notifications for all day events.
     ///
     /// - Note: Default is 9 AM.
-    public nonisolated let allDayNotificationTime: NotificationTime
+    nonisolated public let allDayNotificationTime: NotificationTime
 
     /// Defines the presentation of scheduler notifications if they are delivered when the app is in foreground.
-    public nonisolated let notificationPresentation: UNNotificationPresentationOptions
+    nonisolated public let notificationPresentation: UNNotificationPresentationOptions
     
     private let cal = Calendar.current
 
@@ -165,7 +165,7 @@ public final class SchedulerNotifications: Module, DefaultInitializable, Environ
     ///
     /// If the module attempts to schedule notifications for its task and detects that notification authorization isn't determined yet, it automatically
     /// requests [provisional notification authorization](https://developer.apple.com/documentation/usernotifications/asking-permission-to-use-notifications#Use-provisional-authorization-to-send-trial-notifications).
-    public nonisolated let automaticallyRequestProvisionalAuthorization: Bool // swiftlint:disable:this identifier_name
+    nonisolated public let automaticallyRequestProvisionalAuthorization: Bool // swiftlint:disable:this identifier_name
 
     /// Make sure we aren't running multiple notification scheduling at the same time.
     private let scheduleNotificationAccess = AsyncSemaphore()
@@ -191,7 +191,7 @@ public final class SchedulerNotifications: Module, DefaultInitializable, Environ
     @Modifier private var scenePhaseRefresh = NotificationScenePhaseScheduling()
 
     /// Default configuration.
-    public required convenience nonisolated init() {
+    nonisolated public required convenience init() {
         self.init(notificationLimit: 30)
     }
     
@@ -203,7 +203,7 @@ public final class SchedulerNotifications: Module, DefaultInitializable, Environ
     ///   - allDayNotificationTime: The time at which we schedule notifications for all day events.
     ///   - notificationPresentation: Defines the presentation of scheduler notifications if they are delivered when the app is in foreground.
     ///   - automaticallyRequestProvisionalAuthorization: Automatically request provisional notification authorization if notification authorization isn't determined yet.
-    public nonisolated init(
+    nonisolated public init(
         notificationLimit: Int = 30,
         schedulingInterval: Duration = .weeks(4),
         allDayNotificationTime: NotificationTime = NotificationTime(hour: 9),

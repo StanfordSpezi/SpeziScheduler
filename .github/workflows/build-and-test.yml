@@ -43,6 +43,7 @@ jobs:
       buildConfig: ${{ matrix.config }}
       resultBundle: ${{ format('SpeziScheduler-{0}-{1}.xcresult', matrix.platform.name, matrix.config) }}
       artifactname: ${{ format('SpeziScheduler-{0}-{1}.xcresult', matrix.platform.name, matrix.config) }}
+      spm-disable-prebuilts: true
   ui_tests:
     name: Build and Test UI Tests ${{ matrix.platform.name }} (${{ matrix.config }})
     uses: StanfordBDHG/.github/.github/workflows/xcodebuild-or-fastlane.yml@v2

@@ -176,12 +176,12 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
     /// - Note: the `UUID` only serves as a means of identifying the individual closures, so that we can remove them upon termination
     private var outcomeObservers: [UUID: @MainActor (Outcome) -> Void] = [:]
     /// Creates a new Scheduler, using on-disk persistence.
-    public nonisolated convenience init() {
+    nonisolated public convenience init() {
         self.init(persistence: .onDisk)
     }
     
     /// Creates a new Scheduler, using the specified persistence configuration.
-    public nonisolated init(persistence: PersistenceConfiguration) {
+    nonisolated public init(persistence: PersistenceConfiguration) {
         self.persistence = persistence
         switch persistence {
         case .onDisk(let directory):
@@ -841,7 +841,7 @@ extension Scheduler {
     @MainActor
     public final class OutcomeSubscription: Sendable {
         private let id: UUID
-        private nonisolated(unsafe) weak var scheduler: Scheduler? // safe as reference counting is atomic and we do not mutate otherwise
+        nonisolated(unsafe) private weak var scheduler: Scheduler? // safe as reference counting is atomic and we do not mutate otherwise
         
         init(id: UUID, scheduler: Scheduler) {
             self.id = id
@@ -974,7 +974,7 @@ extension Scheduler {
     
     nonisolated static let didPerformIOS26MigrationFlagFilename = "didPerformIOS26Migration"
     
-    private nonisolated static func setupPersistentStorageFileLocations(in directory: URL) {
+    nonisolated private static func setupPersistentStorageFileLocations(in directory: URL) {
         let fileManager = FileManager.default
         guard !fileManager.itemExists(at: directory) else {
             return
@@ -987,7 +987,7 @@ extension Scheduler {
     }
     
     
-    private nonisolated static func migratePersistentStorageFileLocationIfNeeded(dstDirectory: URL) {
+    nonisolated private static func migratePersistentStorageFileLocationIfNeeded(dstDirectory: URL) {
         do {
             let fileManager = FileManager()
             guard fileManager.fileExists(atPath: Self.legacyPersistentStorageUrls[0].path) else {

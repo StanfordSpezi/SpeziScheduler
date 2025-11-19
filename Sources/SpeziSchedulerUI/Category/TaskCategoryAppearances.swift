@@ -34,7 +34,7 @@ public struct TaskCategoryAppearances: Sendable {
         }
         return switch category {
         case .questionnaire:
-            .init(label: "Questionnaire", image: .system("heart.text.clipboard.fill"))
+            .init(label: LocalizedStringResource("Questionnaire", bundle: .module), image: .system("heart.text.clipboard.fill"))
         case .measurement:
             .init(label: "Measurement", image: .system("heart.text.square.fill"))
         case .medication:
