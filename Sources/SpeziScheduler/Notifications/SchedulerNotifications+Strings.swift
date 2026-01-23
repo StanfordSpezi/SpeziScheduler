@@ -6,7 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
-
+#if canImport(Darwin)
 extension SchedulerNotifications {
     nonisolated static let earliestScheduleRefreshDateStorageKey = "edu.stanford.spezi.scheduler.earliestScheduleRefreshDate"
     nonisolated static let authorizationDisallowedLastSchedulingStorageKey = "edu.stanford.spezi.scheduler.authorizationDisallowedLastScheduling"
@@ -68,3 +68,4 @@ extension SchedulerNotifications {
         "\(baseTaskNotificationId).\(task.id)"
     }
 }
+#endif

@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Foundation
 import SpeziFoundation
 
@@ -69,3 +70,4 @@ extension UserStorageCoding where Encoder == PropertyListEncoder, Decoder == Pro
     /// PropertyList encoder and decoder.
     public static let propertyList = UserStorageCoding(encoder: PropertyListEncoder(), decoder: PropertyListDecoder())
 }
+#endif

@@ -6,7 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
-
+#if canImport(Darwin)
 @usableFromInline
 struct BackgroundMode {
     @usableFromInline static let processing = BackgroundMode(rawValue: "processing")
@@ -22,3 +22,4 @@ struct BackgroundMode {
 
 
 extension BackgroundMode: RawRepresentable, Codable, Hashable, Sendable {}
+#endif

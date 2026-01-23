@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Foundation
 import UserNotifications
 
@@ -31,3 +32,4 @@ struct LegacyTaskModel: Codable, Hashable, Sendable {
     let notifications: Bool
     let events: [LegacyEventModel]
 }
+#endif

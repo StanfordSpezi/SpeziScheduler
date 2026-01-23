@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Spezi
 import UserNotifications
 
@@ -29,3 +30,4 @@ public protocol SchedulerNotificationsConstraint: Standard {
     @MainActor
     func notificationContent(for task: borrowing Task, content: borrowing UNMutableNotificationContent)
 }
+#endif

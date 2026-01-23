@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Combine
 import Foundation
 import RuntimeAssertions
@@ -1066,6 +1067,5 @@ extension Sequence {
         return nil
     }
 }
-
-
+#endif
 // swiftlint:disable:this file_length

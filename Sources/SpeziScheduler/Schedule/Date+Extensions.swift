@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Foundation
 
 
@@ -39,3 +40,4 @@ extension Date {
         return nextWeek
     }
 }
+#endif

@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Foundation
 import SpeziFoundation
 import SwiftData
@@ -129,3 +130,4 @@ extension Outcome: CustomStringConvertible {
         """
     }
 }
+#endif
