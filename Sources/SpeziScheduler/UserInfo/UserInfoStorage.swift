@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Foundation
 import OSLog
 import SpeziFoundation
@@ -106,3 +107,4 @@ extension UserInfoStorage: CustomStringConvertible {
         "UserInfoStorage(\(userInfo.keys.joined(separator: ", ")))"
     }
 }
+#endif

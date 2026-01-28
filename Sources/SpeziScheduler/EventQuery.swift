@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Combine
 import SwiftData
 import SwiftUI
@@ -178,3 +179,4 @@ extension EventQuery: DynamicProperty {
         }
     }
 }
+#endif

@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 // swiftlint:disable file_length
 
 import Foundation
@@ -589,3 +590,4 @@ extension Task: CustomStringConvertible {
         """
     }
 }
+#endif

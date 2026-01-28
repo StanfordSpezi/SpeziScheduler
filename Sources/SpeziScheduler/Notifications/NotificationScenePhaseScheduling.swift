@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import SwiftUI
 
 
@@ -41,3 +42,4 @@ struct NotificationScenePhaseScheduling: ViewModifier {
             }
     }
 }
+#endif

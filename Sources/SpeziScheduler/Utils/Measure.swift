@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import OSLog
 
 
@@ -45,3 +46,4 @@ func measure<T, C: Clock>(
     try await action()
 #endif
 }
+#endif

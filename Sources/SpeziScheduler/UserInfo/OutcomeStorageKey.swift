@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import SpeziFoundation
 
 
@@ -21,3 +22,4 @@ public enum OutcomeAnchor: RepositoryAnchor {}
 /// For more information, refer to the documentation of the ``Property()`` macro.
 @_documentation(visibility: internal)
 public protocol OutcomeStorageKey: _UserInfoKey where Anchor == OutcomeAnchor {}
+#endif

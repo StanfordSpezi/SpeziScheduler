@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Algorithms
 #if canImport(BackgroundTasks) // not available on watchOS
 import BackgroundTasks
@@ -671,5 +672,5 @@ extension UNNotificationRequest {
 func implies(_ lhs: Bool, _ rhs: @autoclosure () -> Bool) -> Bool {
     !lhs || rhs()
 }
-
+#endif
 // swiftlint:disable:this file_length

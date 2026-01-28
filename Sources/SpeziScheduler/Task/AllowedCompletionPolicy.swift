@@ -24,6 +24,7 @@ public enum AllowedCompletionPolicy: Hashable, Sendable, Codable {
 }
 
 
+#if canImport(Darwin)
 extension AllowedCompletionPolicy {
     /// Determine if an event is allowed to be completed at a specific date.
     /// - Parameters:
@@ -112,3 +113,4 @@ extension AllowedCompletionPolicy {
         return endDate
     }
 }
+#endif

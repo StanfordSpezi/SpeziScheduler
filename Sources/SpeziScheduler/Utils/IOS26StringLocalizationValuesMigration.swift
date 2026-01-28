@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Algorithms
 import Foundation
 import SQLite
@@ -96,3 +97,4 @@ extension String.LocalizationValue {
         return try JSONDecoder().decode(String.LocalizationValue.self, from: Data(json.utf8))
     }
 }
+#endif
