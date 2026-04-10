@@ -43,7 +43,7 @@ func dependencies() -> [PackageDescription.Package.Dependency] {
         .package(url: "https://github.com/StanfordSpezi/Spezi.git", from: "1.10.1"),
         .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
         .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "602.0.0"),
-        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", from: "1.18.7"),
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", from: "1.19.2"),
         .package(url: "https://github.com/StanfordBDHG/XCTRuntimeAssertions.git", from: "2.2.0")
     ]
     
