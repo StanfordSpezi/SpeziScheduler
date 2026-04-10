@@ -42,18 +42,23 @@ func dependencies() -> [PackageDescription.Package.Dependency] {
         .package(url: "https://github.com/StanfordSpezi/SpeziFoundation.git", from: "2.7.2"),
         .package(url: "https://github.com/StanfordSpezi/Spezi.git", from: "1.10.1"),
         .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
-        .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "602.0.0"),
-        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", from: "1.19.2"),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", "602.0.0"..<"605.0.0"),
         .package(url: "https://github.com/StanfordBDHG/XCTRuntimeAssertions.git", from: "2.2.0")
     ]
     
+    #if os(iOS)
+    dependencies += [
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing.git", from: "1.19.2")
+    ]
+    #endif
+    
     #if canImport(Darwin)
-    dependencies.append(contentsOf: [
+    dependencies += [
         .package(url: "https://github.com/StanfordSpezi/SpeziViews.git", from: "1.12.4"),
         .package(url: "https://github.com/StanfordSpezi/SpeziStorage.git", from: "2.1.4"),
         .package(url: "https://github.com/StanfordSpezi/SpeziNotifications.git", from: "1.0.8"),
         .package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.15.4")
-    ])
+    ]
     #endif
     
     return dependencies
@@ -119,12 +124,19 @@ func targets() -> [Target] { // swiftlint:disable:this function_body_length
     ))
     targets.append(.testTarget(
         name: "SpeziSchedulerUITests",
-        dependencies: [
-            .target(name: "SpeziScheduler"),
-            .target(name: "SpeziSchedulerUI"),
-            .product(name: "XCTSpezi", package: "Spezi"),
-            .product(name: "SnapshotTesting", package: "swift-snapshot-testing")
-        ],
+        dependencies: { () -> [Target.Dependency] in
+            var dependencies: [Target.Dependency] = [
+                .target(name: "SpeziScheduler"),
+                .target(name: "SpeziSchedulerUI"),
+                .product(name: "XCTSpezi", package: "Spezi")
+            ]
+            #if os(iOS)
+            dependencies += [
+                .product(name: "SnapshotTesting", package: "swift-snapshot-testing")
+            ]
+            #endif
+            return dependencies
+        }(),
         resources: [.process("__Snapshots__")],
         swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
         plugins: [] + swiftLintPlugin()
