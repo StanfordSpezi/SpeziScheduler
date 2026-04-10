@@ -39,22 +39,22 @@ final class SpeziSchedulerUITests: XCTestCase {
         assertSnapshot(of: leadingTileHeader, as: .image(layout: .device(config: .iPhone13Pro)), named: "leading")
         assertSnapshot(of: centerTileHeader, as: .image(layout: .device(config: .iPhone13Pro)), named: "center")
         assertSnapshot(of: trailingTileHeader, as: .image(layout: .device(config: .iPhone13Pro)), named: "trailing")
-
     }
-
+    
+    
     @MainActor
     func testTileHeaderLayoutWithCategoryAppearance() {
         let event = SchedulerSampleData.makeTestEvent()
         
-        let leadingTileHeader = withFixedLocale{
+        let leadingTileHeader = withFixedLocale {
             DefaultTileHeader(event, alignment: .leading)
                 .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
         }
-        let centerTileHeader = withFixedLocale{
+        let centerTileHeader = withFixedLocale {
             DefaultTileHeader(event, alignment: .center)
                 .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
         }
-        let trailingTileHeader = withFixedLocale{
+        let trailingTileHeader = withFixedLocale {
             DefaultTileHeader(event, alignment: .trailing)
                 .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
         }
@@ -63,7 +63,8 @@ final class SpeziSchedulerUITests: XCTestCase {
         assertSnapshot(of: centerTileHeader, as: .image(layout: .device(config: .iPhone13Pro)), named: "center")
         assertSnapshot(of: trailingTileHeader, as: .image(layout: .device(config: .iPhone13Pro)), named: "trailing")
     }
-
+    
+    
     @MainActor
     func testInstructionsTile() {
         let event = SchedulerSampleData.makeTestEvent()
@@ -121,7 +122,8 @@ final class SpeziSchedulerUITests: XCTestCase {
         // See also: https://github.com/pointfreeco/swift-snapshot-testing/issues/1029
         assertSnapshot(of: tileWithAction, as: .image(layout: .device(config: .iPhone13Pro)), named: "action")
     }
-
+    
+    
     @MainActor
     func testInstructionsTileWithCategoryAppearance() {
         let event = SchedulerSampleData.makeTestEvent()
