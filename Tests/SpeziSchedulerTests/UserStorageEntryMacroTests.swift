@@ -11,7 +11,6 @@
 import SpeziSchedulerMacros
 import SwiftSyntaxMacros
 import SwiftSyntaxMacrosTestSupport
-import SwiftSyntaxMacrosGenericTestSupport
 import Testing
 
 let testMacros: [String: any Macro.Type] = [
