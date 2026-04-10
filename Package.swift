@@ -108,10 +108,13 @@ func targets() -> [Target] { // swiftlint:disable:this function_body_length
     targets.append(.testTarget(
         name: "SpeziSchedulerTests",
         dependencies: [
-            .target(name: "SpeziScheduler"),
+            "SpeziScheduler",
+            "SpeziSchedulerMacros",
             .product(name: "XCTSpezi", package: "Spezi"),
             .product(name: "SpeziLocalStorage", package: "SpeziStorage"),
-            .product(name: "XCTRuntimeAssertions", package: "XCTRuntimeAssertions")
+            .product(name: "XCTRuntimeAssertions", package: "XCTRuntimeAssertions"),
+            .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+            .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax")
         ],
         resources: [.process("Resources")],
         swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
@@ -129,16 +132,16 @@ func targets() -> [Target] { // swiftlint:disable:this function_body_length
         swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
         plugins: [] + swiftLintPlugin()
     ))
-    targets.append(.testTarget(
-        name: "SpeziSchedulerMacrosTest",
-        dependencies: [
-            "SpeziSchedulerMacros",
-            .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
-            .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax")
-        ],
-        swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
-        plugins: [] + swiftLintPlugin()
-    ))
+//    targets.append(.testTarget(
+//        name: "SpeziSchedulerMacrosTest",
+//        dependencies: [
+//            "SpeziSchedulerMacros",
+//            .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+//            .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax")
+//        ],
+//        swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
+//        plugins: [] + swiftLintPlugin()
+//    ))
     #endif
     
     return targets
