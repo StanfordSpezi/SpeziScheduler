@@ -7,12 +7,14 @@
 //
 
 @testable import SpeziScheduler
-import XCTest
+import Testing
 
 
-final class NotificationsTests: XCTestCase {
-    func testSharedIdPrefix() {
-        XCTAssert(SchedulerNotifications.baseTaskNotificationId.starts(with: SchedulerNotifications.baseNotificationId))
-        XCTAssert(SchedulerNotifications.baseEventNotificationId.starts(with: SchedulerNotifications.baseNotificationId))
+@Suite
+struct NotificationsTests {
+    @Test
+    func sharedIdPrefix() {
+        #expect(SchedulerNotifications.baseTaskNotificationId.starts(with: SchedulerNotifications.baseNotificationId))
+        #expect(SchedulerNotifications.baseEventNotificationId.starts(with: SchedulerNotifications.baseNotificationId))
     }
 }
