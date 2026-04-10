@@ -15,16 +15,21 @@ import XCTest
 
 
 final class SpeziSchedulerUITests: XCTestCase {
+    private let locale = Locale(identifier: "en_US")
+    
     @MainActor
     func testTileHeaderLayout() {
         let event = SchedulerSampleData.makeTestEvent()
 
         let leadingTileHeader = DefaultTileHeader(event, alignment: .leading)
             .disableCategoryDefaultAppearances()
+            .environment(\.locale, locale)
         let centerTileHeader = DefaultTileHeader(event, alignment: .center)
             .disableCategoryDefaultAppearances()
+            .environment(\.locale, locale)
         let trailingTileHeader = DefaultTileHeader(event, alignment: .trailing)
             .disableCategoryDefaultAppearances()
+            .environment(\.locale, locale)
 
 #if os(iOS)
         assertSnapshot(of: leadingTileHeader, as: .image(layout: .device(config: .iPhone13Pro)), named: "leading")
@@ -39,10 +44,13 @@ final class SpeziSchedulerUITests: XCTestCase {
         
         let leadingTileHeader = DefaultTileHeader(event, alignment: .leading)
             .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
+            .environment(\.locale, locale)
         let centerTileHeader = DefaultTileHeader(event, alignment: .center)
             .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
+            .environment(\.locale, locale)
         let trailingTileHeader = DefaultTileHeader(event, alignment: .trailing)
             .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
+            .environment(\.locale, locale)
 
 #if os(iOS)
         assertSnapshot(of: leadingTileHeader, as: .image(layout: .device(config: .iPhone13Pro)), named: "leading")
@@ -57,28 +65,35 @@ final class SpeziSchedulerUITests: XCTestCase {
 
         let tileLeading = InstructionsTile(event, alignment: .leading)
             .disableCategoryDefaultAppearances()
+            .environment(\.locale, locale)
         let tileCenter = InstructionsTile(event, alignment: .center)
             .disableCategoryDefaultAppearances()
+            .environment(\.locale, locale)
         let tileTrailing = InstructionsTile(event, alignment: .trailing)
             .disableCategoryDefaultAppearances()
+            .environment(\.locale, locale)
 
         let tileLeadingMore = InstructionsTile(event, alignment: .leading, more: {
             Text("More Information")
         })
             .disableCategoryDefaultAppearances()
+            .environment(\.locale, locale)
         let tileCenterMore = InstructionsTile(event, alignment: .center, more: {
             Text("More Information")
         })
             .disableCategoryDefaultAppearances()
+            .environment(\.locale, locale)
         let tileTrailingMore = InstructionsTile(event, alignment: .trailing, more: {
             Text("More Information")
         })
             .disableCategoryDefaultAppearances()
+            .environment(\.locale, locale)
 
         let tileWithAction = InstructionsTile(event) {
             print("Action was pressed")
         }
             .disableCategoryDefaultAppearances()
+            .environment(\.locale, locale)
 
 #if os(iOS)
         assertSnapshot(of: tileLeading, as: .image(layout: .device(config: .iPhone13Pro)), named: "leading")
@@ -103,23 +118,29 @@ final class SpeziSchedulerUITests: XCTestCase {
 
         let tileLeading = InstructionsTile(event, alignment: .leading)
             .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
+            .environment(\.locale, locale)
         let tileCenter = InstructionsTile(event, alignment: .center)
             .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
+            .environment(\.locale, locale)
         let tileTrailing = InstructionsTile(event, alignment: .trailing)
             .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
+            .environment(\.locale, locale)
 
         let tileLeadingMore = InstructionsTile(event, alignment: .leading, more: {
             Text("More Information")
         })
             .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
+            .environment(\.locale, locale)
         let tileCenterMore = InstructionsTile(event, alignment: .center, more: {
             Text("More Information")
         })
             .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
+            .environment(\.locale, locale)
         let tileTrailingMore = InstructionsTile(event, alignment: .trailing, more: {
             Text("More Information")
         })
             .taskCategoryAppearance(for: .questionnaire, label: "Questionnaire", image: .system("list.clipboard.fill"))
+            .environment(\.locale, locale)
 
 #if os(iOS)
         assertSnapshot(of: tileLeading, as: .image(layout: .device(config: .iPhone13Pro)), named: "leading")
