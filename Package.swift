@@ -40,7 +40,7 @@ func products() -> [Product] {
 func dependencies() -> [PackageDescription.Package.Dependency] {
     var dependencies: [PackageDescription.Package.Dependency] = [
         .package(url: "https://github.com/StanfordSpezi/SpeziFoundation.git", from: "2.7.2"),
-        .package(url: "https://github.com/StanfordSpezi/Spezi.git", revision: "9d577f01c8a60d8d57a9282ab3b03994a5378014"),
+        .package(url: "https://github.com/StanfordSpezi/Spezi.git", from: "1.10.2"),
         .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
         .package(url: "https://github.com/swiftlang/swift-syntax.git", "602.0.0"..<"605.0.0"),
         .package(url: "https://github.com/StanfordBDHG/XCTRuntimeAssertions.git", from: "2.2.0"),
