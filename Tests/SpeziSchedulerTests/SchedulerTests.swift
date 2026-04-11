@@ -828,7 +828,7 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
             try? fm.removeItem(at: schedulerDir)
         }
         let didMigrateFlagUrl = schedulerDir.appending(component: Scheduler.didPerformIOS26MigrationFlagFilename)
-        #expect(try !fm.itemExists(at: didMigrateFlagUrl))
+        #expect(!fm.itemExists(at: didMigrateFlagUrl))
         let copyInputFile = { (ext: String) in
             let url = try #require(Bundle.module.url(forResource: "iOS26MigrationInput", withExtension: ext))
             try fm.copyItem(at: url, to: schedulerDir.appending(component: "edu.stanford.spezi.scheduler.storage.\(ext)"))
@@ -840,7 +840,7 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
         withDependencyResolution {
             scheduler
         }
-        #expect(try fm.itemExists(at: didMigrateFlagUrl))
+        #expect(fm.itemExists(at: didMigrateFlagUrl))
         let tasks = try scheduler.queryAllTasks()
         #expect(tasks.count == 5)
         #expect(tasks.mapIntoSet(\.id) == ["task1", "task2", "task3"])

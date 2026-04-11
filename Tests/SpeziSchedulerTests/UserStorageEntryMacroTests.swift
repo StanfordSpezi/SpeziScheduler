@@ -11,15 +11,17 @@
 import SpeziSchedulerMacros
 import SwiftSyntaxMacros
 import SwiftSyntaxMacrosTestSupport
-import XCTest
+import Testing
 
 let testMacros: [String: any Macro.Type] = [
     "Property": UserStorageEntryMacro.self
 ]
 
 
-final class UserStorageEntryMacroTests: XCTestCase { // swiftlint:disable:this type_body_length
-    func testOptionalProperty() {
+@Suite
+struct UserStorageEntryMacroTests { // swiftlint:disable:this type_body_length
+    @Test
+    func optionalProperty() {
         assertMacroExpansion(
             """
             extension Task.Context {
@@ -49,8 +51,10 @@ final class UserStorageEntryMacroTests: XCTestCase { // swiftlint:disable:this t
             macros: testMacros
         )
     }
-
-    func testOptionalPropertywithDefaultValue() {
+    
+    
+    @Test
+    func optionalPropertyWithDefaultValue() {
         assertMacroExpansion(
             """
             extension Task.Context {
@@ -80,8 +84,10 @@ final class UserStorageEntryMacroTests: XCTestCase { // swiftlint:disable:this t
             macros: testMacros
         )
     }
-
-    func testPropertyWithDefault() {
+    
+    
+    @Test
+    func propertyWithDefault() {
         assertMacroExpansion(
             """
             extension Task.Context {
@@ -111,8 +117,10 @@ final class UserStorageEntryMacroTests: XCTestCase { // swiftlint:disable:this t
             macros: testMacros
         )
     }
-
-    func testOptionalPropertyOnOutcome() {
+    
+    
+    @Test
+    func optionalPropertyOnOutcome() {
         assertMacroExpansion(
             """
             extension Outcome {
@@ -142,8 +150,10 @@ final class UserStorageEntryMacroTests: XCTestCase { // swiftlint:disable:this t
             macros: testMacros
         )
     }
-
-    func testPublicModifier() {
+    
+    
+    @Test
+    func publicModifier() {
         assertMacroExpansion(
             """
             extension Task.Context {
@@ -173,8 +183,10 @@ final class UserStorageEntryMacroTests: XCTestCase { // swiftlint:disable:this t
             macros: testMacros
         )
     }
-
-    func testBindingDiagnostics() { // swiftlint:disable:this function_body_length
+    
+    
+    @Test
+    func bindingDiagnostics() { // swiftlint:disable:this function_body_length
         assertMacroExpansion(
             """
             extension Task.Context {
@@ -242,8 +254,10 @@ final class UserStorageEntryMacroTests: XCTestCase { // swiftlint:disable:this t
             macros: testMacros
         )
     }
-
-    func testLexicalContext() { // swiftlint:disable:this function_body_length
+    
+    
+    @Test
+    func lexicalContext() { // swiftlint:disable:this function_body_length
         assertMacroExpansion(
             """
             extension NotAllowed {
@@ -302,8 +316,10 @@ final class UserStorageEntryMacroTests: XCTestCase { // swiftlint:disable:this t
             macros: testMacros
         )
     }
-
-    func testJsonCoding() { // swiftlint:disable:this function_body_length
+    
+    
+    @Test
+    func jsonCoding() { // swiftlint:disable:this function_body_length
         assertMacroExpansion(
             """
             extension Task.Context {
@@ -362,8 +378,10 @@ final class UserStorageEntryMacroTests: XCTestCase { // swiftlint:disable:this t
             macros: testMacros
         )
     }
-
-    func testCustomCoding() {
+    
+    
+    @Test
+    func customCoding() {
         assertMacroExpansion(
             """
             extension Task.Context {
