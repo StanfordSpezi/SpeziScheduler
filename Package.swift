@@ -132,18 +132,7 @@ func targets() -> [Target] { // swiftlint:disable:this function_body_length
         swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
         plugins: [] + swiftLintPlugin()
     ))
-//    targets.append(.testTarget(
-//        name: "SpeziSchedulerMacrosTest",
-//        dependencies: [
-//            "SpeziSchedulerMacros",
-//            .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
-//            .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax")
-//        ],
-//        swiftSettings: [.enableUpcomingFeature("ExistentialAny")],
-//        plugins: [] + swiftLintPlugin()
-//    ))
     #endif
-    
     return targets
 }
 
