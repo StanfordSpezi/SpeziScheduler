@@ -28,5 +28,5 @@ jobs:
     name: CI
     uses: StanfordBDHG/.github/.github/workflows/swift-package-ci.yml@v2
     with:
-      linux_run_tests: false
+      linux_run_tests: true
     secrets: inherit
