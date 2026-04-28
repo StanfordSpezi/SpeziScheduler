@@ -14,19 +14,19 @@ Schedule and observe tasks for your users to complete, such as taking surveys or
 
 ## Overview
 
-The Scheduler module allows the scheduling and observation of ``Task``s adhering to a specific ``Schedule``.
+The Scheduler module helps you create and manage recurring tasks that users need to complete, such as daily questionnaires, medication reminders, or health measurements. It can also be used for internal application logic and automated processes.
 
-A ``Task`` is an potentially repeated action or work that a user is supposed to perform. An ``Event`` represents a single
-occurrence of a task, that is derived from its ``Schedule``.
+### Key Concepts
 
-You use the `Scheduler` module to manage the persistence store of your tasks. It provides a versioned, append-only store
-for tasks. It allows to modify the properties (e.g., schedule) of future events without affecting occurrences of the past.
+- **Task**: A repeatable action users should perform (e.g., "Fill out a questionnaire.")
+- **Schedule**: Defines when and how often a task repeats (e.g., daily, weekly, monthly)
+- **Event**: A single instance when a task should be completed (e.g., "Fill out a questionnaire today at 8 AM")
 
-You create and automatically update your tasks
-using ``Scheduler/createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)``.
+The module automatically handles task persistence and versioning. When you update a task's schedule or details, it creates a new version without affecting previously completed events. This ensures your historical data remains intact.
 
-Below is a example on how to create your own [`Module`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/module)
-to manage your tasks and ensure they are always up to date.
+You create tasks using ``Scheduler/createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)``, and the module takes care of generating the appropriate events based on your schedule.
+
+Below is an example on how to create your own [`Module`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/module) to manage your tasks and ensure they are always up to date.
 
 ```swift
 import Spezi
@@ -44,7 +44,7 @@ class MySchedulerModule: Module {
                 id: "my-daily-task",
                 title: "Daily Questionnaire",
                 instructions: "Please fill out the Questionnaire every day.",
-                category: Task.Category("Questionnaire", systemName: "list.clipboard.fill"),
+                category: .questionnaire,
                 schedule: .daily(hour: 9, minute: 0, startingAt: .today)
             )
         } catch {
@@ -53,6 +53,43 @@ class MySchedulerModule: Module {
     }
 }
 ```
+
+### Task Scheduling Options
+
+The Scheduler supports various scheduling patterns using the ``Schedule`` type:
+
+```swift
+// One-time task
+let onceSchedule: Schedule = .once(at: Date(), duration: .tillEndOfDay)
+
+// Daily tasks
+let dailySchedule: Schedule = .daily(hour: 8, minute: 30, startingAt: .today)
+
+// Weekly tasks
+let weeklySchedule: Schedule = .weekly(
+    weekday: .monday, 
+    hour: 10, 
+    minute: 0, 
+    startingAt: .today
+)
+
+// Monthly tasks
+let monthlySchedule: Schedule = .monthly(
+    day: 1, 
+    hour: 9, 
+    minute: 0, 
+    startingAt: .today
+)
+
+// Custom recurrence patterns
+var customRule = Calendar.RecurrenceRule.weekly(calendar: .current, end: .never)
+customRule.weekdays = [.every(.monday), .every(.wednesday), .every(.friday)]
+let customSchedule = Schedule(startingAt: .today, recurrence: customRule)
+```
+
+### Notifications
+
+For basic notification support, you can use the [Notifications](https://github.com/StanfordSpezi/SpeziNotifications) module in your app configuration. For advanced scheduler-specific notification features, see the [``SchedulerNotifications``](https://swiftpackageindex.com/stanfordspezi/spezischeduler/documentation/spezischeduler/schedulernotifications) module.
 
 ## Topics
 

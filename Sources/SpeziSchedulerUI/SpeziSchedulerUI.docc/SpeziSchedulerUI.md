@@ -10,9 +10,11 @@ SPDX-License-Identifier: MIT
 
 -->
 
-UI components provided for SpeziScheduler.
+Ready-to-use SwiftUI components for displaying scheduled tasks and events in your app.
 
 ## Overview
+
+The `SpeziSchedulerUI` target provides UI components that connect to your configured `Scheduler` instance to display tasks and handle user interactions.
 
 @Row {
     @Column {
@@ -31,6 +33,80 @@ UI components provided for SpeziScheduler.
         }
     }
 }
+
+### Displaying Events in Lists
+
+Use ``EventScheduleList`` to display all events for a specific day. It automatically handles empty states and provides a clean, organized view of scheduled tasks:
+
+```swift
+import SpeziSchedulerUI
+
+struct ScheduleView: View {
+    var body: some View {
+        NavigationStack {
+            EventScheduleList { event in
+                InstructionsTile(event) {
+                    try event.complete()
+                }
+            }
+            .navigationTitle("Today's Schedule")
+        }
+    }
+}
+```
+
+You can also display events for different dates:
+
+```swift
+EventScheduleList(date: .tomorrow) { event in
+    InstructionsTile(event) {
+        try event.complete()
+    }
+}
+```
+
+### Task Cards with InstructionsTile
+
+The ``InstructionsTile`` component provides a polished card interface for individual tasks:
+
+```swift
+// Basic tile with completion button
+InstructionsTile(event) {
+    try event.complete()
+}
+
+// Tile with additional information sheet
+InstructionsTile(event) {
+    try event.complete()
+} more: {
+    VStack(alignment: .leading, spacing: 16) {
+        Text("Detailed Instructions")
+            .font(.headline)
+        Text("Step-by-step guide on how to complete this task...")
+    }
+    .padding()
+}
+
+// Centered alignment for featured tasks
+InstructionsTile(event, alignment: .center) {
+    try event.complete()
+}
+```
+
+### Customizing Task Appearance
+
+You can customize how different task categories appear in the UI using the `taskCategoryAppearance(for:label:image:)` modifier:
+
+```swift
+EventScheduleList { event in
+    InstructionsTile(event) {
+        try event.complete()
+    }
+}
+.taskCategoryAppearance(for: .questionnaire, label: "Survey", image: .system("list.clipboard.fill"))
+.taskCategoryAppearance(for: .medication, label: "Medication", image: .system("pills.fill"))
+.taskCategoryAppearance(for: .measurement, label: "Measurement", image: .system("ruler.fill"))
+```
 
 
 ## Topics
