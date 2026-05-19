@@ -21,8 +21,8 @@ struct SingleValueWrapper<Value: Codable>: Codable {
     }
 }
 
-
-struct UserInfoStorage<Anchor: RepositoryAnchor> {
+@_spi(APISupport)
+public struct UserInfoStorage<Anchor: RepositoryAnchor> { // swiftlint:disable:this missing_docs
     struct RepositoryCache {
         var repository = ValueRepository<Anchor>()
     }
@@ -60,7 +60,7 @@ extension UserInfoStorage {
             cache.repository.set(source, value: value.value)
             return value.value
         } catch {
-            logger.error("Failed to decode userInfo value for \(source) from data \(data): \(error)")
+//            logger.error("Failed to decode userInfo value for \(source) from data \(data): \(error)")
             return nil
         }
     }
@@ -73,7 +73,7 @@ extension UserInfoStorage {
                 let encoder = source.coding.encoder
                 userInfo[source.identifier] = try encoder.encode(SingleValueWrapper(value: newValue))
             } catch {
-                logger.error("Failed to encode userInfo value \(String(describing: newValue)) for \(source): \(error)")
+//                logger.error("Failed to encode userInfo value \(String(describing: newValue)) for \(source): \(error)")
             }
         } else {
             userInfo.removeValue(forKey: source.identifier)
@@ -83,11 +83,11 @@ extension UserInfoStorage {
 
 
 extension UserInfoStorage: RawRepresentable {
-    var rawValue: [String: Data] {
+    public var rawValue: [String: Data] {
         userInfo
     }
 
-    init(rawValue: [String: Data]) {
+    public init(rawValue: [String: Data]) {
         self.userInfo = rawValue
     }
 }
@@ -96,14 +96,14 @@ extension UserInfoStorage: Codable {}
 
 
 extension UserInfoStorage: Equatable {
-    static func == (lhs: UserInfoStorage<Anchor>, rhs: UserInfoStorage<Anchor>) -> Bool {
+    public static func == (lhs: UserInfoStorage<Anchor>, rhs: UserInfoStorage<Anchor>) -> Bool {
         lhs.userInfo == rhs.userInfo
     }
 }
 
 
 extension UserInfoStorage: CustomStringConvertible {
-    var description: String {
+    public var description: String {
         "UserInfoStorage(\(userInfo.keys.joined(separator: ", ")))"
     }
 }

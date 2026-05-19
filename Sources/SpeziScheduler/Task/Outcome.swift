@@ -83,6 +83,12 @@ public final class Outcome {
         self.occurrenceStartDate = occurrence.start
         self.task = task
     }
+    
+    /// Unsafely (i.e., potentially breaking invariants) updates the Outcome's associated ``Task``.
+    @_spi(APISupport)
+    public func unsafelyReassignTask(to newTask: Task) {
+        self.task = newTask
+    }
 }
 
 

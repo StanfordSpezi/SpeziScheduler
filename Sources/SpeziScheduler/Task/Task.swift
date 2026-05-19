@@ -225,7 +225,8 @@ public final class Task { // swiftlint:disable:this type_body_length
     public private(set) var nextVersion: Task?
 
     /// Additional userInfo stored alongside the task.
-    private(set) var userInfo: UserInfoStorage<TaskAnchor>
+    @_spi(APISupport)
+    public private(set) var userInfo: UserInfoStorage<TaskAnchor>
     @Transient private var userInfoCache = UserInfoStorage<TaskAnchor>.RepositoryCache()
 
     private init(
@@ -355,24 +356,57 @@ public final class Task { // swiftlint:disable:this type_body_length
         effectiveFrom: Date,
         with contextClosure: ((inout Context) -> Void)?
     ) -> Bool {
+        !keyPathsNecessitatingNewTaskVersion(
+            title: title,
+            instructions: instructions,
+            category: category,
+            schedule: schedule,
+            completionPolicy: completionPolicy,
+            scheduleNotifications: scheduleNotifications,
+            notificationThread: notificationThread,
+            notificationTime: notificationTime,
+            tags: tags,
+            effectiveFrom: effectiveFrom,
+            with: contextClosure
+        ).isEmpty
+    }
+    
+    /// Determines which properties of the task would necessitate a new version be created.
+    @_spi(APISupport)
+    public func keyPathsNecessitatingNewTaskVersion( // swiftlint:disable:this function_parameter_count
+        title: String.LocalizationValue?,
+        instructions: String.LocalizationValue?,
+        category: Category?,
+        schedule: Schedule?,
+        completionPolicy: AllowedCompletionPolicy?,
+        scheduleNotifications: Bool?, // swiftlint:disable:this discouraged_optional_boolean
+        notificationThread: NotificationThread?,
+        notificationTime: NotificationTime?,
+        tags: [String]?, // swiftlint:disable:this discouraged_optional_collection
+        effectiveFrom: Date,
+        with contextClosure: ((inout Context) -> Void)?
+    ) -> Set<PartialKeyPath<Task>> {
         let context: Context? = contextClosure.map { apply in
             var context = Context()
             apply(&context)
             return context
         }
-        func didChange<V: Equatable>(_ value: V?, for keyPath: KeyPath<Task, V>) -> Bool {
-            value != nil && value != self[keyPath: keyPath]
+        func imp<V: Equatable>(_ value: V?, for keyPath: KeyPath<Task, V>) -> KeyPath<Task, V>? {
+            let didChange = value != nil && value != self[keyPath: keyPath]
+            return didChange ? keyPath : nil
         }
-        return didChange(title, for: \.title)
-            || didChange(instructions, for: \.instructions)
-            || didChange(category, for: \.category)
-            || didChange(schedule, for: \.schedule)
-            || didChange(completionPolicy, for: \.completionPolicy)
-            || didChange(tags, for: \.tags)
-            || didChange(scheduleNotifications, for: \.scheduleNotifications)
-            || didChange(notificationThread, for: \.notificationThread)
-            || didChange(notificationTime, for: \.notificationTime)
-            || didChange(context?.userInfo, for: \.userInfo)
+        return Set {
+            imp(title, for: \.title)
+            imp(instructions, for: \.instructions)
+            imp(category, for: \.category)
+            imp(schedule, for: \.schedule)
+            imp(completionPolicy, for: \.completionPolicy)
+            imp(tags, for: \.tags)
+            imp(scheduleNotifications, for: \.scheduleNotifications)
+            imp(notificationThread, for: \.notificationThread)
+            imp(notificationTime, for: \.notificationTime)
+            imp(context?.userInfo, for: \.userInfo)
+        }
     }
 
     func createUpdatedVersion( // swiftlint:disable:this function_parameter_count
@@ -516,6 +550,18 @@ extension Task {
                 userInfo.set(source, value: newValue, cache: &box.userInfoCache)
             }
         }
+        
+        /// Access members of the tasks context.
+        ///
+        /// This subscript allows to dynamically access members of the ``Context`` of the task.
+        ///
+        /// - Parameter keyPath: The key path to a property of the `Context`.
+        /// - Returns: The value for that property `Context`.
+        @_documentation(visibility: internal)
+        public subscript<Value>(dynamicMember keyPath: KeyPath<Self, Value>) -> Value {
+            let context = Context(userInfo: userInfo, userInfoCache: userInfoCache)
+            return context[keyPath: keyPath]
+        }
     }
 }
 
@@ -524,6 +570,27 @@ extension Task {
     func _updateTitle(_ title: String.LocalizationValue, instructions: String.LocalizationValue) { // swiftlint:disable:this identifier_name
         self.title = title
         self.instructions = instructions
+    }
+    
+    /// Unsafely updates the task's ``userInfo``.
+    ///
+    /// - Important: Only call this function if you know what you are doing!
+    @_spi(APISupport)
+    public func unsafelyUpdateContext(
+        _ update: (_ context: inout Task.Context) throws -> Void
+    ) rethrows {
+        var context = Context(userInfo: userInfo, userInfoCache: userInfoCache)
+        try update(&context)
+        self.userInfo = context.userInfo
+        self.userInfoCache = context.userInfoCache
+    }
+    
+    /// Unsafely updates the task's ``nextVersion``.
+    ///
+    /// - Important: Only call this function if you know what you are doing!
+    @_spi(APISupport)
+    public func unsafelyUpdateNextVersion(to newNextVersion: Task?) {
+        self.nextVersion = newNextVersion
     }
 }
 
@@ -591,3 +658,14 @@ extension Task: CustomStringConvertible {
     }
 }
 #endif
+
+
+extension SetBuilder {
+    static func buildExpression(_ expression: Element?) -> Set<Element> {
+        if let expression {
+            Set(CollectionOfOne(expression))
+        } else {
+            Set()
+        }
+    }
+}

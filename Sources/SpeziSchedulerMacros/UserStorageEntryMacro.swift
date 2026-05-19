@@ -111,6 +111,32 @@ extension UserStorageEntryMacro: PeerMacro {
                 declName: DeclReferenceExprSyntax(baseName: .identifier("propertyList"))
             ))
         }
+        
+        let storageIdentifier: String
+        if case .argumentList(let arguments) = node.arguments,
+           let storageIdentArg = arguments.first(where: { $0.label?.text == "storageIdentifier" }) {
+            guard let stringLiteral = storageIdentArg.expression.as(StringLiteralExprSyntax.self) else {
+                throw DiagnosticsError(
+                    syntax: storageIdentArg,
+                    message: "Must be a String literal!",
+                    id: .invalidSyntax
+                )
+            }
+            storageIdentifier = try stringLiteral.segments.reduce(into: "") { result, segment in
+                switch segment {
+                case .stringSegment(let segment):
+                    result += segment.content.text
+                case .expressionSegment:
+                    throw DiagnosticsError(
+                        syntax: stringLiteral,
+                        message: "String isn't allowed to contain interpolations!",
+                        id: .invalidSyntax
+                    )
+                }
+            }
+        } else {
+            storageIdentifier = identifier.text
+        }
 
         let keyProtocol: TokenSyntax
 
@@ -130,7 +156,6 @@ extension UserStorageEntryMacro: PeerMacro {
                 id: .invalidSyntax
             )
         }
-
 
         let valueTypeInitializer: TypeSyntax
 
@@ -162,7 +187,7 @@ extension UserStorageEntryMacro: PeerMacro {
             )
 
             """
-            static let identifier: String = "\(identifier)"
+            static let identifier: String = \(StringLiteralExprSyntax(content: storageIdentifier))
             static let coding = \(codingExpression)
             """
         }

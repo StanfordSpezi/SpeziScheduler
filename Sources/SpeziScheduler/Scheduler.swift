@@ -164,7 +164,9 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         }
     }
     
-    var context: ModelContext {
+    /// The SwiftData `ModelContext` used by the Scheduler.
+    @_spi(APISupport)
+    public var context: ModelContext {
         get throws {
             try container.mainContext
         }
@@ -264,7 +266,6 @@ public final class Scheduler: Module, EnvironmentAccessible, DefaultInitializabl
         // It also makes it easier to understand the SwiftData-related infrastructure around Spezi Scheduler.
         // One could think that Apple could have provided a lot of this information in their documentation.
         notifications.registerProcessingTask(using: self)
-        
         assert(
             ((try? self.queryAllTasks()) ?? []).allSatisfy { $0.allVersions.adjacentPairs().allSatisfy { $0.effectiveFrom < $1.effectiveFrom } },
             "Scheduler Database contains Tasks with non-increasing effectiveFrom values!"
