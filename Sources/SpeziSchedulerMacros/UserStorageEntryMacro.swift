@@ -115,24 +115,27 @@ extension UserStorageEntryMacro: PeerMacro {
         let storageIdentifier: String
         if case .argumentList(let arguments) = node.arguments,
            let storageIdentArg = arguments.first(where: { $0.label?.text == "storageIdentifier" }) {
-            guard let stringLiteral = storageIdentArg.expression.as(StringLiteralExprSyntax.self) else {
+            if let stringLiteral = storageIdentArg.expression.as(StringLiteralExprSyntax.self) {
+                storageIdentifier = try stringLiteral.segments.reduce(into: "") { result, segment in
+                    switch segment {
+                    case .stringSegment(let segment):
+                        result += segment.content.text
+                    case .expressionSegment:
+                        throw DiagnosticsError(
+                            syntax: stringLiteral,
+                            message: "String isn't allowed to contain interpolations!",
+                            id: .invalidSyntax
+                        )
+                    }
+                }
+            } else if storageIdentArg.expression.is(NilLiteralExprSyntax.self) {
+                storageIdentifier = identifier.text
+            } else {
                 throw DiagnosticsError(
                     syntax: storageIdentArg,
                     message: "Must be a String literal!",
                     id: .invalidSyntax
                 )
-            }
-            storageIdentifier = try stringLiteral.segments.reduce(into: "") { result, segment in
-                switch segment {
-                case .stringSegment(let segment):
-                    result += segment.content.text
-                case .expressionSegment:
-                    throw DiagnosticsError(
-                        syntax: stringLiteral,
-                        message: "String isn't allowed to contain interpolations!",
-                        id: .invalidSyntax
-                    )
-                }
             }
         } else {
             storageIdentifier = identifier.text

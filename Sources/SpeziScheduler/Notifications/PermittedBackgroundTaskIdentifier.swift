@@ -8,7 +8,7 @@
 
 #if canImport(Darwin)
 @usableFromInline
-struct PermittedBackgroundTaskIdentifier {
+struct PermittedBackgroundTaskIdentifier: RawRepresentable, Hashable, Sendable, Codable {
     @usableFromInline static let speziSchedulerNotificationsScheduling = PermittedBackgroundTaskIdentifier(
         rawValue: "edu.stanford.spezi.scheduler.notifications-scheduling"
     )
@@ -20,7 +20,4 @@ struct PermittedBackgroundTaskIdentifier {
         self.rawValue = rawValue
     }
 }
-
-
-extension PermittedBackgroundTaskIdentifier: RawRepresentable, Hashable, Sendable, Codable {}
 #endif

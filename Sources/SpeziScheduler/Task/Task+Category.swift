@@ -27,7 +27,7 @@ extension Task {
     ///
     /// ### Creating a new Category
     /// - ``custom(_:)``
-    public struct Category {
+    public struct Category: Hashable, Sendable, RawRepresentable, Codable {
         /// The category name.
         @_spi(APISupport)
         public let rawValue: String
@@ -39,9 +39,6 @@ extension Task {
         }
     }
 }
-
-
-extension Task.Category: Hashable, Sendable, RawRepresentable, Codable {}
 
 
 extension Task.Category: CustomStringConvertible {

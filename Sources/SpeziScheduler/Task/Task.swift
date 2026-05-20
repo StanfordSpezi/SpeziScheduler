@@ -495,6 +495,34 @@ public final class Task { // swiftlint:disable:this type_body_length
         let context = Context(userInfo: userInfo, userInfoCache: userInfoCache)
         return context[keyPath: keyPath]
     }
+    
+    /// Retrieve or set the value for a given storage key.
+    /// - Parameter source: The storage key.
+    /// - Returns: The value or `nil` if there isn't currently a value stored in the outcome.
+    @_documentation(visibility: internal)
+    public subscript<Source: TaskStorageKey>(_ source: Source.Type) -> Source.Value? {
+        get {
+            try? userInfo.get(source, cache: &userInfoCache)
+        }
+        set {
+            try? userInfo.set(source, value: newValue, cache: &userInfoCache)
+        }
+    }
+
+    /// Retrieve or set the value for a given storage key.
+    /// - Parameters:
+    ///   - source: The storage key type.
+    ///   - defaultValue: A default value that is returned if there isn't a value stored.
+    /// - Returns: The value or the default value if there isn't currently a value stored in the context.
+    @_documentation(visibility: internal)
+    public subscript<Source: TaskStorageKey>(_ source: Source.Type, default defaultValue: @autoclosure () -> Source.Value) -> Source.Value {
+        get {
+            (try? userInfo.get(source, cache: &userInfoCache)) ?? defaultValue()
+        }
+        set {
+            try? userInfo.set(source, value: newValue, cache: &userInfoCache)
+        }
+    }
 }
 
 
@@ -528,10 +556,10 @@ extension Task {
         @_documentation(visibility: internal)
         public subscript<Source: TaskStorageKey>(_ source: Source.Type) -> Source.Value? {
             get {
-                userInfo.get(source, cache: &box.userInfoCache)
+                try? userInfo.get(source, cache: &box.userInfoCache)
             }
             set {
-                userInfo.set(source, value: newValue, cache: &box.userInfoCache)
+                try? userInfo.set(source, value: newValue, cache: &box.userInfoCache)
             }
         }
 
@@ -544,10 +572,10 @@ extension Task {
         @_documentation(visibility: internal)
         public subscript<Source: TaskStorageKey>(_ source: Source.Type, default defaultValue: @autoclosure () -> Source.Value) -> Source.Value {
             get {
-                userInfo.get(source, cache: &box.userInfoCache) ?? defaultValue()
+                (try? userInfo.get(source, cache: &box.userInfoCache)) ?? defaultValue()
             }
             set {
-                userInfo.set(source, value: newValue, cache: &box.userInfoCache)
+                try? userInfo.set(source, value: newValue, cache: &box.userInfoCache)
             }
         }
         

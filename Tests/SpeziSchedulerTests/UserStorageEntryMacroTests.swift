@@ -411,6 +411,72 @@ struct UserStorageEntryMacroTests { // swiftlint:disable:this type_body_length
             macros: testMacros
         )
     }
+    
+    
+    @Test
+    func customStorageIdentifier() {
+        assertMacroExpansion(
+            """
+            extension Task.Context {
+                @Property(storageIdentifier: "legacyName") var testMacro: String?
+            }
+            """,
+            expandedSource:
+            """
+            extension Task.Context {
+                var testMacro: String? {
+                    get {
+                        self[__Key_testMacro.self]
+                    }
+                    set {
+                        self[__Key_testMacro.self] = newValue
+                    }
+                }
+            
+                private struct __Key_testMacro: TaskStorageKey {
+                    typealias Value = String
+            
+                    static let identifier: String = "legacyName"
+                    static let coding = UserStorageCoding.propertyList
+                }
+            }
+            """,
+            macros: testMacros
+        )
+    }
+    
+    
+    @Test
+    func customStorageIdentifierNilLiteral() {
+        assertMacroExpansion(
+            """
+            extension Task.Context {
+                @Property(storageIdentifier: nil) var testMacro: String?
+            }
+            """,
+            expandedSource:
+            """
+            extension Task.Context {
+                var testMacro: String? {
+                    get {
+                        self[__Key_testMacro.self]
+                    }
+                    set {
+                        self[__Key_testMacro.self] = newValue
+                    }
+                }
+            
+                private struct __Key_testMacro: TaskStorageKey {
+                    typealias Value = String
+            
+                    static let identifier: String = "testMacro"
+                    static let coding = UserStorageCoding.propertyList
+                }
+            }
+            """,
+            macros: testMacros
+        )
+    }
 }
 
 #endif
