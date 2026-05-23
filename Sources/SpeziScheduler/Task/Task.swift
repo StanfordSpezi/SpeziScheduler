@@ -578,18 +578,6 @@ extension Task {
                 try? userInfo.set(source, value: newValue, cache: &box.userInfoCache)
             }
         }
-        
-        /// Access members of the tasks context.
-        ///
-        /// This subscript allows to dynamically access members of the ``Context`` of the task.
-        ///
-        /// - Parameter keyPath: The key path to a property of the `Context`.
-        /// - Returns: The value for that property `Context`.
-        @_documentation(visibility: internal)
-        public subscript<Value>(dynamicMember keyPath: KeyPath<Self, Value>) -> Value {
-            let context = Context(userInfo: userInfo, userInfoCache: userInfoCache)
-            return context[keyPath: keyPath]
-        }
     }
 }
 

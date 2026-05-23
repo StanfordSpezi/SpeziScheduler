@@ -49,14 +49,10 @@ extension UserInfoStorage {
         guard let data = userInfo[source.identifier] else {
             return nil
         }
-        do {
-            let decoder = source.coding.decoder
-            let value = try decoder.decode(SingleValueWrapper<Source.Value>.self, from: data)
-            cache.repository.set(source, value: value.value)
-            return value.value
-        } catch {
-            return nil
-        }
+        let decoder = source.coding.decoder
+        let value = try decoder.decode(SingleValueWrapper<Source.Value>.self, from: data)
+        cache.repository.set(source, value: value.value)
+        return value.value
     }
 
     mutating func set<Source: _UserInfoKey<Anchor>>(
