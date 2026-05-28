@@ -922,14 +922,18 @@ extension Scheduler {
     }
 
     private func queryOutcomes(for range: Range<Date>, predicate taskPredicate: Predicate<Task>) throws -> [Outcome] {
+        // `range.contains(outcome.occurrenceStartDate)` can't be used directly in a #Predicate (it filters out
+        // everything, even when the start date falls into the range — see PR #55 for the original workaround).
+        // Additionally, on iOS 26.5+, SwiftData rejects a captured `Range<Date>` constant outright with
+        // `SwiftDataError.unsupportedPredicate("Captured/constant values of type 'Range<Date>' are not supported")`,
+        // so the bounds are hoisted into plain `Date` locals before the predicate to keep only supported types
+        // in the captured environment.
+        // See also: https://github.com/StanfordSpezi/SpeziScheduler/pull/55#issuecomment-2667153659
+        let lowerBound = range.lowerBound
+        let upperBound = range.upperBound
         var descriptor = FetchDescriptor<Outcome>(
             predicate: #Predicate { outcome in
-                // Since, for some reason, `range.contains(outcome.occurrenceStartDate)` doesn't work in a #Predicate
-                // (it just filters out everything, even if the start date does in fact fall into the range),
-                // we instead need to rewrite what could otherwise be a `contains` call into explicit checks against the range's lower and upper bound.
-                // See also: https://github.com/StanfordSpezi/SpeziScheduler/pull/55#issuecomment-2667153659
-                // swiftlint:disable:next line_length
-                range.lowerBound <= outcome.occurrenceStartDate && outcome.occurrenceStartDate < range.upperBound && taskPredicate.evaluate(outcome.task)
+                lowerBound <= outcome.occurrenceStartDate && outcome.occurrenceStartDate < upperBound && taskPredicate.evaluate(outcome.task)
             }
         )
         descriptor.relationshipKeyPathsForPrefetching = [\.task]
@@ -949,14 +953,13 @@ extension Scheduler {
     }
 
     private func queryOutcomeIdentifiers(for range: Range<Date>, predicate taskPredicate: Predicate<Task>) throws -> Set<PersistentIdentifier> {
+        // See `queryOutcomes(for:predicate:)` above for the rationale behind hoisting the range bounds
+        // into `Date` locals before the #Predicate (iOS 26.5+ SwiftData rejects captured `Range<Date>`).
+        let lowerBound = range.lowerBound
+        let upperBound = range.upperBound
         let descriptor = FetchDescriptor<Outcome>(
             predicate: #Predicate { outcome in
-                // Since, for some reason, `range.contains(outcome.occurrenceStartDate)` doesn't work in a #Predicate
-                // (it just filters out everything, even if the start date does in fact fall into the range),
-                // we instead need to rewrite what could otherwise be a `contains` call into explicit checks against the range's lower and upper bound.
-                // See also: https://github.com/StanfordSpezi/SpeziScheduler/pull/55#issuecomment-2667153659
-                // swiftlint:disable:next line_length
-                range.lowerBound <= outcome.occurrenceStartDate && outcome.occurrenceStartDate < range.upperBound && taskPredicate.evaluate(outcome.task)
+                lowerBound <= outcome.occurrenceStartDate && outcome.occurrenceStartDate < upperBound && taskPredicate.evaluate(outcome.task)
             }
         )
         return try Set(context.fetchIdentifiers(descriptor))
