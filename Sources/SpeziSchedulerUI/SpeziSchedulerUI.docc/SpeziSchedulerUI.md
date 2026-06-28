@@ -10,11 +10,9 @@ SPDX-License-Identifier: MIT
 
 -->
 
-Ready-to-use SwiftUI components for displaying scheduled tasks and events in your app.
+SwiftUI components for displaying scheduled tasks and events in your application.
 
 ## Overview
-
-The `SpeziSchedulerUI` target provides UI components that connect to your configured `Scheduler` instance to display tasks and handle user interactions.
 
 @Row {
     @Column {
@@ -36,7 +34,7 @@ The `SpeziSchedulerUI` target provides UI components that connect to your config
 
 ### Displaying Events in Lists
 
-Use ``EventScheduleList`` to display all events for a specific day. It automatically handles empty states and provides a clean, organized view of scheduled tasks:
+Use ``EventScheduleList`` to display all events for a specific day. It automatically handles empty states and defaults to today's date:
 
 ```swift
 import SpeziSchedulerUI
@@ -55,57 +53,49 @@ struct ScheduleView: View {
 }
 ```
 
-You can also display events for different dates:
-
-```swift
-EventScheduleList(date: .tomorrow) { event in
-    InstructionsTile(event) {
-        event.complete()
-    }
-}
-```
+Pass a `date` to display events for a different day (e.g., `EventScheduleList(date: .tomorrow)`).
 
 ### Task Cards with InstructionsTile
 
-The ``InstructionsTile`` component provides a polished card interface for individual tasks:
+The ``InstructionsTile`` component provides a card interface for a single event. Use the `more` trailing closure to show a detail sheet, and `alignment` to control how the content is aligned:
 
 ```swift
-// Basic tile with completion button
-InstructionsTile(event) {
-    event.complete()
-}
-
-// Tile with additional information sheet
-InstructionsTile(event) {
-    event.complete()
-} more: {
-    VStack(alignment: .leading, spacing: 16) {
-        Text("Detailed Instructions")
-            .font(.headline)
-        Text("Step-by-step guide on how to complete this task...")
+struct ScheduleView: View {
+    var body: some View {
+        EventScheduleList { event in
+            // With a detail sheet and centered alignment
+            InstructionsTile(event, alignment: .center) {
+                event.complete()
+            } more: {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Detailed Instructions")
+                        .font(.headline)
+                    Text("Step-by-step guide on how to complete this task...")
+                }
+                .padding()
+            }
+        }
     }
-    .padding()
-}
-
-// Centered alignment for featured tasks
-InstructionsTile(event, alignment: .center) {
-    event.complete()
 }
 ```
 
 ### Customizing Task Appearance
 
-You can customize how different task categories appear in the UI using the `taskCategoryAppearance(for:label:image:)` modifier:
+You can customize how task categories appear in the UI using the ``SwiftUICore/View/taskCategoryAppearance(for:label:image:)`` modifier:
 
 ```swift
-EventScheduleList { event in
-    InstructionsTile(event) {
-        event.complete()
+struct ScheduleView: View {
+    var body: some View {
+        EventScheduleList { event in
+            InstructionsTile(event) {
+                event.complete()
+            }
+        }
+        .taskCategoryAppearance(for: .questionnaire, label: "Survey", image: .system("list.clipboard.fill"))
+        .taskCategoryAppearance(for: .medication, label: "Medication", image: .system("pills.fill"))
+        .taskCategoryAppearance(for: .measurement, label: "Measurement", image: .system("ruler.fill"))
     }
 }
-.taskCategoryAppearance(for: .questionnaire, label: "Survey", image: .system("list.clipboard.fill"))
-.taskCategoryAppearance(for: .medication, label: "Medication", image: .system("pills.fill"))
-.taskCategoryAppearance(for: .measurement, label: "Measurement", image: .system("ruler.fill"))
 ```
 
 

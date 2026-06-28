@@ -87,39 +87,56 @@ The Scheduler supports various scheduling patterns using the [`Schedule`](https:
 
 ### Task Categories and Metadata
 
-Tasks can include categories and additional metadata for better organization and functionality:
+Tasks support categories, tags, and custom metadata. To attach custom metadata, first extend `Task.Context` using the `@Property` macro, then set it in the `with` closure:
 
 ```swift
+extension Task.Context {
+    @Property var questionnaireIdentifier: String?
+}
+
 try scheduler.createOrUpdateTask(
-    id: "medication-reminder",
-    title: "Morning Medication",
-    instructions: "Take your prescribed morning medication with water.",
-    category: .medication,
-    schedule: .daily(hour: 8, minute: 0, startingAt: .today),
-    tags: ["health", "medication", "daily"]
+    id: "my-questionnaire",
+    title: "Daily Questionnaire",
+    instructions: "Please fill out the questionnaire.",
+    category: .questionnaire,
+    schedule: .daily(hour: 9, minute: 0, startingAt: .today),
+    tags: ["questionnaire", "daily"]
 ) { context in
-    // Store additional metadata using the @Property macro
-    context.about = "Take your daily medication as prescribed by your healthcare provider."
+    context.questionnaireIdentifier = "phq-9"
 }
 ```
 
 ### Notifications
 
-The scheduler includes basic notification functionality. For more advanced features, see the [`SchedulerNotifications`](https://swiftpackageindex.com/stanfordspezi/spezischeduler/documentation/spezischeduler/schedulernotifications) module documentation.
+To send a notification for each scheduled event, pass `scheduleNotifications: true` to `createOrUpdateTask`. By default the notification fires at the start of the event; use `notificationTime` to specify a different time of day:
+
+```swift
+try scheduler.createOrUpdateTask(
+    id: "my-daily-task",
+    title: "Daily Questionnaire",
+    instructions: "Please fill out the Questionnaire every day.",
+    category: .questionnaire,
+    schedule: .daily(hour: 9, minute: 0, startingAt: .today),
+    scheduleNotifications: true,
+    notificationTime: NotificationTime(hour: 8, minute: 30)
+)
+```
+
+For advanced notification features, see the [`SchedulerNotifications`](https://swiftpackageindex.com/stanfordspezi/spezischeduler/documentation/spezischeduler/schedulernotifications) documentation.
 
 ### Querying Tasks and Events
 
 You can query tasks and events using various methods:
 
 ```swift
-// Query tasks for a specific date range
-let tasks = try scheduler.queryTasks(for: Date()..<Calendar.current.date(byAdding: .day, value: 7, to: Date())!)
+// Query events for today
+let todayEvents = try scheduler.queryEvents(for: Calendar.current.rangeOfDay(for: .now))
 
-// Query events (task occurrences) for today
-let todayEvents = try scheduler.queryEvents(for: Date()..<Calendar.current.date(byAdding: .day, value: 1, to: Date())!)
+// Query events for a specific task today
+let taskEvents = try scheduler.queryEvents(forTaskWithId: "my-daily-task", in: Calendar.current.rangeOfDay(for: .now))
 
-// Query events for a specific task
-let taskEvents = try scheduler.queryEvents(forTaskWithId: "daily-questionnaire", in: Date()..<Date().addingTimeInterval(86400))
+// Query tasks for the next 7 days
+let tasks = try scheduler.queryTasks(for: .today..<.nextWeek)
 ```
 
 ## User Interface Components

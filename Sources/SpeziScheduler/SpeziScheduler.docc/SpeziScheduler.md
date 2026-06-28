@@ -18,9 +18,9 @@ The Scheduler module helps you create and manage recurring tasks that users need
 
 ### Key Concepts
 
-- **Task**: A repeatable action users should perform (e.g., "Fill out a questionnaire.")
+- **Task**: A repeatable action or piece of work the user should perform (e.g., "Fill out a questionnaire.")
 - **Schedule**: Defines when and how often a task repeats (e.g., daily, weekly, monthly)
-- **Event**: A single instance when a task should be completed (e.g., "Fill out a questionnaire today at 8 AM")
+- **Event**: A single occurrence of a task, derived from the task and its schedule (e.g., "Fill out a questionnaire today at 8 AM")
 
 The module automatically handles task persistence and versioning. When you update a task's schedule or details, it creates a new version without affecting previously completed events. This ensures your historical data remains intact.
 
@@ -56,40 +56,11 @@ class MySchedulerModule: Module {
 
 ### Task Scheduling Options
 
-The Scheduler supports various scheduling patterns using the ``Schedule`` type:
-
-```swift
-// One-time task
-let onceSchedule: Schedule = .once(at: Date(), duration: .tillEndOfDay)
-
-// Daily tasks
-let dailySchedule: Schedule = .daily(hour: 8, minute: 30, startingAt: .today)
-
-// Weekly tasks
-let weeklySchedule: Schedule = .weekly(
-    weekday: .monday, 
-    hour: 10, 
-    minute: 0, 
-    startingAt: .today
-)
-
-// Monthly tasks
-let monthlySchedule: Schedule = .monthly(
-    day: 1, 
-    hour: 9, 
-    minute: 0, 
-    startingAt: .today
-)
-
-// Custom recurrence patterns
-var customRule = Calendar.RecurrenceRule.weekly(calendar: .current, end: .never)
-customRule.weekdays = [.every(.monday), .every(.wednesday), .every(.friday)]
-let customSchedule = Schedule(startingAt: .today, recurrence: customRule)
-```
+The Scheduler supports various scheduling patterns using the ``Schedule`` type, including one-time, daily, weekly, and monthly schedules, as well as fully custom recurrence patterns using `Calendar.RecurrenceRule`. See the ``Schedule`` documentation for the full API.
 
 ### Notifications
 
-For basic notification support, you can use the [Notifications](https://github.com/StanfordSpezi/SpeziNotifications) module in your app configuration. For advanced scheduler-specific notification features, see the [``SchedulerNotifications``](https://swiftpackageindex.com/stanfordspezi/spezischeduler/documentation/spezischeduler/schedulernotifications) module.
+To send a notification for each scheduled event, pass `scheduleNotifications: true` to ``Scheduler/createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:notificationTime:tags:effectiveFrom:shadowedOutcomesHandling:with:)``. For advanced notification features, see ``SchedulerNotifications``.
 
 ## Topics
 
