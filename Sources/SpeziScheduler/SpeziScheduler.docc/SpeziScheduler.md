@@ -24,7 +24,7 @@ The Scheduler module helps you create and manage recurring tasks that users need
 
 The module automatically handles task persistence and versioning. When you update a task's schedule or details, it creates a new version without affecting previously completed events. This ensures your historical data remains intact.
 
-You create tasks using ``Scheduler/createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:tags:effectiveFrom:with:)``, and the module takes care of generating the appropriate events based on your schedule.
+You create tasks using ``Scheduler/createOrUpdateTask(id:title:instructions:category:schedule:completionPolicy:scheduleNotifications:notificationThread:notificationTime:tags:effectiveFrom:shadowedOutcomesHandling:with:)``, and the module takes care of generating the appropriate events based on your schedule.
 
 Below is an example on how to create your own [`Module`](https://swiftpackageindex.com/stanfordspezi/spezi/documentation/spezi/module) to manage your tasks and ensure they are always up to date.
 
