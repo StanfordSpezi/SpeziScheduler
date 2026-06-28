@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Foundation
 
 
@@ -204,3 +205,4 @@ extension Event: CustomStringConvertible {
         """
     }
 }
+#endif

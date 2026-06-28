@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Foundation
 
 
@@ -54,3 +55,4 @@ extension Occurrence: CustomStringConvertible {
         "Occurrence(start: \(start), end: \(end))"
     }
 }
+#endif

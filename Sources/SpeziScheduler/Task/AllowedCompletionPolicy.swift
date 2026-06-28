@@ -24,6 +24,7 @@ public enum AllowedCompletionPolicy: Hashable, Sendable, Codable {
 }
 
 
+#if canImport(Darwin)
 extension AllowedCompletionPolicy {
     /// Determine if an event is allowed to be completed at a specific date.
     /// - Parameters:
@@ -57,6 +58,7 @@ extension AllowedCompletionPolicy {
     /// - Returns: `true` if the event is currently allowed to be completed. `false` otherwise. If the date at which the event is allowed to be completed is still in the future,
     ///     you can use the ``dateOnceCompletionIsAllowed(for:now:)`` and ``dateOnceCompletionBecomesDisallowed(for:now:)`` methods to retrieve the time
     ///     when you need to update your UI.
+    @_disfavoredOverload
     @available(*, deprecated, renamed: "isAllowedToComplete(_:at:using:)")
     public func isAllowedToComplete(event: Event, now: Date = .now) -> Bool {
         isAllowedToComplete(event: event, at: now)
@@ -111,3 +113,4 @@ extension AllowedCompletionPolicy {
         return endDate
     }
 }
+#endif

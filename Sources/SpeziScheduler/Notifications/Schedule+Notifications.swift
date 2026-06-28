@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Foundation
 import UserNotifications
 
@@ -131,3 +132,4 @@ extension Schedule {
         return nextDate == nextOccurrenceEffectiveNotificationTime
     }
 }
+#endif

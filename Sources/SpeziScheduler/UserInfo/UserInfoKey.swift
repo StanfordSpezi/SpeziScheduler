@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Foundation
 import SpeziFoundation
 
@@ -30,3 +31,4 @@ extension _UserInfoKey {
         "\(Self.self)"
     }
 }
+#endif

@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Foundation
 import SwiftData
 
@@ -73,3 +74,4 @@ extension Task.Category {
         Task.Category(rawValue: label)
     }
 }
+#endif

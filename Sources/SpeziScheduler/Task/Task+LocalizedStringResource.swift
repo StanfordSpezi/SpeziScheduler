@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Foundation
 
 
@@ -44,3 +45,4 @@ extension _LocalizedStringResourceAccessors {
 // With this small trick we added two `title` and `instructions` property overloads with type `LocalizedStringResource`
 // which can be used with several SwiftUI initializers.
 extension Task: _LocalizedStringResourceAccessors {}
+#endif

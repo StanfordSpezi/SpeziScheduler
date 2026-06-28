@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Foundation
 
 
@@ -31,3 +32,4 @@ extension Locale.Weekday {
         }
     }
 }
+#endif

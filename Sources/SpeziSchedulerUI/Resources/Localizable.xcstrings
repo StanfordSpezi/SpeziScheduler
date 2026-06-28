@@ -64,24 +64,6 @@
         }
       }
     },
-    "Completed" : {
-      "comment" : "Completed Tile. Subtitle",
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abgeschlossen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Completed"
-          }
-        }
-      }
-    },
     "Failed to fetch Events" : {
 
     },
@@ -120,7 +102,14 @@
 
     },
     "Questionnaire" : {
-
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuestionario"
+          }
+        }
+      }
     },
     "Retry" : {
 

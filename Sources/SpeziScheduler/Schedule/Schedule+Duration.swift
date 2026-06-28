@@ -6,7 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
-
+#if canImport(Darwin)
 extension Schedule {
     /// The duration of an occurrence.
     ///
@@ -200,3 +200,4 @@ extension Schedule.Duration {
         }
     }
 }
+#endif

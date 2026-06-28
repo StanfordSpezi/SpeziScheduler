@@ -6,7 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
-#if canImport(BackgroundTasks)
+#if !os(watchOS) && canImport(BackgroundTasks)
 import BackgroundTasks
 
 
@@ -20,6 +20,10 @@ extension BGTaskScheduler.Error.Code: @retroactive CustomStringConvertible {
             "tooManyPendingTaskRequests"
         case .unavailable:
             "unavailable"
+        #if compiler(>=6.2) // even though the docs say this is available starting with iOS 13, only Xcode 26 seems to know about it...
+        case .immediateRunIneligible:
+            "immediateRunIneligible"
+        #endif
         @unknown default:
             "BGTaskSchedulerErrorCode(rawValue: \(rawValue))"
         }

@@ -6,7 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
-
+#if canImport(Darwin)
 @usableFromInline
 struct PermittedBackgroundTaskIdentifier {
     @usableFromInline static let speziSchedulerNotificationsScheduling = PermittedBackgroundTaskIdentifier(
@@ -23,3 +23,4 @@ struct PermittedBackgroundTaskIdentifier {
 
 
 extension PermittedBackgroundTaskIdentifier: RawRepresentable, Hashable, Sendable, Codable {}
+#endif

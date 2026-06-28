@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Foundation
 
 
@@ -33,3 +34,4 @@ struct TaskNextOccurrenceCache {
         }
     }
 }
+#endif

@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import SpeziFoundation
 
 
@@ -47,3 +48,4 @@ import SpeziFoundation
 public macro Property<Encoder: TopLevelEncoder, Decoder: TopLevelDecoder>(
     coding: UserStorageCoding<Encoder, Decoder> = .propertyList
 ) = #externalMacro(module: "SpeziSchedulerMacros", type: "UserStorageEntryMacro")
+#endif

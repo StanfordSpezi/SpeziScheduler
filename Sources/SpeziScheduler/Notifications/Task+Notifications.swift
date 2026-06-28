@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Spezi
 import UserNotifications
 
@@ -53,3 +54,4 @@ extension Task {
         return content
     }
 }
+#endif

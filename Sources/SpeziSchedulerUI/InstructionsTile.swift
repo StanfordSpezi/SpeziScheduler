@@ -420,7 +420,7 @@ extension InstructionsTile {
     @Previewable var events
 
     if let error = $events.fetchError {
-        Text("Error Occurrence: \(error)")
+        Text("Error Occurrence: \(String(describing: error))")
     } else if let first = events.first {
         List {
             InstructionsTile(first) {
@@ -438,7 +438,7 @@ extension InstructionsTile {
     @Previewable var events
 
     if let error = $events.fetchError {
-        Text("Error Occurrence: \(error)")
+        Text("Error Occurrence: \(String(describing: error))")
     } else if let first = events.first {
         List {
             InstructionsTile(first, alignment: .center) {

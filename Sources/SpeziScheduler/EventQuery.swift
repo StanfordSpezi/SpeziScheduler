@@ -6,6 +6,7 @@
 // SPDX-License-Identifier: MIT
 //
 
+#if canImport(Darwin)
 import Combine
 import SwiftData
 import SwiftUI
@@ -111,10 +112,7 @@ public struct EventQuery {
     /// - Parameters:
     ///   - range: The date range to query events for.
     ///   - predicate: Optional `Predicate` allowing you to filter which events should be included in the query, based on their ``Task``.
-    public init(
-        in range: Range<Date>,
-        predicate: Predicate<Task> = #Predicate { _ in true }
-    ) {
+    public init(in range: Range<Date>, predicate: Predicate<Task> = .true) {
         configuration = Configuration(range: range, taskPredicate: predicate)
         binding = Binding(range: range)
     }
@@ -122,7 +120,7 @@ public struct EventQuery {
 
 
 extension EventQuery: DynamicProperty {
-    public mutating nonisolated func update() {
+    nonisolated public mutating func update() {
         // This is not really ideal, however we require MainActor isolation and `DynamicProperty` doesn't annotate this guarantee
         // even though it will always be called from the main thread.
         // `EventQuery` is a non-Sendable type that must be initialized on the MainActor. This doesn't guarantee that
@@ -181,3 +179,4 @@ extension EventQuery: DynamicProperty {
         }
     }
 }
+#endif
