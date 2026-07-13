@@ -224,10 +224,13 @@ extension Schedule: Equatable, Hashable {
         hasher.combine(scheduleDuration)
         hasher.combine(notificationMatchingHint)
         hasher.combine(duration)
+        // Only fold the recurrence into the hash on platforms where `Calendar.RecurrenceRule` is `Hashable`.
+        // Falling back to the raw `recurrenceRule` on older systems would be unsound: `==` compares the decoded
+        // `recurrence`, and two schedules that are equal there can still carry different `Data` blobs (see the note
+        // in `==`). Mixing that `Data` in would let equal values hash differently, violating the `a == b` implies
+        // equal-hashes requirement. Omitting it simply yields a coarser hash, which is always permitted.
         if #available(iOS 18.2, macOS 15.2, visionOS 2.2, watchOS 11.2, *) {
             hasher.combine(recurrence)
-        } else {
-            hasher.combine(recurrenceRule)
         }
         hasher.combine(start)
         hasher.combine(repeatsIndefinitely)
