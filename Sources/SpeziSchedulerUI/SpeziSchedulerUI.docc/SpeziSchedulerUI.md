@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 -->
 
-UI components provided for SpeziScheduler.
+SwiftUI components for displaying scheduled tasks and events in your application.
 
 ## Overview
 
@@ -31,6 +31,72 @@ UI components provided for SpeziScheduler.
         }
     }
 }
+
+### Displaying Events in Lists
+
+Use ``EventScheduleList`` to display all events for a specific day. It automatically handles empty states and defaults to today's date:
+
+```swift
+import SpeziSchedulerUI
+
+struct ScheduleView: View {
+    var body: some View {
+        NavigationStack {
+            EventScheduleList { event in
+                InstructionsTile(event) {
+                    event.complete()
+                }
+            }
+            .navigationTitle("Today's Schedule")
+        }
+    }
+}
+```
+
+Pass a `date` to display events for a different day (e.g., `EventScheduleList(date: .tomorrow)`).
+
+### Task Cards with InstructionsTile
+
+The ``InstructionsTile`` component provides a card interface for a single event. Use the `more` trailing closure to show a detail sheet, and `alignment` to control how the content is aligned:
+
+```swift
+struct ScheduleView: View {
+    var body: some View {
+        EventScheduleList { event in
+            // With a detail sheet and centered alignment
+            InstructionsTile(event, alignment: .center) {
+                event.complete()
+            } more: {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Detailed Instructions")
+                        .font(.headline)
+                    Text("Step-by-step guide on how to complete this task...")
+                }
+                .padding()
+            }
+        }
+    }
+}
+```
+
+### Customizing Task Appearance
+
+You can customize how task categories appear in the UI using the ``SwiftUICore/View/taskCategoryAppearance(for:label:image:)`` modifier:
+
+```swift
+struct ScheduleView: View {
+    var body: some View {
+        EventScheduleList { event in
+            InstructionsTile(event) {
+                event.complete()
+            }
+        }
+        .taskCategoryAppearance(for: .questionnaire, label: "Survey", image: .system("list.clipboard.fill"))
+        .taskCategoryAppearance(for: .medication, label: "Medication", image: .system("pills.fill"))
+        .taskCategoryAppearance(for: .measurement, label: "Measurement", image: .system("ruler.fill"))
+    }
+}
+```
 
 
 ## Topics
