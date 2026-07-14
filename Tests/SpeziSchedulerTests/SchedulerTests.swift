@@ -10,6 +10,7 @@
 
 import Spezi
 @_spi(TestingSupport)
+@_spi(APISupport)
 @testable import SpeziScheduler
 import SpeziTesting
 import SwiftData
@@ -860,6 +861,58 @@ struct SchedulerTests { // swiftlint:disable:this type_body_length
             task3.title == "Task 3 \(placeholder: .double) \(placeholder: .float) \(placeholder: .int) \(placeholder: .uint) \(placeholder: .object)"
         )
         #expect(String(localized: task3.instructions) == "Task 3")
+    }
+    
+    
+    @Test
+    @MainActor
+    func userInfoPersistance() throws {
+        struct TaskContextKey: TaskStorageKey, _UserInfoKey<TaskAnchor> {
+            typealias Value = Int
+            static let identifier = "tKey1"
+            static let coding = UserStorageCoding.json
+        }
+        struct OutcomeContextKey: OutcomeStorageKey, _UserInfoKey<OutcomeAnchor> {
+            typealias Value = Int
+            static let identifier = "oKey1"
+            static let coding = UserStorageCoding.json
+        }
+        do {
+            let jsonEncoder = JSONEncoder()
+            jsonEncoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+            var storage = UserInfoStorage<TaskAnchor>()
+            var cache = UserInfoStorage<TaskAnchor>.RepositoryCache()
+            try storage.set(TaskContextKey.self, value: 52, cache: &cache)
+            #expect(storage.userInfo == ["tKey1": Data(#"{"value":52}"#.utf8)])
+            let storageJson = try jsonEncoder.encode(storage)
+            #expect(String(decoding: storageJson, as: UTF8.self) == #"{"userInfo":{"tKey1":"\#(Data(#"{"value":52}"#.utf8).base64EncodedString())"}}"#)
+        }
+        let scheduler = Scheduler(persistence: .inMemory)
+        withDependencyResolution {
+            scheduler
+        }
+        try scheduler.createOrUpdateTask(
+            id: "t0",
+            title: "T",
+            instructions: "I",
+            schedule: .weekly(hour: 0, minute: 0, startingAt: .now)
+        ) { context in
+            context[TaskContextKey.self] = 7
+        }
+        #expect(try scheduler.queryAllTasks().count == 1)
+        let events = try scheduler.queryEvents(for: Calendar.current.rangeOfDay(for: .now))
+        #expect(events.count == 1)
+        let event = try #require(events.first)
+        #expect(event.task[TaskContextKey.self] == 7)
+        #expect(!event.isCompleted)
+        #expect(event.outcome == nil)
+        try event.complete { outcome in
+            outcome[OutcomeContextKey.self] = 5
+        }
+        #expect(event.isCompleted)
+        #expect(event.outcome != nil)
+        #expect(event.outcome?[OutcomeContextKey.self] == 5)
+        try scheduler.context.save()
     }
 }
 

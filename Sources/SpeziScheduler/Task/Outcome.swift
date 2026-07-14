@@ -83,6 +83,12 @@ public final class Outcome {
         self.occurrenceStartDate = occurrence.start
         self.task = task
     }
+    
+    /// Unsafely (i.e., potentially breaking invariants) updates the Outcome's associated ``Task``.
+    @_spi(APISupport)
+    public func unsafelyReassignTask(to newTask: Task) {
+        self.task = newTask
+    }
 }
 
 
@@ -93,10 +99,10 @@ extension Outcome {
     @_documentation(visibility: internal)
     public subscript<Source: OutcomeStorageKey>(_ source: Source.Type) -> Source.Value? {
         get {
-            userInfo.get(source, cache: &userInfoCache)
+            try? userInfo.get(source, cache: &userInfoCache)
         }
         set {
-            userInfo.set(source, value: newValue, cache: &userInfoCache)
+            try? userInfo.set(source, value: newValue, cache: &userInfoCache)
         }
     }
 
@@ -108,10 +114,10 @@ extension Outcome {
     @_documentation(visibility: internal)
     public subscript<Source: OutcomeStorageKey>(_ source: Source.Type, default defaultValue: @autoclosure () -> Source.Value) -> Source.Value {
         get {
-            userInfo.get(source, cache: &userInfoCache) ?? defaultValue()
+            (try? userInfo.get(source, cache: &userInfoCache)) ?? defaultValue()
         }
         set {
-            userInfo.set(source, value: newValue, cache: &userInfoCache)
+            try? userInfo.set(source, value: newValue, cache: &userInfoCache)
         }
     }
 }

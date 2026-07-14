@@ -53,7 +53,7 @@ import Foundation
 /// - ``occurrences(inDay:)``
 /// - ``occurrences(in:)-3a9p3``
 /// - ``occurrence(forStartDate:)``
-public struct Schedule {
+public struct Schedule: Sendable {
     /// The start date (inclusive).
     private var startDate: Date
     /// The duration of a single occurrence.
@@ -61,7 +61,7 @@ public struct Schedule {
     /// We need a separate storage container as SwiftData cannot store values of type `Swift.Duration`.
     private var scheduleDuration: Duration.SwiftDataDuration
 
-
+    /// Backing storage for ``recurrence``
     private var recurrenceRule: Data?
 
     /// A simpler representation of the recurrence rule used for notification scheduling.
@@ -205,7 +205,40 @@ public struct Schedule {
 }
 
 
-extension Schedule: Hashable, Sendable, Codable {/*
+extension Schedule: Equatable, Hashable {
+    public static func == (lhs: Schedule, rhs: Schedule) -> Bool {
+        // NOTE: we intentionally manually compare all of the relevant properties here,
+        // since the recurrence rule is stored as `Data`, which does not necessarily compare equal for
+        // recurrence rules that do compare equal.
+        lhs.startDate == rhs.startDate
+            && lhs.scheduleDuration == rhs.scheduleDuration
+            && lhs.notificationMatchingHint == rhs.notificationMatchingHint
+            && lhs.duration == rhs.duration
+            && lhs.recurrence == rhs.recurrence
+            && lhs.start == rhs.start
+            && lhs.repeatsIndefinitely == rhs.repeatsIndefinitely
+    }
+    
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(startDate)
+        hasher.combine(scheduleDuration)
+        hasher.combine(notificationMatchingHint)
+        hasher.combine(duration)
+        // Only fold the recurrence into the hash on platforms where `Calendar.RecurrenceRule` is `Hashable`.
+        // Falling back to the raw `recurrenceRule` on older systems would be unsound: `==` compares the decoded
+        // `recurrence`, and two schedules that are equal there can still carry different `Data` blobs (see the note
+        // in `==`). Mixing that `Data` in would let equal values hash differently, violating the `a == b` implies
+        // equal-hashes requirement. Omitting it simply yields a coarser hash, which is always permitted.
+        if #available(iOS 18.2, macOS 15.2, visionOS 2.2, watchOS 11.2, *) {
+            hasher.combine(recurrence)
+        }
+        hasher.combine(start)
+        hasher.combine(repeatsIndefinitely)
+    }
+}
+
+
+extension Schedule: Codable {/*
     private enum CodingKeys: String, CodingKey {
         case startDate
         case scheduleDuration

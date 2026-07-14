@@ -24,9 +24,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ci:
-    name: CI
-    uses: StanfordBDHG/.github/.github/workflows/swift-package-ci.yml@v2
+  setup:
+    name: Setup
+    uses: StanfordBDHG/.github/.github/workflows/swift-package-setup.yml@v2
+
+  build_and_test:
+    name: Build & Test
+    needs: setup
+    uses: StanfordBDHG/.github/.github/workflows/swift-package-test.yml@v2
     with:
+      package_name: ${{ needs.setup.outputs.package_name }}
+      scheme: ${{ needs.setup.outputs.scheme }}
+      platform_matrix: ${{ needs.setup.outputs.platform_matrix }}
+      ui_platform_matrix: ${{ needs.setup.outputs.ui_platform_matrix }}
       linux_run_tests: false
     secrets: inherit
+
+  static_analysis:
+    name: Static Analysis
+    needs: setup
+    # diagnose_breaking_changes is disabled due to a Swift PM bug: `swift package diagnose-api-breaking-changes`
+    # fails with a "redefinition of module 'SpeziFoundationObjC'" error when the package has a .macro() target
+    # on macOS. The macro causes Swift PM to create a SpeziFoundationObjC-tool.build directory in the current
+    # build, which conflicts with SpeziFoundationObjC.build in the cached apidiff baseline checkout.
+    uses: StanfordBDHG/.github/.github/workflows/swift-package-static-analysis.yml@v2
+    with:
+      library_products: ${{ needs.setup.outputs.library_products }}
+      platform_name: ${{ needs.setup.outputs.platform_name }}
+      platform_version: ${{ needs.setup.outputs.platform_version }}
+      diagnose_breaking_changes: false

@@ -46,6 +46,7 @@ import SpeziFoundation
 @attached(accessor, names: named(get), named(set))
 @attached(peer, names: prefixed(__Key_))
 public macro Property<Encoder: TopLevelEncoder, Decoder: TopLevelDecoder>(
-    coding: UserStorageCoding<Encoder, Decoder> = .propertyList
+    coding: UserStorageCoding<Encoder, Decoder> = .propertyList,
+    storageIdentifier: StaticString? = nil
 ) = #externalMacro(module: "SpeziSchedulerMacros", type: "UserStorageEntryMacro")
 #endif
